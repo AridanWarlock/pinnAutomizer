@@ -2,25 +2,26 @@ package create_user
 
 import (
 	"context"
+	"pinnAutomizer/internal/adapter/postgres/schema"
 	"pinnAutomizer/internal/domain"
 	"strings"
 )
 
-func (r *CreateUserRepository) CreateUser(ctx context.Context, in *domain.User) (*domain.User, error) {
+func (r *Repository) CreateUser(ctx context.Context, in *domain.User) (*domain.User, error) {
 	userRow := FromModel(in)
 	queryUserInsert := r.sb.
-		Insert(usersTable).
-		Columns(usersTableColumns...).
+		Insert(schema.UsersTable).
+		Columns(schema.UsersTableColumns...).
 		Values(userRow.Values()...).
-		Suffix("RETURNING " + strings.Join(usersTableColumns, ","))
+		Suffix("RETURNING " + strings.Join(schema.UsersTableColumns, ","))
 
 	authTokenRow := &AuthTokenRow{
 		UserID: userRow.ID,
 	}
 
 	queryAuthTokenInsert := r.sb.
-		Insert(authTokensTable).
-		Columns(authTokensColumns...).
+		Insert(schema.AuthTokensTable).
+		Columns(schema.AuthTokensColumns...).
 		Values(authTokenRow.Values()...)
 
 	var outRow CreateUserRow

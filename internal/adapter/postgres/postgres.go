@@ -23,10 +23,10 @@ type Config struct {
 type Repository struct {
 	pool pool.Poolx
 
-	*create_user.CreateUserRepository
-	*auth_tokens.AuthTokensRepository
-	*scripts.ScriptsRepository
-	*users.UsersRepository
+	createUser *create_user.Repository
+	authTokens *auth_tokens.Repository
+	scripts    *scripts.Repository
+	users      *users.Repository
 }
 
 func New(ctx context.Context, c Config) (*Repository, error) {
@@ -53,10 +53,10 @@ func New(ctx context.Context, c Config) (*Repository, error) {
 	return &Repository{
 		pool: poolx,
 
-		CreateUserRepository: create_user.NewRepository(poolx),
-		AuthTokensRepository: auth_tokens.NewRepository(poolx),
-		ScriptsRepository:    scripts.NewRepository(poolx),
-		UsersRepository:      users.NewRepository(poolx),
+		createUser: create_user.NewRepository(poolx),
+		authTokens: auth_tokens.NewRepository(poolx),
+		scripts:    scripts.NewRepository(poolx),
+		users:      users.NewRepository(poolx),
 	}, nil
 }
 

@@ -3,6 +3,7 @@ package auth_tokens
 import (
 	"context"
 	"errors"
+	"pinnAutomizer/internal/adapter/postgres/schema"
 	"pinnAutomizer/internal/domain"
 
 	"github.com/Masterminds/squirrel"
@@ -10,11 +11,11 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (r *AuthTokensRepository) GetAuthTokensByID(ctx context.Context, userId uuid.UUID) (*domain.AuthToken, error) {
+func (r *Repository) GetAuthTokensByID(ctx context.Context, userId uuid.UUID) (*domain.AuthToken, error) {
 	query := r.sb.
-		Select(authTokensColumns...).
-		From(authTokensTable).
-		Where(squirrel.Eq{authTokensTableColumnUserID: userId})
+		Select(schema.AuthTokensColumns...).
+		From(schema.AuthTokensTable).
+		Where(squirrel.Eq{schema.AuthTokensTableColumnUserID: userId})
 
 	var row AuthTokenRow
 	if err := r.pool.Getx(ctx, &row, query); err != nil {

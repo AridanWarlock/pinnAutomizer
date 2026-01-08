@@ -3,6 +3,7 @@ package scripts
 import (
 	"context"
 	"fmt"
+	"pinnAutomizer/internal/adapter/postgres/schema"
 	"pinnAutomizer/internal/domain"
 	"pinnAutomizer/internal/domain/pagination"
 	"strings"
@@ -11,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (r *ScriptsRepository) SearchScripts(
+func (r *Repository) SearchScripts(
 	ctx context.Context,
 	userID uuid.UUID,
 	f *domain.ScriptFilter,
@@ -22,26 +23,26 @@ func (r *ScriptsRepository) SearchScripts(
 	}
 
 	q := r.sb.
-		Select(scriptsTableColumns...).
-		From(scriptsTable).
-		Where(sq.Eq{scriptsTableColumnUserID: userID})
+		Select(schema.ScriptsTableColumns...).
+		From(schema.ScriptsTable).
+		Where(sq.Eq{schema.ScriptsTableColumnUserID: userID})
 
 	if len(f.IDs) > 0 {
-		q = q.Where(sq.Eq{scriptsTableColumnID: f.IDs})
+		q = q.Where(sq.Eq{schema.ScriptsTableColumnID: f.IDs})
 	}
 	if v := f.Filename; v != nil && strings.TrimSpace(*v) != "" {
-		q = q.Where(sq.ILike{scriptsTableColumnFilename: "%" + *v + "%"})
+		q = q.Where(sq.ILike{schema.ScriptsTableColumnFilename: "%" + *v + "%"})
 	}
 	if v := f.UploadTimeFrom; v != nil {
-		q = q.Where(sq.GtOrEq{scriptsTableColumnUploadTime: *v})
+		q = q.Where(sq.GtOrEq{schema.ScriptsTableColumnUploadTime: *v})
 	}
 	if v := f.UploadTimeTo; v != nil {
-		q = q.Where(sq.LtOrEq{scriptsTableColumnUploadTime: *v})
+		q = q.Where(sq.LtOrEq{schema.ScriptsTableColumnUploadTime: *v})
 	}
 
 	orderSql := buildOrderBy(p.OrderBy())
 	if len(orderSql) == 0 {
-		orderSql = []string{scriptsTableColumnUploadTime + " DESC"}
+		orderSql = []string{schema.ScriptsTableColumnUploadTime + " DESC"}
 	}
 
 	q = q.OrderBy(orderSql...)
@@ -71,8 +72,8 @@ func buildOrderBy(fields []pagination.SortField) []string {
 	}
 
 	whiteList := map[string]bool{
-		scriptsTableColumnUploadTime: true,
-		scriptsTableColumnFilename:   true,
+		schema.ScriptsTableColumnUploadTime: true,
+		schema.ScriptsTableColumnFilename:   true,
 	}
 
 	var out []string

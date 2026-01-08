@@ -9,13 +9,13 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
-type UsersRepository struct {
+type Repository struct {
 	pool pool.Poolx
 	sb   squirrel.StatementBuilderType
 }
 
-func NewRepository(pool pool.Poolx) *UsersRepository {
-	return &UsersRepository{
+func NewRepository(pool pool.Poolx) *Repository {
+	return &Repository{
 		pool: pool,
 		sb:   squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
 	}

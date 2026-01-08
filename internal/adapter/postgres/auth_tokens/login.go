@@ -2,16 +2,17 @@ package auth_tokens
 
 import (
 	"context"
+	"pinnAutomizer/internal/adapter/postgres/schema"
 	"pinnAutomizer/internal/domain"
 
 	"github.com/Masterminds/squirrel"
 )
 
-func (r *AuthTokensRepository) Login(ctx context.Context, authToken *domain.AuthToken) error {
-	query := r.sb.Update(authTokensTable).
-		Set(authTokensTableColumnAccessToken, authToken.AccessToken).
-		Set(authTokensTableColumnRefreshToken, authToken.RefreshToken).
-		Where(squirrel.Eq{authTokensTableColumnUserID: authToken.UserID})
+func (r *Repository) Login(ctx context.Context, authToken *domain.AuthToken) error {
+	query := r.sb.Update(schema.AuthTokensTable).
+		Set(schema.AuthTokensTableColumnAccessToken, authToken.AccessToken).
+		Set(schema.AuthTokensTableColumnRefreshToken, authToken.RefreshToken).
+		Where(squirrel.Eq{schema.AuthTokensTableColumnUserID: authToken.UserID})
 
 	tag, err := r.pool.Execx(ctx, query)
 	if err != nil {

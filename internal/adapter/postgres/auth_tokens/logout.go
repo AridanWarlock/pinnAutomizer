@@ -3,16 +3,17 @@ package auth_tokens
 import (
 	"context"
 	"database/sql"
+	"pinnAutomizer/internal/adapter/postgres/schema"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 )
 
-func (r *AuthTokensRepository) Logout(ctx context.Context, userID uuid.UUID) error {
-	query := r.sb.Update(authTokensTable).
-		Set(authTokensTableColumnAccessToken, sql.NullString{}).
-		Set(authTokensTableColumnRefreshToken, sql.NullString{}).
-		Where(squirrel.Eq{authTokensTableColumnUserID: userID})
+func (r *Repository) Logout(ctx context.Context, userID uuid.UUID) error {
+	query := r.sb.Update(schema.AuthTokensTable).
+		Set(schema.AuthTokensTableColumnAccessToken, sql.NullString{}).
+		Set(schema.AuthTokensTableColumnRefreshToken, sql.NullString{}).
+		Where(squirrel.Eq{schema.AuthTokensTableColumnUserID: userID})
 
 	tag, err := r.pool.Execx(ctx, query)
 	if err != nil {

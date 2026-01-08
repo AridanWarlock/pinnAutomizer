@@ -3,6 +3,7 @@ package scripts
 import (
 	"context"
 	"errors"
+	"pinnAutomizer/internal/adapter/postgres/schema"
 	"pinnAutomizer/internal/domain"
 
 	"github.com/Masterminds/squirrel"
@@ -10,11 +11,11 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (r *ScriptsRepository) GetScript(ctx context.Context, id uuid.UUID) (*domain.Script, error) {
+func (r *Repository) GetScript(ctx context.Context, id uuid.UUID) (*domain.Script, error) {
 	query := r.sb.
-		Select(scriptsTableColumns...).
-		From(scriptsTable).
-		Where(squirrel.Eq{scriptsTableColumnID: id})
+		Select(schema.ScriptsTableColumns...).
+		From(schema.ScriptsTable).
+		Where(squirrel.Eq{schema.ScriptsTableColumnID: id})
 
 	var row ScriptRow
 	if err := r.pool.Getx(ctx, &row, query); err != nil {
