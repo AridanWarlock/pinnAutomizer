@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"pinnAutomizer/internal/adapter/postgres/auth_tokens"
 	"pinnAutomizer/internal/adapter/postgres/create_user"
+	"pinnAutomizer/internal/adapter/postgres/equations"
 	"pinnAutomizer/internal/adapter/postgres/pool"
 	"pinnAutomizer/internal/adapter/postgres/scripts"
+	"pinnAutomizer/internal/adapter/postgres/tasks"
 	"pinnAutomizer/internal/adapter/postgres/users"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -20,18 +22,22 @@ type Config struct {
 	DBName   string `env:"POSTGRES_DB_NAME" required:"true"`
 }
 
-type CreateUser = *create_user.Repository
-type AuthTokens = *auth_tokens.Repository
-type Scripts = *scripts.Repository
-type Users = *users.Repository
+type CreateUserRepository = *create_user.Repository
+type AuthTokensRepository = *auth_tokens.Repository
+type EquationRepository = *equations.Repository
+type ScriptsRepository = *scripts.Repository
+type TasksRepository = *tasks.Repository
+type UsersRepository = *users.Repository
 
 type Repository struct {
 	pool pool.Poolx
 
-	CreateUser
-	AuthTokens
-	Users
-	Scripts
+	CreateUserRepository
+	AuthTokensRepository
+	EquationRepository
+	TasksRepository
+	UsersRepository
+	ScriptsRepository
 }
 
 func New(ctx context.Context, c Config) (*Repository, error) {
@@ -58,11 +64,17 @@ func New(ctx context.Context, c Config) (*Repository, error) {
 	return &Repository{
 		pool: poolx,
 
-		CreateUser: create_user.NewRepository(poolx),
-		AuthTokens: auth_tokens.NewRepository(poolx),
-		Scripts:    scripts.NewRepository(poolx),
-		Users:      users.NewRepository(poolx),
+		CreateUserRepository: create_user.NewRepository(poolx),
+		AuthTokensRepository: auth_tokens.NewRepository(poolx),
+		EquationRepository:   equations.NewRepository(poolx),
+		ScriptsRepository:    scripts.NewRepository(poolx),
+		TasksRepository:      tasks.NewRepository(poolx),
+		UsersRepository:      users.NewRepository(poolx),
 	}, nil
+}
+
+func (r *Repository) Wrap(ctx context.Context, fn func(context.Context) error) error {
+	return r.pool.Wrap(ctx, fn)
 }
 
 func (r *Repository) Close() {

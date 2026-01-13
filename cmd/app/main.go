@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"pinnAutomizer/config"
+	"pinnAutomizer/internal/adapter/kafka"
 	postgresAdapter "pinnAutomizer/internal/adapter/postgres"
 	"pinnAutomizer/internal/adapter/translator"
 	"pinnAutomizer/internal/auth/login"
@@ -18,6 +19,8 @@ import (
 	"pinnAutomizer/internal/script/create_script"
 	"pinnAutomizer/internal/script/search_scripts"
 	"pinnAutomizer/internal/script/update_script_after_translate"
+	"pinnAutomizer/internal/task/create_task"
+	"pinnAutomizer/internal/task/get_tasks"
 	"pinnAutomizer/pkg/httpserver"
 	"pinnAutomizer/pkg/jwt"
 	"pinnAutomizer/pkg/log"
@@ -28,10 +31,6 @@ import (
 )
 
 func main() {
-	defer func() {
-		panic("Fuck you")
-	}()
-
 	cfg, err := config.InitConfig()
 	if err != nil {
 		panic(err)
@@ -61,6 +60,13 @@ func AppRun(
 	defer postgres.Close()
 	log.Info().Msg("postgres connected")
 
+	kf, err := kafka.New(c.Kafka)
+	if err != nil {
+		return fmt.Errorf("kafka connection error, %w", err)
+	}
+	defer kf.Close()
+	log.Info().Msg("kafka connected")
+
 	jwtService := jwt.New(c.Jwt, postgres)
 	log.Info().Msg("jwt service started")
 	translatorService := translator.New(c.Translator, log)
@@ -78,6 +84,10 @@ func AppRun(
 	create_script.New(postgres, translatorService, log)
 	search_scripts.New(postgres, log)
 	update_script_after_translate.New(postgres, log)
+
+	//tasks
+	create_task.New(postgres, kf, log)
+	get_tasks.New(postgres, log)
 
 	log.Info().Msg("use cases injected")
 

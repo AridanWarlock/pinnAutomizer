@@ -1,6 +1,7 @@
 package config
 
 import (
+	"pinnAutomizer/internal/adapter/kafka"
 	"pinnAutomizer/internal/adapter/postgres"
 	"pinnAutomizer/internal/adapter/translator"
 	"pinnAutomizer/pkg/httpserver"
@@ -21,6 +22,7 @@ type Config struct {
 	HTTP       httpserver.Config
 	Log        log.Config
 	Postgres   postgres.Config
+	Kafka      kafka.Config
 	Translator translator.Config
 	Jwt        jwt.Config
 }

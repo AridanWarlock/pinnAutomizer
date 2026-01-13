@@ -62,7 +62,7 @@ const (
 	TasksTableColumnCreatedAt                = "created_at"
 )
 
-var tasksTableColumns = []string{
+var TasksTableColumns = []string{
 	TasksTableColumnID,
 	TasksTableColumnName,
 	TasksTableColumnDescription,
