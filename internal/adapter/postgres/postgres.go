@@ -20,13 +20,18 @@ type Config struct {
 	DBName   string `env:"POSTGRES_DB_NAME" required:"true"`
 }
 
+type CreateUser = *create_user.Repository
+type AuthTokens = *auth_tokens.Repository
+type Scripts = *scripts.Repository
+type Users = *users.Repository
+
 type Repository struct {
 	pool pool.Poolx
 
-	createUser *create_user.Repository
-	authTokens *auth_tokens.Repository
-	scripts    *scripts.Repository
-	users      *users.Repository
+	CreateUser
+	AuthTokens
+	Users
+	Scripts
 }
 
 func New(ctx context.Context, c Config) (*Repository, error) {
@@ -53,10 +58,10 @@ func New(ctx context.Context, c Config) (*Repository, error) {
 	return &Repository{
 		pool: poolx,
 
-		createUser: create_user.NewRepository(poolx),
-		authTokens: auth_tokens.NewRepository(poolx),
-		scripts:    scripts.NewRepository(poolx),
-		users:      users.NewRepository(poolx),
+		CreateUser: create_user.NewRepository(poolx),
+		AuthTokens: auth_tokens.NewRepository(poolx),
+		Scripts:    scripts.NewRepository(poolx),
+		Users:      users.NewRepository(poolx),
 	}, nil
 }
 
