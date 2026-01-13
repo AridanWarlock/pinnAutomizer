@@ -55,6 +55,4 @@ func NewChiCORS(config Config) func(http.Handler) http.Handler {
 		AllowCredentials: config.AllowCredentials,
 		MaxAge:           config.MaxAge,
 	})
-
-	//return cors.AllowAll().Handler
 }

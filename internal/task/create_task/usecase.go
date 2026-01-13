@@ -2,6 +2,7 @@ package create_task
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"pinnAutomizer/internal/domain"
 	"pinnAutomizer/pkg/tx"
@@ -10,12 +11,13 @@ import (
 type Postgres interface {
 	CreateTask(ctx context.Context, task domain.Task) (domain.Task, error)
 	GetEquationByType(ctx context.Context, equationType string) (domain.Equation, error)
+	UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status string) error
 
 	tx.Wrapper
 }
 
 type Kafka interface {
-	TrainTask(ctx context.Context, task domain.Task) error
+	PublishTaskToTrain(ctx context.Context, task domain.Task) error
 }
 
 type Usecase struct {
@@ -72,19 +74,7 @@ func (u *Usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 		return Output{}, err
 	}
 
-	err = u.postgres.Wrap(ctx, func(ctx context.Context) error {
-		task, err = u.postgres.CreateTask(ctx, task)
-		if err != nil {
-			log.Error().Err(err).Msg("saving task in postgres error")
-			return err
-		}
-
-		if err := u.kafka.TrainTask(ctx, task); err != nil {
-			log.Error().Err(err).Msg("saving task in kafka error")
-			return err
-		}
-		return nil
-	})
+	task, err = u.createAndPublishTask(ctx, task)
 
 	if err != nil {
 		return Output{}, err
@@ -94,4 +84,31 @@ func (u *Usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 		Task:     task,
 		Equation: equation,
 	}, err
+}
+
+func (u *Usecase) createAndPublishTask(ctx context.Context, task domain.Task) (domain.Task, error) {
+	log := u.log.With().Ctx(ctx).Logger()
+
+	err := u.postgres.Wrap(ctx, func(ctx context.Context) error {
+		var err error
+
+		task, err = u.postgres.CreateTask(ctx, task)
+		if err != nil {
+			log.Error().Err(err).Msg("saving task in postgres error")
+			return err
+		}
+
+		err = u.kafka.PublishTaskToTrain(ctx, task)
+		if err != nil {
+			log.Error().Err(err).Msg("saving task in kafka_produce error")
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return domain.Task{}, err
+	}
+	return task, nil
 }

@@ -6,9 +6,8 @@ import (
 	"os"
 	"os/signal"
 	"pinnAutomizer/config"
-	"pinnAutomizer/internal/adapter/kafka"
+	"pinnAutomizer/internal/adapter/kafka_produce"
 	postgresAdapter "pinnAutomizer/internal/adapter/postgres"
-	"pinnAutomizer/internal/adapter/translator"
 	"pinnAutomizer/internal/auth/login"
 	"pinnAutomizer/internal/auth/logout"
 	"pinnAutomizer/internal/auth/me"
@@ -16,11 +15,12 @@ import (
 	"pinnAutomizer/internal/auth/register"
 	"pinnAutomizer/internal/controller/http_v1"
 	"pinnAutomizer/internal/middleware/auth"
-	"pinnAutomizer/internal/script/create_script"
-	"pinnAutomizer/internal/script/search_scripts"
-	"pinnAutomizer/internal/script/update_script_after_translate"
+	"pinnAutomizer/internal/outbox"
 	"pinnAutomizer/internal/task/create_task"
 	"pinnAutomizer/internal/task/get_tasks"
+	"pinnAutomizer/internal/task/solve_task"
+	"pinnAutomizer/internal/task/update_task_status_after_train"
+	"pinnAutomizer/internal/task/update_task_status_on_train"
 	"pinnAutomizer/pkg/httpserver"
 	"pinnAutomizer/pkg/jwt"
 	"pinnAutomizer/pkg/log"
@@ -60,17 +60,16 @@ func AppRun(
 	defer postgres.Close()
 	log.Info().Msg("postgres connected")
 
-	kf, err := kafka.New(c.Kafka)
-	if err != nil {
-		return fmt.Errorf("kafka connection error, %w", err)
-	}
-	defer kf.Close()
-	log.Info().Msg("kafka connected")
+	kafka := kafka_produce.New(c.KafkaProducer, log)
+	defer kafka.Close()
+	log.Info().Msg("kafka_produce connected")
+
+	writer := outbox.New(postgres, kafka, log)
+	defer writer.Close()
+	log.Info().Msg("outbox worker started")
 
 	jwtService := jwt.New(c.Jwt, postgres)
 	log.Info().Msg("jwt service started")
-	translatorService := translator.New(c.Translator, log)
-	log.Info().Msg("translator service started")
 	passwordHasher := password_hasher.New()
 
 	//auth
@@ -80,17 +79,23 @@ func AppRun(
 	register.New(postgres, passwordHasher, log)
 	refresh.New(postgres, jwtService, log)
 
-	//script
-	create_script.New(postgres, translatorService, log)
-	search_scripts.New(postgres, log)
-	update_script_after_translate.New(postgres, log)
-
 	//tasks
-	create_task.New(postgres, kf, log)
+	create_task.New(postgres, kafka, log)
 	get_tasks.New(postgres, log)
+	solve_task.New(postgres, kafka, log)
+	update_task_status_after_train.New(postgres, log)
+	update_task_status_on_train.New(postgres, log)
 
-	log.Info().Msg("use cases injected")
+	log.Info().Msg("usecases injected")
 
+	//kafka consumers
+	//tasks
+	consumerAfterTrain := update_task_status_after_train.NewConsumer(c.KafkaConsumerAfterTrain, log)
+	defer consumerAfterTrain.Close()
+	consumerOnTrain := update_task_status_on_train.NewConsumer(c.KafkaConsumerOnTrain, log)
+	defer consumerOnTrain.Close()
+
+	//middleware
 	authMiddleware := auth.NewMiddleware(jwtService, log)
 	router := http_v1.Router(authMiddleware, log)
 	httpServer := httpserver.New(router, c.HTTP, log)

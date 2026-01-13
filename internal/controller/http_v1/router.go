@@ -8,11 +8,9 @@ import (
 	"pinnAutomizer/internal/auth/refresh"
 	"pinnAutomizer/internal/auth/register"
 	"pinnAutomizer/internal/middleware/cors"
-	"pinnAutomizer/internal/script/create_script"
-	"pinnAutomizer/internal/script/search_scripts"
-	"pinnAutomizer/internal/script/update_script_after_translate"
 	"pinnAutomizer/internal/task/create_task"
 	"pinnAutomizer/internal/task/get_tasks"
+	"pinnAutomizer/internal/task/solve_task"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -42,14 +40,10 @@ func Router(authMiddleware AuthMiddleware, log zerolog.Logger) http.Handler {
 			r.Post("/auth/refresh", refresh.HttpV1Handler(log))
 			r.Post("/auth/register", register.HttpV1Handler(log))
 
-			//scripts
-			r.Post("/scripts", create_script.HttpV1Handler(log))
-			r.Get("/scripts", search_scripts.HttpV1Handler(log))
-			r.Post("/scripts/from-translate/{id}", update_script_after_translate.HttpV1Handler(log))
-
 			//tasks
 			r.Post("/tasks", create_task.HttpV1Handler(log))
 			r.Get("/tasks", get_tasks.HttpV1Handler(log))
+			r.Post("/tasks/solve", solve_task.HttpV1Handler(log))
 		})
 	})
 

@@ -3,15 +3,14 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"pinnAutomizer/internal/adapter/postgres/auth_tokens"
-	"pinnAutomizer/internal/adapter/postgres/create_user"
-	"pinnAutomizer/internal/adapter/postgres/equations"
-	"pinnAutomizer/internal/adapter/postgres/pool"
-	"pinnAutomizer/internal/adapter/postgres/scripts"
-	"pinnAutomizer/internal/adapter/postgres/tasks"
-	"pinnAutomizer/internal/adapter/postgres/users"
-
 	"github.com/jackc/pgx/v5/pgxpool"
+	"pinnAutomizer/internal/adapter/postgres/pool"
+	"pinnAutomizer/internal/adapter/postgres/repositories/auth_tokens"
+	"pinnAutomizer/internal/adapter/postgres/repositories/create_user"
+	"pinnAutomizer/internal/adapter/postgres/repositories/equations"
+	"pinnAutomizer/internal/adapter/postgres/repositories/events"
+	"pinnAutomizer/internal/adapter/postgres/repositories/tasks"
+	"pinnAutomizer/internal/adapter/postgres/repositories/users"
 )
 
 type Config struct {
@@ -22,22 +21,22 @@ type Config struct {
 	DBName   string `env:"POSTGRES_DB_NAME" required:"true"`
 }
 
-type CreateUserRepository = *create_user.Repository
 type AuthTokensRepository = *auth_tokens.Repository
+type CreateUserRepository = *create_user.Repository
 type EquationRepository = *equations.Repository
-type ScriptsRepository = *scripts.Repository
+type EventsRepository = *events.Repository
 type TasksRepository = *tasks.Repository
 type UsersRepository = *users.Repository
 
 type Repository struct {
 	pool pool.Poolx
 
-	CreateUserRepository
 	AuthTokensRepository
+	CreateUserRepository
 	EquationRepository
+	EventsRepository
 	TasksRepository
 	UsersRepository
-	ScriptsRepository
 }
 
 func New(ctx context.Context, c Config) (*Repository, error) {
@@ -64,10 +63,10 @@ func New(ctx context.Context, c Config) (*Repository, error) {
 	return &Repository{
 		pool: poolx,
 
-		CreateUserRepository: create_user.NewRepository(poolx),
 		AuthTokensRepository: auth_tokens.NewRepository(poolx),
+		CreateUserRepository: create_user.NewRepository(poolx),
 		EquationRepository:   equations.NewRepository(poolx),
-		ScriptsRepository:    scripts.NewRepository(poolx),
+		EventsRepository:     events.NewRepository(poolx),
 		TasksRepository:      tasks.NewRepository(poolx),
 		UsersRepository:      users.NewRepository(poolx),
 	}, nil

@@ -26,40 +26,35 @@ var EquationsTableColumns = []string{
 	EquationsTableColumnType,
 }
 
-const ScriptsTable = "scripts"
+const EventsTable = "events"
 
 const (
-	ScriptsTableColumnID         = "id"
-	ScriptsTableColumnFilename   = "filename"
-	ScriptsTableColumnPath       = "path"
-	ScriptsTableColumnUploadTime = "upload_time"
-	ScriptsTableColumnText       = "text"
-	ScriptsTableColumnUserID     = "user_id"
+	EventsTableColumnID        = "id"
+	EventsTableColumnTopic     = "topic"
+	EventsTableColumnData      = "data"
+	EventsTableColumnCreatedAt = "created_at"
 )
 
-var ScriptsTableColumns = []string{
-	ScriptsTableColumnID,
-	ScriptsTableColumnFilename,
-	ScriptsTableColumnPath,
-	ScriptsTableColumnUploadTime,
-	ScriptsTableColumnText,
-	ScriptsTableColumnUserID,
+var EventsTableColumns = []string{
+	EventsTableColumnID,
+	EventsTableColumnTopic,
+	EventsTableColumnData,
+	EventsTableColumnCreatedAt,
 }
 
 const TasksTable = "tasks"
 
 const (
-	TasksTableColumnID                       = "id"
-	TasksTableColumnName                     = "name"
-	TasksTableColumnDescription              = "description"
-	TasksTableColumnStatus                   = "status"
-	TasksTableColumnConstants                = "constants"
-	TasksTableColumnTrainingDataPath         = "training_data_path"
-	TasksTableColumnTrainingAnalyticSolution = "training_analytic_solution"
-	TasksTableColumnResultsPath              = "results_path"
-	TasksTableColumnUserId                   = "user_id"
-	TasksTableColumnEquationId               = "equation_id"
-	TasksTableColumnCreatedAt                = "created_at"
+	TasksTableColumnID               = "id"
+	TasksTableColumnName             = "name"
+	TasksTableColumnDescription      = "description"
+	TasksTableColumnStatus           = "status"
+	TasksTableColumnConstants        = "constants"
+	TasksTableColumnTrainingDataPath = "training_data_path"
+	TasksTableColumnResultsPath      = "results_path"
+	TasksTableColumnUserId           = "user_id"
+	TasksTableColumnEquationId       = "equation_id"
+	TasksTableColumnCreatedAt        = "created_at"
 )
 
 var TasksTableColumns = []string{
@@ -69,7 +64,6 @@ var TasksTableColumns = []string{
 	TasksTableColumnStatus,
 	TasksTableColumnConstants,
 	TasksTableColumnTrainingDataPath,
-	TasksTableColumnTrainingAnalyticSolution,
 	TasksTableColumnResultsPath,
 	TasksTableColumnUserId,
 	TasksTableColumnEquationId,

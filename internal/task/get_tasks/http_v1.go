@@ -32,7 +32,7 @@ type Response struct {
 }
 
 func HttpV1Handler(log zerolog.Logger) http.HandlerFunc {
-	log = log.With().Str("component", "http_V1: task.CreateTask").Logger()
+	log = log.With().Str("component", "http_v1: task.CreateTask").Logger()
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		httpV1(w, r, log)

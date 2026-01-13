@@ -15,7 +15,7 @@ type Response struct {
 }
 
 func HttpV1Handler(log zerolog.Logger) http.HandlerFunc {
-	log = log.With().Str("component", "http_V1: auth.Me").Logger()
+	log = log.With().Str("component", "http_v1: auth.Me").Logger()
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		httpV1(w, r, log)

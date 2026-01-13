@@ -1,20 +1,20 @@
-package register
+package solve_task
 
 import (
-	"net/http"
-	"pinnAutomizer/pkg/json"
-
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"net/http"
+	"pinnAutomizer/internal/middleware/auth"
+	"pinnAutomizer/pkg/json"
 )
 
 type Request struct {
-	Login             string `json:"login"`
-	Password          string `json:"password"`
-	PasswordConfirmed string `json:"passwordConfirmed"`
+	TaskID    uuid.UUID      `json:"task_id"`
+	Constants map[string]any `json:"constants"`
 }
 
 func HttpV1Handler(log zerolog.Logger) http.HandlerFunc {
-	log = log.With().Str("component", "http_v1: auth.Register").Logger()
+	log = log.With().Str("component", "http_v1: task.SolveTask").Logger()
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		httpV1(w, r, log)
@@ -29,17 +29,19 @@ func httpV1(w http.ResponseWriter, r *http.Request, log zerolog.Logger) {
 		return
 	}
 
+	userID := r.Context().Value(auth.UserIDKey).(uuid.UUID)
+
 	in := Input{
-		Login:             req.Login,
-		Password:          req.Password,
-		PasswordConfirmed: req.PasswordConfirmed,
+		TaskID:    req.TaskID,
+		Constants: req.Constants,
+		UserID:    userID,
 	}
 
-	err := usecase.Register(r.Context(), in)
+	err := usecase.SolveTask(r.Context(), in)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 }
