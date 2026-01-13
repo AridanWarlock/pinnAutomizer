@@ -2,6 +2,7 @@ package kafka_produce
 
 import (
 	"context"
+
 	"github.com/rs/zerolog"
 	"github.com/segmentio/kafka-go"
 )

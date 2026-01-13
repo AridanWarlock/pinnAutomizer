@@ -2,9 +2,10 @@ package equations
 
 import (
 	"context"
-	sq "github.com/Masterminds/squirrel"
 	"pinnAutomizer/internal/adapter/postgres/schema"
 	"pinnAutomizer/internal/domain"
+
+	sq "github.com/Masterminds/squirrel"
 )
 
 func (r *Repository) GetEquationByType(ctx context.Context, equationType string) (domain.Equation, error) {

@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"pinnAutomizer/internal/adapter/postgres/pool"
 	"pinnAutomizer/internal/adapter/postgres/repositories/auth_tokens"
 	"pinnAutomizer/internal/adapter/postgres/repositories/create_user"
@@ -11,6 +10,8 @@ import (
 	"pinnAutomizer/internal/adapter/postgres/repositories/events"
 	"pinnAutomizer/internal/adapter/postgres/repositories/tasks"
 	"pinnAutomizer/internal/adapter/postgres/repositories/users"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Config struct {

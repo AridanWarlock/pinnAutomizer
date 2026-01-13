@@ -1,8 +1,9 @@
 package logout
 
 import (
-	"github.com/google/uuid"
 	"pinnAutomizer/pkg/validate"
+
+	"github.com/google/uuid"
 )
 
 type Input struct {

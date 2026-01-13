@@ -2,10 +2,11 @@ package create_task
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	"pinnAutomizer/internal/domain"
 	"pinnAutomizer/pkg/tx"
+
+	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type Postgres interface {

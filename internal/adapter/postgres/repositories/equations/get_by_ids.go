@@ -2,10 +2,11 @@ package equations
 
 import (
 	"context"
-	sq "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"pinnAutomizer/internal/adapter/postgres/schema"
 	"pinnAutomizer/internal/domain"
+
+	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 )
 
 func (r *Repository) GetEquationsByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.Equation, error) {

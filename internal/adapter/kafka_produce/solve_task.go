@@ -3,10 +3,11 @@ package kafka_produce
 import (
 	"context"
 	"encoding/json"
-	"github.com/google/uuid"
-	"github.com/segmentio/kafka-go"
 	"pinnAutomizer/internal/domain"
 	"pinnAutomizer/pkg/validate"
+
+	"github.com/google/uuid"
+	"github.com/segmentio/kafka-go"
 )
 
 type solveTaskMessage struct {

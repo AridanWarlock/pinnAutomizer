@@ -1,9 +1,10 @@
 package domain
 
 import (
-	"github.com/google/uuid"
 	"pinnAutomizer/pkg/validate"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type TaskStatus string

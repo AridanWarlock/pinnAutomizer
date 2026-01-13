@@ -1,9 +1,10 @@
 package get_tasks
 
 import (
-	"github.com/google/uuid"
 	"pinnAutomizer/internal/domain"
 	"pinnAutomizer/pkg/validate"
+
+	"github.com/google/uuid"
 )
 
 type Input struct {

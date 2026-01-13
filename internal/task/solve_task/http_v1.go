@@ -1,11 +1,12 @@
 package solve_task
 
 import (
-	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	"net/http"
 	"pinnAutomizer/internal/middleware/auth"
 	"pinnAutomizer/pkg/json"
+
+	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type Request struct {

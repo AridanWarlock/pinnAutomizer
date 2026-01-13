@@ -2,12 +2,13 @@ package outbox
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"github.com/rs/zerolog"
-	"github.com/segmentio/kafka-go"
 	"pinnAutomizer/internal/domain"
 	"pinnAutomizer/pkg/tx"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/rs/zerolog"
+	"github.com/segmentio/kafka-go"
 )
 
 const BatchSize = 20

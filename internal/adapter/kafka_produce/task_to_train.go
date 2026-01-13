@@ -3,9 +3,10 @@ package kafka_produce
 import (
 	"context"
 	"encoding/json"
+	"pinnAutomizer/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
-	"pinnAutomizer/internal/domain"
 )
 
 type trainMessage struct {

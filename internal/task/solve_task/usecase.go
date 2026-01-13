@@ -2,9 +2,10 @@ package solve_task
 
 import (
 	"context"
+	"pinnAutomizer/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"pinnAutomizer/internal/domain"
 )
 
 type Postgres interface {

@@ -1,9 +1,10 @@
 package events
 
 import (
-	"github.com/google/uuid"
 	"pinnAutomizer/internal/domain"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type EventRow struct {

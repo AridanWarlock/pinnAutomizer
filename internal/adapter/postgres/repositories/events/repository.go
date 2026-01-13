@@ -1,8 +1,9 @@
 package events
 
 import (
-	"github.com/Masterminds/squirrel"
 	"pinnAutomizer/internal/adapter/postgres/pool"
+
+	"github.com/Masterminds/squirrel"
 )
 
 type Repository struct {

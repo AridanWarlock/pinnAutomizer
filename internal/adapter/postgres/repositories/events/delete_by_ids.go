@@ -3,9 +3,10 @@ package events
 import (
 	"context"
 	"fmt"
+	"pinnAutomizer/internal/adapter/postgres/schema"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
-	"pinnAutomizer/internal/adapter/postgres/schema"
 )
 
 func (r *Repository) DeleteEventsByIDs(ctx context.Context, ids []uuid.UUID) error {

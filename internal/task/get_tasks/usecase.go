@@ -2,11 +2,12 @@ package get_tasks
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	"maps"
 	"pinnAutomizer/internal/domain"
 	"slices"
+
+	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type Postgres interface {

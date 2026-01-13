@@ -2,10 +2,11 @@ package tasks
 
 import (
 	"context"
-	sq "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"pinnAutomizer/internal/adapter/postgres/pg_errors"
 	"pinnAutomizer/internal/adapter/postgres/schema"
+
+	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 )
 
 func (r *Repository) UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status string) error {

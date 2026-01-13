@@ -2,10 +2,11 @@ package tasks
 
 import (
 	"context"
-	sq "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"pinnAutomizer/internal/adapter/postgres/schema"
 	"pinnAutomizer/internal/domain"
+
+	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 )
 
 func (r *Repository) GetTaskByID(ctx context.Context, id uuid.UUID) (domain.Task, error) {

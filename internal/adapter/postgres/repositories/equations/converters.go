@@ -1,8 +1,9 @@
 package equations
 
 import (
-	"github.com/google/uuid"
 	"pinnAutomizer/internal/domain"
+
+	"github.com/google/uuid"
 )
 
 type EquationRow struct {
