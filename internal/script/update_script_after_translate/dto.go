@@ -1,8 +1,8 @@
 package update_script_after_translate
 
 import (
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"pinnAutomizer/pkg/validate"
 )
 
 type Input struct {
@@ -10,6 +10,6 @@ type Input struct {
 	Text string
 }
 
-func (i Input) Validate(validate *validator.Validate) error {
-	return validate.Struct(i)
+func (i Input) Validate() error {
+	return validate.V.Struct(i)
 }

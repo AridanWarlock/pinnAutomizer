@@ -8,7 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
-func (r *Repository) Login(ctx context.Context, authToken *domain.AuthToken) error {
+func (r *Repository) Login(ctx context.Context, authToken domain.AuthToken) error {
 	query := r.sb.Update(schema.AuthTokensTable).
 		Set(schema.AuthTokensTableColumnAccessToken, authToken.AccessToken).
 		Set(schema.AuthTokensTableColumnRefreshToken, authToken.RefreshToken).

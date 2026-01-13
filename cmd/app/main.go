@@ -24,7 +24,6 @@ import (
 	"pinnAutomizer/pkg/password_hasher"
 	"syscall"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog"
 )
 
@@ -44,9 +43,7 @@ func main() {
 	}
 	logger.Info().Msg("zerolog logger configured")
 
-	validate := validator.New(validator.WithRequiredStructEnabled())
-
-	err = AppRun(context.Background(), cfg, logger, validate)
+	err = AppRun(context.Background(), cfg, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -56,7 +53,6 @@ func AppRun(
 	ctx context.Context,
 	c config.Config,
 	log zerolog.Logger,
-	validate *validator.Validate,
 ) error {
 	postgres, err := postgresAdapter.New(ctx, c.Postgres)
 	if err != nil {
@@ -72,16 +68,16 @@ func AppRun(
 	passwordHasher := password_hasher.New()
 
 	//auth
-	login.New(postgres, jwtService, passwordHasher, log, validate)
-	logout.New(postgres, log, validate)
-	me.New(postgres, log, validate)
-	register.New(postgres, passwordHasher, log, validate)
-	refresh.New(postgres, jwtService, log, validate)
+	login.New(postgres, jwtService, passwordHasher, log)
+	logout.New(postgres, log)
+	me.New(postgres, log)
+	register.New(postgres, passwordHasher, log)
+	refresh.New(postgres, jwtService, log)
 
 	//script
-	create_script.New(postgres, translatorService, log, validate)
-	search_scripts.New(postgres, log, validate)
-	update_script_after_translate.New(postgres, log, validate)
+	create_script.New(postgres, translatorService, log)
+	search_scripts.New(postgres, log)
+	update_script_after_translate.New(postgres, log)
 
 	log.Info().Msg("use cases injected")
 

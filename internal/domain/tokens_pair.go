@@ -12,9 +12,9 @@ type Token struct {
 	ExpiresAt time.Time
 }
 
-func NewTokensPair(accessToken, refreshToken Token) *TokensPair {
-	return &TokensPair{
+func NewTokensPair(accessToken, refreshToken Token) (TokensPair, error) {
+	return TokensPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-	}
+	}, nil
 }

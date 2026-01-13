@@ -53,18 +53,18 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func (s *Service) GenerateTokensPair(userID uuid.UUID) (*domain.TokensPair, error) {
+func (s *Service) GenerateTokensPair(userID uuid.UUID) (domain.TokensPair, error) {
 	accessToken, err := s.GenerateAccessToken(userID)
 	if err != nil {
-		return nil, err
+		return domain.TokensPair{}, err
 	}
 
 	refreshToken, err := s.GenerateRefreshToken(userID)
 	if err != nil {
-		return nil, err
+		return domain.TokensPair{}, err
 	}
 
-	return domain.NewTokensPair(accessToken, refreshToken), nil
+	return domain.NewTokensPair(accessToken, refreshToken)
 }
 
 func (s *Service) GenerateRefreshToken(userID uuid.UUID) (domain.Token, error) {

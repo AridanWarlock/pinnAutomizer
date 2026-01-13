@@ -3,8 +3,8 @@ package search_scripts
 import (
 	"pinnAutomizer/internal/domain"
 	"pinnAutomizer/internal/domain/pagination"
+	"pinnAutomizer/pkg/validate"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
@@ -14,8 +14,8 @@ type Input struct {
 	p      pagination.Options `validate:"required"`
 }
 
-func (i Input) Validate(validate *validator.Validate) error {
-	return validate.Struct(i)
+func (i Input) Validate() error {
+	return validate.V.Struct(i)
 }
 
 type Output struct {

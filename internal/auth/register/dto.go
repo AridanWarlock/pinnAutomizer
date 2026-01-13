@@ -1,6 +1,8 @@
 package register
 
-import "github.com/go-playground/validator/v10"
+import (
+	"pinnAutomizer/pkg/validate"
+)
 
 type Input struct {
 	Login             string `validate:"required,min=5,alphanum"`
@@ -8,6 +10,6 @@ type Input struct {
 	PasswordConfirmed string `validate:"required,eqfield=Password"`
 }
 
-func (i Input) Validate(validate *validator.Validate) error {
-	return validate.Struct(i)
+func (i Input) Validate() error {
+	return validate.V.Struct(i)
 }

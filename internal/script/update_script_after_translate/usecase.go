@@ -4,7 +4,6 @@ import (
 	"context"
 	"pinnAutomizer/internal/domain"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog"
 )
 
@@ -17,14 +16,12 @@ var usecase *Usecase
 type Usecase struct {
 	postgres Postgres
 
-	log      zerolog.Logger
-	validate *validator.Validate
+	log zerolog.Logger
 }
 
 func New(
 	postgres Postgres,
 	log zerolog.Logger,
-	validate *validator.Validate,
 ) *Usecase {
 	uc := &Usecase{
 		postgres: postgres,
@@ -32,7 +29,6 @@ func New(
 		log: log.With().
 			Str("component", "usecase: script.UpdateScriptAfterTranslate").
 			Logger(),
-		validate: validate,
 	}
 
 	usecase = uc
@@ -43,7 +39,7 @@ func New(
 func (u *Usecase) UpdateScriptAfterTranslate(ctx context.Context, input Input) error {
 	log := u.log.With().Ctx(ctx).Logger()
 
-	if err := input.Validate(u.validate); err != nil {
+	if err := input.Validate(); err != nil {
 		log.Info().
 			Err(err).
 			Msg("input validation error")

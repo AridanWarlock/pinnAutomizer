@@ -2,16 +2,15 @@ package refresh
 
 import (
 	"pinnAutomizer/internal/domain"
-
-	"github.com/go-playground/validator/v10"
+	"pinnAutomizer/pkg/validate"
 )
 
 type Input struct {
 	RefreshToken string `validate:"required"`
 }
 
-func (i Input) Validate(validate *validator.Validate) error {
-	return validate.Struct(i)
+func (i Input) Validate() error {
+	return validate.V.Struct(i)
 }
 
 type Output struct {

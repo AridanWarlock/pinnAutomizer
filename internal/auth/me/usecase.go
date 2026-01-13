@@ -25,13 +25,11 @@ var usecase *Usecase
 func New(
 	postgres Postgres,
 	log zerolog.Logger,
-	validate *validator.Validate,
 ) *Usecase {
 	uc := &Usecase{
 		postgres: postgres,
 
-		log:      log.With().Str("component", "usecase: auth.Me").Logger(),
-		validate: validate,
+		log: log.With().Str("component", "usecase: auth.Me").Logger(),
 	}
 
 	usecase = uc
@@ -42,7 +40,7 @@ func New(
 func (u *Usecase) Me(ctx context.Context, in Input) (Output, error) {
 	log := u.log.With().Ctx(ctx).Logger()
 
-	if err := in.Validate(u.validate); err != nil {
+	if err := in.Validate(); err != nil {
 		log.Info().
 			Err(err).
 			Msg("input validation error")

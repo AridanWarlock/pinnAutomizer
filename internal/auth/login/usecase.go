@@ -2,20 +2,18 @@ package login
 
 import (
 	"context"
-	"pinnAutomizer/internal/domain"
-
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"pinnAutomizer/internal/domain"
 )
 
 type Postgres interface {
 	GetUserByLogin(ctx context.Context, login string) (*domain.User, error)
-	Login(ctx context.Context, tokens *domain.AuthToken) error
+	Login(ctx context.Context, tokens domain.AuthToken) error
 }
 
 type JwtService interface {
-	GenerateTokensPair(userID uuid.UUID) (*domain.TokensPair, error)
+	GenerateTokensPair(userID uuid.UUID) (domain.TokensPair, error)
 }
 
 type PasswordHasher interface {
@@ -27,8 +25,7 @@ type Usecase struct {
 	jwtService JwtService
 	hasher     PasswordHasher
 
-	log      zerolog.Logger
-	validate *validator.Validate
+	log zerolog.Logger
 }
 
 var usecase *Usecase
@@ -38,15 +35,13 @@ func New(
 	jwtService JwtService,
 	hasher PasswordHasher,
 	log zerolog.Logger,
-	validate *validator.Validate,
 ) *Usecase {
 	uc := &Usecase{
 		postgres:   postgres,
 		jwtService: jwtService,
 		hasher:     hasher,
 
-		log:      log.With().Str("component", "usecase: auth.Login").Logger(),
-		validate: validate,
+		log: log.With().Str("component", "usecase: auth.Login").Logger(),
 	}
 
 	usecase = uc
@@ -57,7 +52,7 @@ func New(
 func (u *Usecase) Login(ctx context.Context, in Input) (Output, error) {
 	log := u.log.With().Ctx(ctx).Logger()
 
-	if err := in.Validate(u.validate); err != nil {
+	if err := in.Validate(); err != nil {
 		log.Info().
 			Err(err).
 			Msg("input validation error")

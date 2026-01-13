@@ -2,22 +2,20 @@ package domain
 
 import (
 	"fmt"
+	"pinnAutomizer/pkg/validate"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
 type Script struct {
-	ID         uuid.UUID `json:"id"`
-	Filename   string    `json:"filename"`
-	Path       string    `json:"path"`
-	UploadTime time.Time `json:"uploadTime"`
-	Text       string    `json:"text"`
-	UserID     uuid.UUID `json:"userId"`
+	ID         uuid.UUID
+	Filename   string
+	Path       string
+	UploadTime time.Time
+	Text       string
+	UserID     uuid.UUID
 }
-
-var scriptsValidator = validator.New(validator.WithRequiredStructEnabled())
 
 func NewScript(filename string, path string, userID uuid.UUID) (*Script, error) {
 	id := uuid.New()
@@ -38,9 +36,9 @@ func NewScript(filename string, path string, userID uuid.UUID) (*Script, error) 
 }
 
 func (s *Script) Validate() error {
-	err := scriptsValidator.Struct(s)
+	err := validate.V.Struct(s)
 	if err != nil {
-		return fmt.Errorf("scriptsValidator.Sctuct: %w", err)
+		return fmt.Errorf("script.Validate: %w", err)
 	}
 
 	return nil
