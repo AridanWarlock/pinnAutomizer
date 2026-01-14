@@ -14,3 +14,14 @@ type Event struct {
 
 	CreatedAt time.Time
 }
+
+func NewEvent(topic string, data []byte) Event {
+	return Event{
+		ID: uuid.New(),
+
+		Topic: topic,
+		Data:  data,
+
+		CreatedAt: time.Now(),
+	}
+}

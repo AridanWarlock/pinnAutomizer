@@ -2,6 +2,7 @@ package create_task
 
 import (
 	"context"
+	"encoding/json"
 	"pinnAutomizer/internal/domain"
 	"pinnAutomizer/pkg/tx"
 
@@ -13,17 +14,13 @@ type Postgres interface {
 	CreateTask(ctx context.Context, task domain.Task) (domain.Task, error)
 	GetEquationByType(ctx context.Context, equationType string) (domain.Equation, error)
 	UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status string) error
+	PublishEvent(ctx context.Context, event domain.Event) error
 
 	tx.Wrapper
 }
 
-type Kafka interface {
-	PublishTaskToTrain(ctx context.Context, task domain.Task) error
-}
-
 type Usecase struct {
 	postgres Postgres
-	kafka    Kafka
 
 	log zerolog.Logger
 }
@@ -32,19 +29,15 @@ var usecase *Usecase
 
 func New(
 	postgres Postgres,
-	kafka Kafka,
 	log zerolog.Logger,
 ) *Usecase {
-	uc := &Usecase{
+	usecase = &Usecase{
 		postgres: postgres,
-		kafka:    kafka,
 
 		log: log.With().Str("component", "usecase: task.CreateTask").Logger(),
 	}
 
-	usecase = uc
-
-	return uc
+	return usecase
 }
 
 func (u *Usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
@@ -95,13 +88,19 @@ func (u *Usecase) createAndPublishTask(ctx context.Context, task domain.Task) (d
 
 		task, err = u.postgres.CreateTask(ctx, task)
 		if err != nil {
-			log.Error().Err(err).Msg("saving task in postgres error")
+			log.Error().Err(err).Msg("usecase: postgres.CreateTask")
 			return err
 		}
 
-		err = u.kafka.PublishTaskToTrain(ctx, task)
+		event, err := u.createTaskTrainEvent(task)
 		if err != nil {
-			log.Error().Err(err).Msg("saving task in kafka_produce error")
+			log.Error().Err(err).Msg("usecase: createTaskTrainEvent")
+			return err
+		}
+
+		err = u.postgres.PublishEvent(ctx, event)
+		if err != nil {
+			log.Error().Err(err).Msg("usecase: postgres.PublishEvent")
 			return err
 		}
 
@@ -112,4 +111,19 @@ func (u *Usecase) createAndPublishTask(ctx context.Context, task domain.Task) (d
 		return domain.Task{}, err
 	}
 	return task, nil
+}
+
+func (u *Usecase) createTaskTrainEvent(task domain.Task) (domain.Event, error) {
+	msg := domain.TrainMessage{
+		TaskID:      task.ID,
+		MatFilePath: task.TrainingDataPath,
+		Constants:   task.Constants,
+	}
+
+	jsonMsg, err := json.Marshal(msg)
+	if err != nil {
+		return domain.Event{}, err
+	}
+
+	return domain.NewEvent("to-train", jsonMsg), nil
 }

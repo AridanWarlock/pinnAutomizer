@@ -20,5 +20,5 @@ func (r *Repository) CreateTask(ctx context.Context, task domain.Task) (domain.T
 	if err := r.pool.Getx(ctx, &outRow, query); err != nil {
 		return domain.Task{}, err
 	}
-	return ToModel(&outRow), nil
+	return ToModel(outRow), nil
 }

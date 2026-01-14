@@ -8,19 +8,19 @@ import (
 	"pinnAutomizer/config"
 	"pinnAutomizer/internal/adapter/kafka_produce"
 	postgresAdapter "pinnAutomizer/internal/adapter/postgres"
-	"pinnAutomizer/internal/auth/login"
-	"pinnAutomizer/internal/auth/logout"
-	"pinnAutomizer/internal/auth/me"
-	"pinnAutomizer/internal/auth/refresh"
-	"pinnAutomizer/internal/auth/register"
 	"pinnAutomizer/internal/controller/http_v1"
 	"pinnAutomizer/internal/middleware/auth"
 	"pinnAutomizer/internal/outbox"
-	"pinnAutomizer/internal/task/create_task"
-	"pinnAutomizer/internal/task/get_tasks"
-	"pinnAutomizer/internal/task/solve_task"
-	"pinnAutomizer/internal/task/update_task_status_after_train"
-	"pinnAutomizer/internal/task/update_task_status_on_train"
+	"pinnAutomizer/internal/usecases/auth/login"
+	"pinnAutomizer/internal/usecases/auth/logout"
+	"pinnAutomizer/internal/usecases/auth/me"
+	"pinnAutomizer/internal/usecases/auth/refresh"
+	"pinnAutomizer/internal/usecases/auth/register"
+	"pinnAutomizer/internal/usecases/task/create_task"
+	"pinnAutomizer/internal/usecases/task/get_tasks"
+	"pinnAutomizer/internal/usecases/task/solve_task"
+	"pinnAutomizer/internal/usecases/task/update_task_status_after_train"
+	"pinnAutomizer/internal/usecases/task/update_task_status_on_train"
 	"pinnAutomizer/pkg/httpserver"
 	"pinnAutomizer/pkg/jwt"
 	"pinnAutomizer/pkg/log"
@@ -53,7 +53,7 @@ func AppRun(
 	c config.Config,
 	log zerolog.Logger,
 ) error {
-	postgres, err := postgresAdapter.New(ctx, c.Postgres)
+	postgres, err := postgresAdapter.New(ctx, c.Postgres, log)
 	if err != nil {
 		return fmt.Errorf("db connect error, %w", err)
 	}
@@ -80,9 +80,9 @@ func AppRun(
 	refresh.New(postgres, jwtService, log)
 
 	//tasks
-	create_task.New(postgres, kafka, log)
+	create_task.New(postgres, log)
 	get_tasks.New(postgres, log)
-	solve_task.New(postgres, kafka, log)
+	solve_task.New(postgres, log)
 	update_task_status_after_train.New(postgres, log)
 	update_task_status_on_train.New(postgres, log)
 

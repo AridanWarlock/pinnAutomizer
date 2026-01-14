@@ -1,0 +1,9 @@
+all: true
+inpackage: true
+filename: "mocks_test.go"
+
+packages:
+  pinnAutomizer/internal/usecases/...:
+    config:
+      recursive: true
+      all: true

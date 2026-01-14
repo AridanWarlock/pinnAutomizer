@@ -13,6 +13,7 @@ import (
 	"pinnAutomizer/internal/adapter/postgres/repositories/users_roles"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog"
 )
 
 type Config struct {
@@ -39,7 +40,7 @@ type Repository struct {
 	UsersRolesRepository
 }
 
-func New(ctx context.Context, c Config) (*Repository, error) {
+func New(ctx context.Context, c Config, log zerolog.Logger) (*Repository, error) {
 	cfg, err := pgxpool.ParseConfig(c.Addr)
 	if err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
@@ -55,7 +56,7 @@ func New(ctx context.Context, c Config) (*Repository, error) {
 		return nil, err
 	}
 
-	poolx := pool.Poolx{Pool: pgxPool}
+	poolx := pool.New(pgxPool, log)
 
 	return &Repository{
 		pool: poolx,

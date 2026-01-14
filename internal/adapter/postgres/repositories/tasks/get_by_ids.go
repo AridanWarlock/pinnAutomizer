@@ -27,7 +27,7 @@ func (r *Repository) GetTasksByIDs(
 
 	tasks := make([]domain.Task, len(rows))
 	for i, row := range rows {
-		tasks[i] = ToModel(&row)
+		tasks[i] = ToModel(row)
 	}
 	return tasks, nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog"
 )
 
 type Sqlizer interface {
@@ -17,6 +18,15 @@ type Sqlizer interface {
 
 type Poolx struct {
 	*pgxpool.Pool
+
+	log zerolog.Logger
+}
+
+func New(pool *pgxpool.Pool, log zerolog.Logger) Poolx {
+	return Poolx{
+		Pool: pool,
+		log:  log.With().Str("component", "poolx").Logger(),
+	}
 }
 
 type Executor interface {
@@ -81,7 +91,7 @@ func (p *Poolx) Wrap(ctx context.Context, fn func(context.Context) error) error 
 	defer func() {
 		err := tx.Rollback(ctx)
 		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			//TODO logging
+			p.log.Error().Err(err).Msg("poolx: tx.Roolback")
 		}
 	}()
 

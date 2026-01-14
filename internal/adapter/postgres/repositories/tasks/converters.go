@@ -23,7 +23,7 @@ type TaskRow struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
-func (r *TaskRow) Values() []any {
+func (r TaskRow) Values() []any {
 	return []any{
 		r.ID,
 		r.Name,
@@ -40,10 +40,7 @@ func (r *TaskRow) Values() []any {
 	}
 }
 
-func ToModel(r *TaskRow) domain.Task {
-	if r == nil {
-		return domain.Task{}
-	}
+func ToModel(r TaskRow) domain.Task {
 	return domain.Task{
 		ID:          r.ID,
 		Name:        r.Name,

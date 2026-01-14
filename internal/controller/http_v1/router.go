@@ -2,15 +2,15 @@ package http_v1
 
 import (
 	"net/http"
-	"pinnAutomizer/internal/auth/login"
-	"pinnAutomizer/internal/auth/logout"
-	"pinnAutomizer/internal/auth/me"
-	"pinnAutomizer/internal/auth/refresh"
-	"pinnAutomizer/internal/auth/register"
 	"pinnAutomizer/internal/middleware/cors"
-	"pinnAutomizer/internal/task/create_task"
-	"pinnAutomizer/internal/task/get_tasks"
-	"pinnAutomizer/internal/task/solve_task"
+	"pinnAutomizer/internal/usecases/auth/login"
+	"pinnAutomizer/internal/usecases/auth/logout"
+	"pinnAutomizer/internal/usecases/auth/me"
+	"pinnAutomizer/internal/usecases/auth/refresh"
+	"pinnAutomizer/internal/usecases/auth/register"
+	"pinnAutomizer/internal/usecases/task/create_task"
+	"pinnAutomizer/internal/usecases/task/get_tasks"
+	"pinnAutomizer/internal/usecases/task/solve_task"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"

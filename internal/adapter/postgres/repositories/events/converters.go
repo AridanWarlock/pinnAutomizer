@@ -16,6 +16,15 @@ type EventRow struct {
 	CrestedAt time.Time `db:"created_at"`
 }
 
+func (e EventRow) Values() []any {
+	return []any{
+		e.ID,
+		e.Topic,
+		e.Data,
+		e.CrestedAt,
+	}
+}
+
 func ToModel(r EventRow) domain.Event {
 	return domain.Event{
 		ID:        r.ID,
