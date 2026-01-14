@@ -39,7 +39,7 @@ func New(postgres Postgres, writer Writer, log zerolog.Logger) *Worker {
 		writer:   writer,
 		postgres: postgres,
 		stop:     stop,
-		log:      log.With().Str("component", "outbox writer").Logger(),
+		log:      log.With().Str("component", "outbox worker").Logger(),
 	}
 
 	go func() {

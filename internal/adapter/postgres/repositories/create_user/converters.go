@@ -13,7 +13,7 @@ type CreateUserRow struct {
 	PasswordHash string    `db:"password_hash"`
 }
 
-func (r *CreateUserRow) Values() []any {
+func (r CreateUserRow) Values() []any {
 	return []any{
 		r.ID,
 		r.Login,
@@ -21,24 +21,16 @@ func (r *CreateUserRow) Values() []any {
 	}
 }
 
-func (r *CreateUserRow) ToModel() *domain.User {
-	if r == nil {
-		return nil
-	}
-
-	return &domain.User{
+func (r CreateUserRow) ToModel() domain.User {
+	return domain.User{
 		ID:           r.ID,
 		Login:        r.Login,
 		PasswordHash: r.PasswordHash,
 	}
 }
 
-func FromModel(u *domain.User) *CreateUserRow {
-	if u == nil {
-		return nil
-	}
-
-	return &CreateUserRow{
+func FromModel(u domain.User) CreateUserRow {
+	return CreateUserRow{
 		ID:           u.ID,
 		Login:        u.Login,
 		PasswordHash: u.PasswordHash,

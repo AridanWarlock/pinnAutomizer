@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS roles
 (
     id    uuid not null,
-    title text not null,
+    title text not null unique,
 
     PRIMARY KEY (id)
 );

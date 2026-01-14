@@ -1,7 +1,6 @@
 networks:
-  postgresql:
+  pinn_network:
     driver: bridge
-  backend:
 
 services:
   app:
@@ -9,17 +8,19 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: unless-stopped
+#    restart: unless-stopped
     ports:
       - ${HTTP_PORT}:${HTTP_PORT}
     depends_on:
-      - postgres
+      - db
     env_file:
       - .env
+    environment:
+      POSTGRES_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB_NAME}?sslmode=disable"
     networks:
-      - backend
+      - pinn_network
 
-  postgres:
+  db:
     image: postgres:17.6
     container_name: postgres-pinn-automizer
     restart: unless-stopped
@@ -44,6 +45,34 @@ services:
       timeout: 10s
       retries: 5
     networks:
-      - postgresql
+      - pinn_network
+
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # Настройки для работы в режиме KRaft
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+    networks:
+      - pinn_network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8888:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local-kafka-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093 # Internal Docker network address
+    depends_on:
+      - kafka
 volumes:
   postgres-data:

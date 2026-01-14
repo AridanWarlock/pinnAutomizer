@@ -8,7 +8,8 @@ import (
 )
 
 type Postgres interface {
-	CreateUser(ctx context.Context, user *domain.User) (*domain.User, error)
+	CreateUser(ctx context.Context, user domain.User, roles []domain.Role) (domain.User, error)
+	GetRoleByTitle(ctx context.Context, title string) (domain.Role, error)
 }
 
 type PasswordHasher interface {
@@ -67,7 +68,13 @@ func (u *Usecase) Register(ctx context.Context, in Input) error {
 		return err
 	}
 
-	user, err = u.postgres.CreateUser(ctx, user)
+	role, err := u.postgres.GetRoleByTitle(ctx, "ROLE_USER")
+	if err != nil {
+		log.Error().Err(err).Msg("usecase: postgres.GetRoleByTitle")
+		return err
+	}
+
+	user, err = u.postgres.CreateUser(ctx, user, []domain.Role{role})
 	if err != nil {
 		log.Error().
 			Err(err).

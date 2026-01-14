@@ -32,7 +32,7 @@ type Config struct {
 
 func InitConfig() (Config, error) {
 	c := Config{}
-	err := cleanenv.ReadEnv(&c)
+	err := cleanenv.ReadConfig(".env", &c)
 
 	return c, err
 }

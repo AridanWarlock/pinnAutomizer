@@ -6,15 +6,22 @@ import (
 	"github.com/google/uuid"
 )
 
+type RoleType string
+
+const (
+	RoleTypeAdmin RoleType = "ROLE_ADMIN"
+	RoleTypeUser  RoleType = "ROLE_USER"
+)
+
 type Role struct {
-	ID   uuid.UUID `validate:"required,uuid"`
-	Name string    `validate:"required"`
+	ID    uuid.UUID `validate:"required,uuid"`
+	Title string    `validate:"required"`
 }
 
 func NewRole(id uuid.UUID, name string) (Role, error) {
 	r := Role{
-		ID:   id,
-		Name: name,
+		ID:    id,
+		Title: name,
 	}
 
 	if err := r.Validate(); err != nil {

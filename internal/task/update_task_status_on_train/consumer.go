@@ -15,7 +15,7 @@ import (
 type Config struct {
 	Addr  []string `env:"KAFKA_CONSUMER_ADDR"`
 	Topic string   `env:"KAFKA_CONSUMER_ON_TRAIN_TOPIC"`
-	Group string   `env:"KAFKA_CONSUMER_AFTER_TRAIN_GROUP"`
+	Group string   `env:"KAFKA_CONSUMER_ON_TRAIN_GROUP"`
 }
 
 type Consumer struct {

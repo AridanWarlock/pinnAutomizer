@@ -13,17 +13,17 @@ type User struct {
 	PasswordHash string
 }
 
-func NewUser(login string, passwordHash string) (*User, error) {
+func NewUser(login string, passwordHash string) (User, error) {
 	id := uuid.New()
 
-	u := &User{
+	u := User{
 		ID:           id,
 		Login:        login,
 		PasswordHash: passwordHash,
 	}
 
 	if err := u.Validate(); err != nil {
-		return nil, err
+		return User{}, err
 	}
 
 	return u, nil

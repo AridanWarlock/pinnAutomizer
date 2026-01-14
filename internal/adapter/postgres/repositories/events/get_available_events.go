@@ -20,7 +20,7 @@ func (r *Repository) GetAvailableEvents(ctx context.Context, batchSize int) ([]d
 		Suffix("FOR UPDATE SKIP LOCKED")
 
 	var rows []EventRow
-	if err := r.pool.Selectx(ctx, rows, query); err != nil {
+	if err := r.pool.Selectx(ctx, &rows, query); err != nil {
 		return nil, err
 	}
 

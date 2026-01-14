@@ -8,6 +8,7 @@ import (
 	"pinnAutomizer/internal/adapter/postgres/repositories/create_user"
 	"pinnAutomizer/internal/adapter/postgres/repositories/equations"
 	"pinnAutomizer/internal/adapter/postgres/repositories/events"
+	"pinnAutomizer/internal/adapter/postgres/repositories/roles"
 	"pinnAutomizer/internal/adapter/postgres/repositories/tasks"
 	"pinnAutomizer/internal/adapter/postgres/repositories/users"
 
@@ -15,17 +16,14 @@ import (
 )
 
 type Config struct {
-	User     string `env:"POSTGRES_USER" required:"true"`
-	Password string `env:"POSTGRES_PASSWORD" required:"true"`
-	Host     string `env:"POSTGRES_HOST" required:"true"`
-	Port     string `env:"POSTGRES_PORT" required:"true"`
-	DBName   string `env:"POSTGRES_DB_NAME" required:"true"`
+	Addr string `env:"POSTGRES_URL"`
 }
 
 type AuthTokensRepository = *auth_tokens.Repository
 type CreateUserRepository = *create_user.Repository
 type EquationRepository = *equations.Repository
 type EventsRepository = *events.Repository
+type RolesRepository = *roles.Repository
 type TasksRepository = *tasks.Repository
 type UsersRepository = *users.Repository
 
@@ -36,15 +34,13 @@ type Repository struct {
 	CreateUserRepository
 	EquationRepository
 	EventsRepository
+	RolesRepository
 	TasksRepository
 	UsersRepository
 }
 
 func New(ctx context.Context, c Config) (*Repository, error) {
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
-		c.User, c.Password, c.Host, c.Port, c.DBName,
-	)
-	cfg, err := pgxpool.ParseConfig(dsn)
+	cfg, err := pgxpool.ParseConfig(c.Addr)
 	if err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
@@ -68,6 +64,7 @@ func New(ctx context.Context, c Config) (*Repository, error) {
 		CreateUserRepository: create_user.NewRepository(poolx),
 		EquationRepository:   equations.NewRepository(poolx),
 		EventsRepository:     events.NewRepository(poolx),
+		RolesRepository:      roles.NewRepository(poolx),
 		TasksRepository:      tasks.NewRepository(poolx),
 		UsersRepository:      users.NewRepository(poolx),
 	}, nil
