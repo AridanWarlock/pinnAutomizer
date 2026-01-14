@@ -10,7 +10,7 @@ import (
 )
 
 type Postgres interface {
-	GetUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (domain.User, error)
 }
 
 type Usecase struct {

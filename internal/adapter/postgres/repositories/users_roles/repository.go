@@ -1,4 +1,4 @@
-package create_user
+package users_roles
 
 import (
 	"pinnAutomizer/internal/adapter/postgres/pool"

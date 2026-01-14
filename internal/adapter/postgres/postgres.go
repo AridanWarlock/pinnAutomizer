@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"pinnAutomizer/internal/adapter/postgres/pool"
 	"pinnAutomizer/internal/adapter/postgres/repositories/auth_tokens"
-	"pinnAutomizer/internal/adapter/postgres/repositories/create_user"
 	"pinnAutomizer/internal/adapter/postgres/repositories/equations"
 	"pinnAutomizer/internal/adapter/postgres/repositories/events"
 	"pinnAutomizer/internal/adapter/postgres/repositories/roles"
 	"pinnAutomizer/internal/adapter/postgres/repositories/tasks"
 	"pinnAutomizer/internal/adapter/postgres/repositories/users"
+	"pinnAutomizer/internal/adapter/postgres/repositories/users_roles"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -20,23 +20,23 @@ type Config struct {
 }
 
 type AuthTokensRepository = *auth_tokens.Repository
-type CreateUserRepository = *create_user.Repository
 type EquationRepository = *equations.Repository
 type EventsRepository = *events.Repository
 type RolesRepository = *roles.Repository
 type TasksRepository = *tasks.Repository
 type UsersRepository = *users.Repository
+type UsersRolesRepository = *users_roles.Repository
 
 type Repository struct {
 	pool pool.Poolx
 
 	AuthTokensRepository
-	CreateUserRepository
 	EquationRepository
 	EventsRepository
 	RolesRepository
 	TasksRepository
 	UsersRepository
+	UsersRolesRepository
 }
 
 func New(ctx context.Context, c Config) (*Repository, error) {
@@ -61,12 +61,12 @@ func New(ctx context.Context, c Config) (*Repository, error) {
 		pool: poolx,
 
 		AuthTokensRepository: auth_tokens.NewRepository(poolx),
-		CreateUserRepository: create_user.NewRepository(poolx),
 		EquationRepository:   equations.NewRepository(poolx),
 		EventsRepository:     events.NewRepository(poolx),
 		RolesRepository:      roles.NewRepository(poolx),
 		TasksRepository:      tasks.NewRepository(poolx),
 		UsersRepository:      users.NewRepository(poolx),
+		UsersRolesRepository: users_roles.NewRepository(poolx),
 	}, nil
 }
 

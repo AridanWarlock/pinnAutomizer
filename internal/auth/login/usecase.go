@@ -9,7 +9,7 @@ import (
 )
 
 type Postgres interface {
-	GetUserByLogin(ctx context.Context, login string) (*domain.User, error)
+	GetUserByLogin(ctx context.Context, login string) (domain.User, error)
 	Login(ctx context.Context, tokens domain.AuthToken) error
 }
 

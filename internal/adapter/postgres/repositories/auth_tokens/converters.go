@@ -13,7 +13,7 @@ type AuthTokenRow struct {
 	RefreshToken sql.NullString `db:"refresh_token"`
 }
 
-func (r *AuthTokenRow) Values() []any {
+func (r AuthTokenRow) Values() []any {
 	return []any{
 		r.UserID,
 		r.AccessToken,
@@ -21,12 +21,8 @@ func (r *AuthTokenRow) Values() []any {
 	}
 }
 
-func ToModel(r *AuthTokenRow) *domain.AuthToken {
-	if r == nil {
-		return nil
-	}
-
-	return &domain.AuthToken{
+func ToModel(r AuthTokenRow) domain.AuthToken {
+	return domain.AuthToken{
 		UserID:       r.UserID,
 		AccessToken:  r.AccessToken.String,
 		RefreshToken: r.RefreshToken.String,

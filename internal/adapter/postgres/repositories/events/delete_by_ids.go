@@ -3,16 +3,16 @@ package events
 import (
 	"context"
 	"fmt"
-	"pinnAutomizer/internal/adapter/postgres/schema"
+	. "pinnAutomizer/internal/adapter/postgres/schema"
 
-	sq "github.com/Masterminds/squirrel"
+	. "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 )
 
 func (r *Repository) DeleteEventsByIDs(ctx context.Context, ids []uuid.UUID) error {
 	query := r.sb.
-		Delete(schema.EventsTable).
-		Where(sq.Eq{schema.EquationsTableColumnID: ids})
+		Delete(EventsTable).
+		Where(Eq{EquationsTableColumnID: ids})
 
 	tag, err := r.pool.Execx(ctx, query)
 

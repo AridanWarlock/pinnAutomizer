@@ -2,7 +2,7 @@ package equations
 
 import (
 	"context"
-	"pinnAutomizer/internal/adapter/postgres/schema"
+	. "pinnAutomizer/internal/adapter/postgres/schema"
 	"pinnAutomizer/internal/domain"
 
 	sq "github.com/Masterminds/squirrel"
@@ -10,9 +10,9 @@ import (
 
 func (r *Repository) GetEquationByType(ctx context.Context, equationType string) (domain.Equation, error) {
 	query := r.sb.
-		Select(schema.EquationsTableColumns...).
-		From(schema.EquationsTable).
-		Where(sq.Eq{schema.EquationsTableColumnType: equationType})
+		Select(EquationsTableColumns...).
+		From(EquationsTable).
+		Where(sq.Eq{EquationsTableColumnType: equationType})
 
 	var row EquationRow
 	if err := r.pool.Getx(ctx, &row, query); err != nil {

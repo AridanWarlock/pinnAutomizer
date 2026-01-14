@@ -26,7 +26,7 @@ type Config struct {
 }
 
 type Postgres interface {
-	GetAuthTokensByID(ctx context.Context, userID uuid.UUID) (*domain.AuthToken, error)
+	GetAuthTokensByID(ctx context.Context, userID uuid.UUID) (domain.AuthToken, error)
 }
 
 type Service struct {
@@ -126,7 +126,7 @@ func (s *Service) ValidateAccessToken(ctx context.Context, token string) (uuid.U
 	return authTokens.UserID, nil
 }
 
-func (s *Service) getAuthTokensFromValidToken(ctx context.Context, tokenString string, secret []byte) (*domain.AuthToken, error) {
+func (s *Service) getAuthTokensFromValidToken(ctx context.Context, tokenString string, secret []byte) (domain.AuthToken, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, ErrInvalidSignature
@@ -136,17 +136,17 @@ func (s *Service) getAuthTokensFromValidToken(ctx context.Context, tokenString s
 	})
 
 	if err != nil {
-		return nil, err
+		return domain.AuthToken{}, err
 	}
 
 	userID, err := validateToken(token)
 	if err != nil {
-		return nil, err
+		return domain.AuthToken{}, err
 	}
 
 	user, err := s.postgres.GetAuthTokensByID(ctx, userID)
 	if err != nil {
-		return nil, ErrInvalidToken
+		return domain.AuthToken{}, ErrInvalidToken
 	}
 
 	return user, nil

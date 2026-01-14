@@ -12,7 +12,7 @@ type UserRow struct {
 	PasswordHash string    `db:"password_hash"`
 }
 
-func (r *UserRow) Values() []any {
+func (r UserRow) Values() []any {
 	return []any{
 		r.ID,
 		r.Login,
@@ -20,24 +20,16 @@ func (r *UserRow) Values() []any {
 	}
 }
 
-func ToModel(r *UserRow) *domain.User {
-	if r == nil {
-		return nil
-	}
-
-	return &domain.User{
+func ToModel(r UserRow) domain.User {
+	return domain.User{
 		ID:           r.ID,
 		Login:        r.Login,
 		PasswordHash: r.PasswordHash,
 	}
 }
 
-func FromModel(u *domain.User) *UserRow {
-	if u == nil {
-		return nil
-	}
-
-	return &UserRow{
+func FromModel(u domain.User) UserRow {
+	return UserRow{
 		ID:           u.ID,
 		Login:        u.Login,
 		PasswordHash: u.PasswordHash,

@@ -2,18 +2,18 @@ package tasks
 
 import (
 	"context"
-	"pinnAutomizer/internal/adapter/postgres/schema"
+	. "pinnAutomizer/internal/adapter/postgres/schema"
 	"pinnAutomizer/internal/domain"
 
-	sq "github.com/Masterminds/squirrel"
+	. "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 )
 
 func (r *Repository) GetTaskByID(ctx context.Context, id uuid.UUID) (domain.Task, error) {
 	query := r.sb.
-		Select(schema.TasksTableColumns...).
-		From(schema.TasksTable).
-		Where(sq.Eq{schema.TasksTableColumnID: id})
+		Select(TasksTableColumns...).
+		From(TasksTable).
+		Where(Eq{TasksTableColumnID: id})
 
 	var outRow TaskRow
 	if err := r.pool.Getx(ctx, &outRow, query); err != nil {

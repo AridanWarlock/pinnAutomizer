@@ -2,20 +2,20 @@ package events
 
 import (
 	"context"
-	"pinnAutomizer/internal/adapter/postgres/pg_errors"
-	"pinnAutomizer/internal/adapter/postgres/schema"
+	. "pinnAutomizer/internal/adapter/postgres/pg_errors"
+	. "pinnAutomizer/internal/adapter/postgres/schema"
 	"pinnAutomizer/internal/domain"
 )
 
 func (r *Repository) GetAvailableEvents(ctx context.Context, batchSize int) ([]domain.Event, error) {
 	if batchSize < 0 || batchSize > 1000 {
-		return nil, pg_errors.ErrInvalidBatchSize
+		return nil, ErrInvalidBatchSize
 	}
 
 	query := r.sb.
-		Select(schema.EventsTableColumns...).
-		From(schema.EventsTable).
-		OrderBy(schema.EventsTableColumnCreatedAt).
+		Select(EventsTableColumns...).
+		From(EventsTable).
+		OrderBy(EventsTableColumnCreatedAt).
 		Limit(uint64(batchSize)).
 		Suffix("FOR UPDATE SKIP LOCKED")
 

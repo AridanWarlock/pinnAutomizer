@@ -3,13 +3,19 @@ package register
 import (
 	"context"
 	"pinnAutomizer/internal/domain"
+	"pinnAutomizer/pkg/tx"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
 type Postgres interface {
-	CreateUser(ctx context.Context, user domain.User, roles []domain.Role) (domain.User, error)
 	GetRoleByTitle(ctx context.Context, title string) (domain.Role, error)
+	CreateUser(ctx context.Context, user domain.User) (domain.User, error)
+	CreateUsersRolesBatch(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error)
+	CreateAuthToken(ctx context.Context, userID uuid.UUID) (domain.AuthToken, error)
+
+	tx.Wrapper
 }
 
 type PasswordHasher interface {
@@ -74,7 +80,11 @@ func (u *Usecase) Register(ctx context.Context, in Input) error {
 		return err
 	}
 
-	user, err = u.postgres.CreateUser(ctx, user, []domain.Role{role})
+	err = u.postgres.Wrap(ctx, func(ctx context.Context) error {
+		user, err = u.createUser(ctx, user, []domain.Role{role})
+		return err
+	})
+
 	if err != nil {
 		log.Error().
 			Err(err).
@@ -83,4 +93,34 @@ func (u *Usecase) Register(ctx context.Context, in Input) error {
 	}
 
 	return nil
+}
+
+func (u *Usecase) createUser(ctx context.Context, user domain.User, roles []domain.Role) (domain.User, error) {
+	user, err := u.postgres.CreateUser(ctx, user)
+	if err != nil {
+		u.log.Error().Err(err).Msg("usecase: postgres.CreateUser")
+		return domain.User{}, err
+	}
+
+	_, err = u.postgres.CreateAuthToken(ctx, user.ID)
+	if err != nil {
+		u.log.Error().Err(err).Msg("usecase: postgres.CreateAuthToken")
+		return domain.User{}, err
+	}
+
+	usersRolesBatch := make([]domain.UsersRoles, len(roles))
+	for i, role := range roles {
+		usersRolesBatch[i] = domain.UsersRoles{
+			UserID: user.ID,
+			RoleID: role.ID,
+		}
+	}
+
+	_, err = u.postgres.CreateUsersRolesBatch(ctx, usersRolesBatch)
+	if err != nil {
+		u.log.Error().Err(err).Msg("usecase: postgres.CreateUsersRolesBatch")
+		return domain.User{}, err
+	}
+
+	return user, nil
 }
