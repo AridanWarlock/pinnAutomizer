@@ -11,7 +11,11 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-const BatchSize = 20
+const (
+	BatchSize = 20
+
+	HeaderIdempotencyKey = "x-idempotency-key"
+)
 
 type Postgres interface {
 	GetAvailableEvents(ctx context.Context, batchSize int) ([]domain.Event, error)
@@ -77,6 +81,12 @@ func (w *Worker) getAndPublishEvents(ctx context.Context) error {
 		msgs = append(msgs, kafka.Message{
 			Topic: event.Topic,
 			Value: event.Data,
+			Headers: []kafka.Header{
+				{
+					Key:   HeaderIdempotencyKey,
+					Value: []byte(event.ID.String()),
+				},
+			},
 		})
 	}
 

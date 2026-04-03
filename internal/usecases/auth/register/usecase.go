@@ -5,7 +5,6 @@ import (
 	"pinnAutomizer/internal/domain"
 	"pinnAutomizer/pkg/tx"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
@@ -13,7 +12,6 @@ type Postgres interface {
 	GetRoleByTitle(ctx context.Context, title string) (domain.Role, error)
 	CreateUser(ctx context.Context, user domain.User) (domain.User, error)
 	CreateUsersRolesBatch(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error)
-	CreateAuthToken(ctx context.Context, userID uuid.UUID) (domain.AuthToken, error)
 
 	tx.Wrapper
 }
@@ -52,29 +50,23 @@ func (u *Usecase) Register(ctx context.Context, in Input) error {
 	log := u.log.With().Ctx(ctx).Logger()
 
 	if err := in.Validate(); err != nil {
-		log.Info().
-			Err(err).
-			Msg("input validation error")
+		log.Info().Err(err).Msg("input validation error")
 		return err
 	}
 
 	passwordHash, err := u.passwordHasher.HashPassword(in.Password)
 	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("hash password error")
+		log.Error().Err(err).Msg("hash password error")
 		return err
 	}
 
 	user, err := domain.NewUser(in.Login, passwordHash)
 	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("user domain model creating error")
+		log.Error().Err(err).Msg("user domain model creating error")
 		return err
 	}
 
-	role, err := u.postgres.GetRoleByTitle(ctx, "ROLE_USER")
+	role, err := u.postgres.GetRoleByTitle(ctx, string(domain.RoleTypeUser))
 	if err != nil {
 		log.Error().Err(err).Msg("usecase: postgres.GetRoleByTitle")
 		return err
@@ -99,12 +91,6 @@ func (u *Usecase) createUser(ctx context.Context, user domain.User, roles []doma
 	user, err := u.postgres.CreateUser(ctx, user)
 	if err != nil {
 		u.log.Error().Err(err).Msg("usecase: postgres.CreateUser")
-		return domain.User{}, err
-	}
-
-	_, err = u.postgres.CreateAuthToken(ctx, user.ID)
-	if err != nil {
-		u.log.Error().Err(err).Msg("usecase: postgres.CreateAuthToken")
 		return domain.User{}, err
 	}
 

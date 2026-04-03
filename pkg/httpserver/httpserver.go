@@ -10,10 +10,9 @@ import (
 )
 
 type Config struct {
-	Host        string        `env:"HTTP_HOST" required:"true"`
-	Port        string        `env:"HTTP_PORT" required:"true"`
-	Timeout     time.Duration `env:"HTTP_TIMEOUT" required:"true"`
-	IdleTimeout time.Duration `env:"HTTP_IDLE_TIMEOUT" required:"true"`
+	Port        string        `env:"HTTP_PORT" env-required:"true"`
+	Timeout     time.Duration `env:"HTTP_TIMEOUT" env-required:"true"`
+	IdleTimeout time.Duration `env:"HTTP_IDLE_TIMEOUT" env-required:"true"`
 }
 
 type Server struct {
@@ -24,7 +23,7 @@ type Server struct {
 
 func New(handler http.Handler, c Config, log zerolog.Logger) *Server {
 	server := &http.Server{
-		Addr:         fmt.Sprintf("%s:%s", c.Host, c.Port),
+		Addr:         fmt.Sprint("127.0.0.1:$s", c.Port),
 		Handler:      handler,
 		ReadTimeout:  c.Timeout,
 		WriteTimeout: c.Timeout,

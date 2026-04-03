@@ -2,6 +2,7 @@ package me
 
 import (
 	"net/http"
+	"pinnAutomizer/internal/domain"
 	"pinnAutomizer/internal/middleware/auth"
 	"pinnAutomizer/pkg/render"
 
@@ -25,16 +26,16 @@ func HttpV1Handler(log zerolog.Logger) http.HandlerFunc {
 func httpV1(w http.ResponseWriter, r *http.Request, log zerolog.Logger) {
 	log = log.With().Ctx(r.Context()).Logger()
 
-	userID := r.Context().Value(auth.UserIDKey).(uuid.UUID)
+	userClaims := r.Context().Value(auth.UserClaimsKey).(domain.UserClaims)
 
-	out, err := usecase.Me(r.Context(), Input{ID: userID})
+	out, err := usecase.Me(r.Context(), Input{UserID: userClaims.UserID})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	render.JSON(w, Response{
-		ID:    out.ID,
+		ID:    out.UserID,
 		Login: out.Login,
 	}, http.StatusOK)
 }

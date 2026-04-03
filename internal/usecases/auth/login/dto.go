@@ -1,13 +1,15 @@
 package login
 
 import (
-	"pinnAutomizer/internal/domain"
 	"pinnAutomizer/pkg/validate"
+	"time"
 )
 
 type Input struct {
 	Login    string `validate:"required,min=5,alphanum"`
 	Password string `validate:"required,min=5"`
+
+	Fingerprint []byte `validate:"required,len=32"`
 }
 
 func (i Input) Validate() error {
@@ -15,6 +17,7 @@ func (i Input) Validate() error {
 }
 
 type Output struct {
-	AccessToken  domain.Token
-	RefreshToken domain.Token
+	AccessTokenString     string
+	RefreshTokenString    string
+	RefreshTokenExpiresAt time.Time
 }

@@ -16,20 +16,20 @@ const (
 )
 
 type Task struct {
-	ID          uuid.UUID `validate:"required, uuid"`
-	Name        string    `validate:"required"`
+	ID          uuid.UUID `validate:"required,uuid" json:"id"`
+	Name        string    `validate:"required" json:"name"`
 	Description string
 
-	Status    TaskStatus `validate:"required, oneof=created training done"`
-	Constants map[string]any
+	Status    TaskStatus     `validate:"required,oneof=created training done" json:"status"`
+	Constants map[string]any `validate:"required" json:"constants"`
 
-	TrainingDataPath string
-	ResultsPath      string
+	TrainingDataPath string `json:"training_data_path"`
+	ResultsPath      string `json:"results_path"`
 
-	UserID     uuid.UUID `validate:"required,uuid"`
-	EquationID uuid.UUID `validate:"required,uuid"`
+	UserID     uuid.UUID `validate:"required,uuid" json:"user_id"`
+	EquationID uuid.UUID `validate:"required,uuid" json:"equation_id"`
 
-	CreatedAt time.Time `validate:"required"`
+	CreatedAt time.Time `validate:"required" json:"created_at"`
 }
 
 func NewTask(

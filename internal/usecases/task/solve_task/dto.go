@@ -10,7 +10,9 @@ type Input struct {
 	TaskID uuid.UUID `validate:"required,uuid"`
 	UserID uuid.UUID `validate:"required,uuid"`
 
-	Constants map[string]any
+	Constants map[string]any `validate:"required"`
+
+	IdempotencyKey string `validate:"required"`
 }
 
 func (i Input) Validate() error {

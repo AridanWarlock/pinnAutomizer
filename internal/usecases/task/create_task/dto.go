@@ -12,7 +12,9 @@ type Input struct {
 	Description  string
 	Constants    map[string]any
 	UserID       uuid.UUID `validate:"required,uuid"`
-	EquationType string    `validate:"required"`
+	EquationType string    `validate:"required,oneof=heat wave"`
+
+	IdempotencyKey string `validate:"required"`
 }
 
 func (i Input) Validate() error {
@@ -20,6 +22,6 @@ func (i Input) Validate() error {
 }
 
 type Output struct {
-	Task     domain.Task
-	Equation domain.Equation
+	Task     domain.Task     `json:"task"`
+	Equation domain.Equation `json:"equation"`
 }

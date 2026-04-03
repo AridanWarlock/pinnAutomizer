@@ -1,4 +1,4 @@
-package auth_tokens
+package user_sessions
 
 import (
 	"pinnAutomizer/internal/adapter/postgres/pool"

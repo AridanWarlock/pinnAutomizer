@@ -42,14 +42,18 @@ func (u *Usecase) GetTasks(ctx context.Context, in Input) (Output, error) {
 	log := u.log.With().Ctx(ctx).Logger()
 
 	if err := in.Validate(); err != nil {
-		log.Info().Err(err).Msg("input validation error")
+		log.Info().Err(err).Msg("usecase: in.Validate")
 		return Output{}, err
 	}
 
 	tasks, err := u.postgres.GetTasksByIDs(ctx, in.IDs, in.UserID)
 	if err != nil {
-		log.Error().Err(err).Msg("postgres getting tasks error")
+		log.Error().Err(err).Msg("usecase: postgres.GetTasksByIDs")
 		return Output{}, err
+	}
+	if len(tasks) != len(in.IDs) {
+		log.Error().Err(domain.ErrIDNotExist).Msg("usecase: domain.ErrIDNotExist")
+		return Output{}, domain.ErrIDNotExist
 	}
 
 	equationIDs := make(map[uuid.UUID]struct{})

@@ -5,22 +5,29 @@ import (
 	"encoding/json"
 	"pinnAutomizer/internal/domain"
 	"pinnAutomizer/pkg/tx"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
 type Postgres interface {
 	CreateTask(ctx context.Context, task domain.Task) (domain.Task, error)
 	GetEquationByType(ctx context.Context, equationType string) (domain.Equation, error)
-	UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status string) error
 	PublishEvent(ctx context.Context, event domain.Event) error
 
 	tx.Wrapper
 }
 
+type Redis interface {
+	Get(ctx context.Context, key string, target any) (domain.IdempotencyStatus, error)
+	Set(ctx context.Context, key string, status domain.IdempotencyStatus, value any, ttl time.Duration) error
+	TryLock(ctx context.Context, key string, ttl time.Duration) (bool, error)
+	Delete(ctx context.Context, key string) error
+}
+
 type Usecase struct {
 	postgres Postgres
+	redis    Redis
 
 	log zerolog.Logger
 }
@@ -29,10 +36,12 @@ var usecase *Usecase
 
 func New(
 	postgres Postgres,
+	redis Redis,
 	log zerolog.Logger,
 ) *Usecase {
 	usecase = &Usecase{
 		postgres: postgres,
+		redis:    redis,
 
 		log: log.With().Str("component", "usecase: task.CreateTask").Logger(),
 	}
@@ -44,9 +53,38 @@ func (u *Usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 	log := u.log.With().Ctx(ctx).Logger()
 
 	if err := in.Validate(); err != nil {
-		log.Info().Err(err).Msg("input validation error")
+		log.Info().Err(err).Msg(domain.ErrInputValidation.Error())
+		return Output{}, domain.ErrInputValidation
+	}
+
+	ok, err := u.redis.TryLock(ctx, in.IdempotencyKey, 3*time.Minute)
+	if err != nil {
+		log.Warn().Err(err).Msg("redis: try lock error")
 		return Output{}, err
 	}
+	if !ok {
+		var result Output
+		status, err := u.redis.Get(ctx, in.IdempotencyKey, &result)
+		if err != nil {
+			log.Error().Err(err).Msg("redis: get key error")
+			return Output{}, err
+		}
+		if status == domain.IdempotencyStatusCompleted {
+			return result, nil
+		}
+		return Output{}, domain.ErrOperationInProgress
+	}
+
+	var success bool
+	defer func() {
+		if success {
+			return
+		}
+
+		if err := u.redis.Delete(ctx, in.IdempotencyKey); err != nil {
+			log.Error().Err(err).Msg("redis: cleanup key error")
+		}
+	}()
 
 	equation, err := u.postgres.GetEquationByType(ctx, in.EquationType)
 
@@ -68,31 +106,42 @@ func (u *Usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 		return Output{}, err
 	}
 
-	task, err = u.createAndPublishTask(ctx, task)
+	out, err := u.createAndPublishTask(ctx, task, equation)
 
 	if err != nil {
 		return Output{}, err
 	}
+	success = true
 
-	return Output{
-		Task:     task,
-		Equation: equation,
-	}, err
+	if err := u.redis.Set(ctx, in.IdempotencyKey, domain.IdempotencyStatusCompleted, out, time.Hour); err != nil {
+		log.Warn().Err(err).Msg("redis: set ")
+	}
+
+	return out, nil
 }
 
-func (u *Usecase) createAndPublishTask(ctx context.Context, task domain.Task) (domain.Task, error) {
+func (u *Usecase) createAndPublishTask(
+	ctx context.Context,
+	task domain.Task,
+	equation domain.Equation,
+) (Output, error) {
 	log := u.log.With().Ctx(ctx).Logger()
+
+	out := Output{
+		Task:     task,
+		Equation: equation,
+	}
 
 	err := u.postgres.Wrap(ctx, func(ctx context.Context) error {
 		var err error
 
-		task, err = u.postgres.CreateTask(ctx, task)
+		out.Task, err = u.postgres.CreateTask(ctx, out.Task)
 		if err != nil {
 			log.Error().Err(err).Msg("usecase: postgres.CreateTask")
 			return err
 		}
 
-		event, err := u.createTaskTrainEvent(task)
+		event, err := u.createTaskTrainEvent(out.Task)
 		if err != nil {
 			log.Error().Err(err).Msg("usecase: createTaskTrainEvent")
 			return err
@@ -108,9 +157,10 @@ func (u *Usecase) createAndPublishTask(ctx context.Context, task domain.Task) (d
 	})
 
 	if err != nil {
-		return domain.Task{}, err
+		return Output{}, err
 	}
-	return task, nil
+
+	return out, nil
 }
 
 func (u *Usecase) createTaskTrainEvent(task domain.Task) (domain.Event, error) {

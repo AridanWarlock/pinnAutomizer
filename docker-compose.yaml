@@ -1,78 +1,92 @@
-networks:
-  pinn_network:
-    driver: bridge
-
 services:
-  app:
-    container_name: pinn-automizer
+  pinn-backend:
     build:
-      context: .
-      dockerfile: Dockerfile
-#    restart: unless-stopped
+      context: ${PROJECT_ROOT}
+      dockerfile: ${PROJECT_ROOT}/cmd/pinn/Dockerfile
+    container_name: pinn-backend
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT}
+      - HTTP_PORT=${HTTP_PORT}
+      - HTTP_TIMEOUT=${HTTP_TIMEOUT}
+      - HTTP_IDLE_TIMEOUT=${HTTP_IDLE_TIMEOUT}
+      - LOGGER_LEVEL=${LOGGER_LEVEL}
+      - LOGGER_PRETTY_CONSOLE=${LOGGER_PRETTY_CONSOLE}
+      - LOGGER_FOLDER=/app/out/logs
+      - POSTGRES_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pinn-postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_TOKEN_TTL=${JWT_TOKEN_TTL}
+      - REFRESH_TOKEN_TTL=${REFRESH_TOKEN_TTL}
+      - KAFKA_WRITER_ADDR=${KAFKA_WRITER_ADDR}
+      - KAFKA_CONSUMER_ADDR=${KAFKA_CONSUMER_ADDR}
+      - KAFKA_CONSUMER_ON_TRAIN_TOPIC=${KAFKA_CONSUMER_ON_TRAIN_TOPIC}
+      - KAFKA_CONSUMER_AFTER_TRAIN_TOPIC=${KAFKA_CONSUMER_AFTER_TRAIN_TOPIC}
+      - KAFKA_CONSUMER_ON_TRAIN_GROUP=${KAFKA_CONSUMER_ON_TRAIN_GROUP}
+      - KAFKA_CONSUMER_AFTER_TRAIN_GROUP=${KAFKA_CONSUMER_AFTER_TRAIN_GROUP}
+    volumes:
+      - ${PROJECT_ROOT}/out/logs:/app/out/logs
     ports:
-      - ${HTTP_PORT}:${HTTP_PORT}
-    depends_on:
-      - db
-    env_file:
-      - .env
-    environment:
-      POSTGRES_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB_NAME}?sslmode=disable"
-    networks:
-      - pinn_network
+      - "${HTTP_PORT}:${HTTP_PORT}"
+    restart: always
 
-  db:
-    image: postgres:17.6
-    container_name: postgres-pinn-automizer
-    restart: unless-stopped
-    env_file:
-      - .env
+  pinn-postgres:
+    image: postgres:18.1-alpine
+    container_name: pinn-env-postgres
     environment:
-      POSTGRES_DB: ${POSTGRES_DB_NAME}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-
-      PGDATA: "/var/lib/postgresql/data/pgdata"
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - ./config/postgresql.conf:/etc/postgresql/postgresql.conf
-      - postgres-data:/var/lib/postgresql/data
-    command: postgres -c config_file=/etc/postgresql/postgresql.conf
-    ports:
-      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB_NAME}" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    networks:
-      - pinn_network
+      - ${PROJECT_ROOT}/out/pgdata:/var/lib/postgresql
+    restart: always
 
-  kafka:
-    image: apache/kafka:latest
-    container_name: kafka
-    ports:
-      - "9092:9092"
+  pinn-postgres-goose:
+    image: kukymbr/goose-docker:3.27.0
+
     environment:
-      # Настройки для работы в режиме KRaft
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      - GOOSE_DRIVER=postgres
+      - GOOSE_DBSTRING=host=pinn-postgres port=5432 user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB}
+    volumes:
+      - ${PROJECT_ROOT}/migrations:/migrations
 
-    networks:
-      - pinn_network
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
+  port-forwarder:
+    image: alpine/socat:1.8.0.3
+    container_name: pinn-postgres-port-forwarder
+    command: tcp-listen:5432,fork,reuseaddr tcp-connect:pinn-postgres:5432
     ports:
-      - "8888:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local-kafka-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093 # Internal Docker network address
-    depends_on:
-      - kafka
-volumes:
-  postgres-data:
+      - "127.0.0.1:5432:5432"
+
+  swagger:
+    build:
+      context: ${PROJECT_ROOT}
+      dockerfile_inline: |
+        FROM golang:1.26.1-alpine
+        RUN apk add --no-cache git
+        RUN go install github.com/swaggo/swag/cmd/swag@v1.16.6
+        WORKDIR /code
+        ENTRYPOINT ["swag"]
+    volumes:
+      - ${PROJECT_ROOT}:/code
+#  kafka:
+#    image: apache/kafka:latest
+#    container_name: pinn-automizer-kafka
+#    ports:
+#      - "9092:9092"
+#    environment:
+#      # Настройки для работы в режиме KRaft
+#      KAFKA_NODE_ID: 1
+#      KAFKA_PROCESS_ROLES: broker,controller
+#      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+#      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+#      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+#
+#  kafka-ui:
+#    image: provectuslabs/kafka-ui:latest
+#    container_name: kafka-ui
+#    ports:
+#      - "8888:8080"
+#    environment:
+#      KAFKA_CLUSTERS_0_NAME: local-kafka-cluster
+#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093 # Internal Docker network address
+#    depends_on:
+#      - kafka

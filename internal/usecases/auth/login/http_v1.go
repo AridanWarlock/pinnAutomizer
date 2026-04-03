@@ -33,9 +33,11 @@ func httpV1(w http.ResponseWriter, r *http.Request, log zerolog.Logger) {
 	if !json.MustParse(w, r, &req, log) {
 		return
 	}
+
 	in := Input{
-		Login:    req.Login,
-		Password: req.Password,
+		Login:       req.Login,
+		Password:    req.Password,
+		Fingerprint: []byte(r.Header.Get("X-Fingerprint")),
 	}
 
 	out, err := usecase.Login(r.Context(), in)
@@ -47,11 +49,14 @@ func httpV1(w http.ResponseWriter, r *http.Request, log zerolog.Logger) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refreshToken",
 		Path:     "/api/v1/auth/refresh",
-		Value:    out.RefreshToken.Value,
-		Expires:  out.RefreshToken.ExpiresAt,
+		Value:    out.RefreshTokenString,
+		Expires:  out.RefreshTokenExpiresAt,
+		SameSite: http.SameSiteStrictMode,
 		HttpOnly: true,
 	})
 
-	response := Response{AccessToken: out.AccessToken.Value}
+	response := Response{
+		AccessToken: out.AccessTokenString,
+	}
 	render.JSON(w, response, http.StatusOK)
 }

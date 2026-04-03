@@ -9,8 +9,8 @@ import (
 )
 
 type Config struct {
-	Level         string `default:"error" env:"LOGGER_LEVEL"`
-	PrettyConsole bool   `default:"false" env:"LOGGER_PRETTY_CONSOLE"`
+	Level         string `env:"LOGGER_LEVEL" env-default:"error"`
+	PrettyConsole bool   `env:"LOGGER_PRETTY_CONSOLE" env-default:"false"`
 }
 
 const (

@@ -6,7 +6,7 @@ import (
 )
 
 type Input struct {
-	RefreshToken string `validate:"required"`
+	RefreshTokenString string `validate:"required"`
 }
 
 func (i Input) Validate() error {
@@ -14,5 +14,5 @@ func (i Input) Validate() error {
 }
 
 type Output struct {
-	AccessToken domain.Token
+	AccessToken domain.AccessToken
 }

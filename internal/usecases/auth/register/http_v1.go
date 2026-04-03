@@ -10,7 +10,7 @@ import (
 type Request struct {
 	Login             string `json:"login"`
 	Password          string `json:"password"`
-	PasswordConfirmed string `json:"passwordConfirmed"`
+	PasswordConfirmed string `json:"password_confirmed"`
 }
 
 func HttpV1Handler(log zerolog.Logger) http.HandlerFunc {

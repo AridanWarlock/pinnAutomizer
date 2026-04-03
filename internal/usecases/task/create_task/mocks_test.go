@@ -8,7 +8,6 @@ import (
 	"context"
 	"pinnAutomizer/internal/domain"
 
-	"github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -224,69 +223,6 @@ func (_c *MockPostgres_PublishEvent_Call) Return(err error) *MockPostgres_Publis
 }
 
 func (_c *MockPostgres_PublishEvent_Call) RunAndReturn(run func(ctx context.Context, event domain.Event) error) *MockPostgres_PublishEvent_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpdateTaskStatusByID provides a mock function for the type MockPostgres
-func (_mock *MockPostgres) UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status string) error {
-	ret := _mock.Called(ctx, id, status)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdateTaskStatusByID")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) error); ok {
-		r0 = returnFunc(ctx, id, status)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockPostgres_UpdateTaskStatusByID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateTaskStatusByID'
-type MockPostgres_UpdateTaskStatusByID_Call struct {
-	*mock.Call
-}
-
-// UpdateTaskStatusByID is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id uuid.UUID
-//   - status string
-func (_e *MockPostgres_Expecter) UpdateTaskStatusByID(ctx interface{}, id interface{}, status interface{}) *MockPostgres_UpdateTaskStatusByID_Call {
-	return &MockPostgres_UpdateTaskStatusByID_Call{Call: _e.mock.On("UpdateTaskStatusByID", ctx, id, status)}
-}
-
-func (_c *MockPostgres_UpdateTaskStatusByID_Call) Run(run func(ctx context.Context, id uuid.UUID, status string)) *MockPostgres_UpdateTaskStatusByID_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		var arg2 string
-		if args[2] != nil {
-			arg2 = args[2].(string)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *MockPostgres_UpdateTaskStatusByID_Call) Return(err error) *MockPostgres_UpdateTaskStatusByID_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockPostgres_UpdateTaskStatusByID_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, status string) error) *MockPostgres_UpdateTaskStatusByID_Call {
 	_c.Call.Return(run)
 	return _c
 }

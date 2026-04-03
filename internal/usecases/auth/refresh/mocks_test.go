@@ -130,22 +130,22 @@ func (_m *MockJwtService) EXPECT() *MockJwtService_Expecter {
 }
 
 // GenerateAccessToken provides a mock function for the type MockJwtService
-func (_mock *MockJwtService) GenerateAccessToken(userID uuid.UUID) (domain.Token, error) {
+func (_mock *MockJwtService) GenerateAccessToken(userID uuid.UUID) (domain.AccessToken, error) {
 	ret := _mock.Called(userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GenerateAccessToken")
 	}
 
-	var r0 domain.Token
+	var r0 domain.AccessToken
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(uuid.UUID) (domain.Token, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(uuid.UUID) (domain.AccessToken, error)); ok {
 		return returnFunc(userID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(uuid.UUID) domain.Token); ok {
+	if returnFunc, ok := ret.Get(0).(func(uuid.UUID) domain.AccessToken); ok {
 		r0 = returnFunc(userID)
 	} else {
-		r0 = ret.Get(0).(domain.Token)
+		r0 = ret.Get(0).(domain.AccessToken)
 	}
 	if returnFunc, ok := ret.Get(1).(func(uuid.UUID) error); ok {
 		r1 = returnFunc(userID)
@@ -179,12 +179,12 @@ func (_c *MockJwtService_GenerateAccessToken_Call) Run(run func(userID uuid.UUID
 	return _c
 }
 
-func (_c *MockJwtService_GenerateAccessToken_Call) Return(token domain.Token, err error) *MockJwtService_GenerateAccessToken_Call {
+func (_c *MockJwtService_GenerateAccessToken_Call) Return(token domain.AccessToken, err error) *MockJwtService_GenerateAccessToken_Call {
 	_c.Call.Return(token, err)
 	return _c
 }
 
-func (_c *MockJwtService_GenerateAccessToken_Call) RunAndReturn(run func(userID uuid.UUID) (domain.Token, error)) *MockJwtService_GenerateAccessToken_Call {
+func (_c *MockJwtService_GenerateAccessToken_Call) RunAndReturn(run func(userID uuid.UUID) (domain.AccessToken, error)) *MockJwtService_GenerateAccessToken_Call {
 	_c.Call.Return(run)
 	return _c
 }

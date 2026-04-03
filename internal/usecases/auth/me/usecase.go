@@ -4,7 +4,6 @@ import (
 	"context"
 	"pinnAutomizer/internal/domain"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
@@ -16,8 +15,7 @@ type Postgres interface {
 type Usecase struct {
 	postgres Postgres
 
-	log      zerolog.Logger
-	validate *validator.Validate
+	log zerolog.Logger
 }
 
 var usecase *Usecase
@@ -28,8 +26,7 @@ func New(
 ) *Usecase {
 	uc := &Usecase{
 		postgres: postgres,
-
-		log: log.With().Str("component", "usecase: auth.Me").Logger(),
+		log:      log.With().Str("component", "usecase: auth.Me").Logger(),
 	}
 
 	usecase = uc
@@ -41,22 +38,18 @@ func (u *Usecase) Me(ctx context.Context, in Input) (Output, error) {
 	log := u.log.With().Ctx(ctx).Logger()
 
 	if err := in.Validate(); err != nil {
-		log.Info().
-			Err(err).
-			Msg("input validation error")
+		log.Info().Err(err).Msg("validate input error")
 		return Output{}, err
 	}
 
-	user, err := u.postgres.GetUserByID(ctx, in.ID)
+	user, err := u.postgres.GetUserByID(ctx, in.UserID)
 	if err != nil {
-		log.Info().
-			Err(err).
-			Msg("getting user from postgres error")
+		log.Error().Err(err).Msg("postgres: getting user by id error")
 		return Output{}, err
 	}
 
 	return Output{
-		ID:    user.ID,
-		Login: user.Login,
+		UserID: user.ID,
+		Login:  user.Login,
 	}, nil
 }

@@ -14,8 +14,8 @@ const (
 )
 
 type Role struct {
-	ID    uuid.UUID `validate:"required,uuid"`
-	Title string    `validate:"required"`
+	ID    uuid.UUID `validate:"required,uuid" json:"id"`
+	Title string    `validate:"required" json:"title"`
 }
 
 func NewRole(id uuid.UUID, name string) (Role, error) {

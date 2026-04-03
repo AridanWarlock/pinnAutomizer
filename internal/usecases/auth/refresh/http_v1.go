@@ -28,7 +28,7 @@ func httpV1(w http.ResponseWriter, r *http.Request, log zerolog.Logger) {
 		return
 	}
 
-	in := Input{RefreshToken: refreshToken.Value}
+	in := Input{RefreshTokenString: refreshToken.Value}
 	output, err := usecase.Refresh(r.Context(), in)
 
 	if err != nil {
@@ -37,7 +37,7 @@ func httpV1(w http.ResponseWriter, r *http.Request, log zerolog.Logger) {
 	}
 
 	render.JSON(w,
-		Response{AccessToken: output.AccessToken.Value},
+		Response{AccessToken: string(output.AccessToken)},
 		http.StatusOK,
 	)
 }

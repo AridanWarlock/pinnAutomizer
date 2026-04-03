@@ -4,15 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"pinnAutomizer/internal/domain"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
-const (
-	UserIDKey = "userID"
-)
+const UserClaimsKey = "userClaimsKey"
 
 var (
 	ErrBearerTokenIsNotSet = errors.New("bearer token is not set")
@@ -33,19 +31,19 @@ var publicPrefixes = []string{
 	"/api/v1/scripts/from-translate/",
 }
 
-type JwtService interface {
-	ValidateAccessToken(ctx context.Context, accessToken string) (uuid.UUID, error)
+type TokenParser interface {
+	GetClaims(token domain.AccessToken) (domain.UserClaims, error)
 }
 
 type Middleware struct {
-	jwtService JwtService
+	tokenParser TokenParser
 
 	log zerolog.Logger
 }
 
-func NewMiddleware(jwtService JwtService, log zerolog.Logger) *Middleware {
+func NewMiddleware(tokenGenerator TokenParser, log zerolog.Logger) *Middleware {
 	return &Middleware{
-		jwtService: jwtService,
+		tokenParser: tokenGenerator,
 
 		log: log.With().Str("component", "middleware: auth").Logger(),
 	}
@@ -91,7 +89,7 @@ func (m *Middleware) Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		userID, err := m.jwtService.ValidateAccessToken(r.Context(), accessToken)
+		claims, err := m.tokenParser.GetClaims(domain.AccessToken(accessToken))
 		if err != nil {
 			log.Info().
 				Err(err).
@@ -100,7 +98,7 @@ func (m *Middleware) Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), UserIDKey, userID)
+		ctx := context.WithValue(r.Context(), UserClaimsKey, claims)
 		log.Info().
 			Msg("successful auth")
 		next.ServeHTTP(w, r.WithContext(ctx))

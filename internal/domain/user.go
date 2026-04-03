@@ -8,9 +8,9 @@ import (
 )
 
 type User struct {
-	ID           uuid.UUID
-	Login        string
-	PasswordHash string
+	ID           uuid.UUID `json:"id"`
+	Login        string    `json:"login"`
+	PasswordHash string    `json:"password_hash"`
 }
 
 func NewUser(login string, passwordHash string) (User, error) {

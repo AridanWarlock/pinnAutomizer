@@ -8,7 +8,7 @@ import (
 )
 
 type Input struct {
-	IDs    []uuid.UUID `validate:"required,max=20,dive,required,uuid"`
+	IDs    []uuid.UUID `validate:"required,min=1,max=20,dive,required,uuid"`
 	UserID uuid.UUID   `validate:"required,uuid"`
 }
 

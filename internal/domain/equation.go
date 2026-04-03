@@ -14,8 +14,8 @@ const (
 )
 
 type Equation struct {
-	ID   uuid.UUID `validate:"required,uuid"`
-	Type string    `validate:"required,oneof=heat wave"`
+	ID   uuid.UUID `validate:"required,uuid" json:"id"`
+	Type string    `validate:"required,oneof=heat wave" json:"type"`
 }
 
 func NewEquation(equationType string) (Equation, error) {

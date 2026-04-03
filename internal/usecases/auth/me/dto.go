@@ -7,7 +7,7 @@ import (
 )
 
 type Input struct {
-	ID uuid.UUID `validate:"required,uuid"`
+	UserID uuid.UUID `validate:"required,uuid"`
 }
 
 func (i Input) Validate() error {
@@ -15,6 +15,6 @@ func (i Input) Validate() error {
 }
 
 type Output struct {
-	ID    uuid.UUID
-	Login string
+	UserID uuid.UUID
+	Login  string
 }

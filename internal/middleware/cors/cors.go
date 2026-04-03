@@ -21,7 +21,6 @@ func DefaultCORSConfig() Config {
 			"http://localhost:3031",
 			"http://127.0.0.1:3031",
 			"http://0.0.0.0:3031",
-			"http://10.8.1.1:3031",
 		},
 		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{

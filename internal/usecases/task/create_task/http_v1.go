@@ -39,6 +39,17 @@ func HttpV1Handler(log zerolog.Logger) http.HandlerFunc {
 	}
 }
 
+// CreateTask 	godoc
+// @Summary 	Создать задачу
+// @Description Создать новую PINN задачу
+// @Tags 		tasks
+// @Accept 		json
+// @Produce 	json
+// @Param		request body 		Request 	true "CreateTask тело запроса"
+// @Success 	201 	{object}	Response 	"Успешно созданная PINN задача"
+// @Failure 	400		{object} 	http_v1.ErrorResponse 	"Bad request"
+// @Failure		500 	{object} 	http_v1.ErrorResponse 	"Internal server error"
+// @Router 		/tasks 	[post]
 func httpV1(w http.ResponseWriter, r *http.Request, log zerolog.Logger) {
 	log = log.With().Ctx(r.Context()).Logger()
 
@@ -47,7 +58,7 @@ func httpV1(w http.ResponseWriter, r *http.Request, log zerolog.Logger) {
 		return
 	}
 
-	userID := r.Context().Value(auth.UserIDKey).(uuid.UUID)
+	userID := r.Context().Value(auth.UserClaimsKey).(uuid.UUID)
 
 	in := Input{
 		Name: req.Name,

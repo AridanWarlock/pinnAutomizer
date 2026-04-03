@@ -30,7 +30,7 @@ func httpV1(w http.ResponseWriter, r *http.Request, log zerolog.Logger) {
 		return
 	}
 
-	userID := r.Context().Value(auth.UserIDKey).(uuid.UUID)
+	userID := r.Context().Value(auth.UserClaimsKey).(uuid.UUID)
 
 	in := Input{
 		TaskID:    req.TaskID,

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
@@ -29,20 +30,66 @@ func TestUsecase_Login(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name:  "Valid",
-			input: Input{Login: "admin", Password: "admin"},
+			name:  "valid path",
+			input: Input{Login: "admin", Password: "12345"},
 			expected: Output{
-				AccessToken: domain.Token{
+				AccessToken: domain.AccessToken{
 					Value: "123",
 				},
-				RefreshToken: domain.Token{
+				RefreshToken: domain.AccessToken{
 					Value: "456",
 				},
 			},
 			prepare: func(f fields) {
+				user := domain.User{
+					ID:           uuid.New(),
+					Login:        "admin",
+					PasswordHash: "hash",
+				}
+
+				f.postgres.EXPECT().
+					GetUserByLogin(mock.Anything, "admin").
+					Return(user, nil).Once()
+
+				f.hasher.EXPECT().
+					CompareHashAndPassword(user.PasswordHash, "12345").
+					Return(nil).Once()
+
+				tokensPair := domain.TokensPair{
+					AccessToken: domain.AccessToken{
+						Value:     "123",
+						ExpiresAt: time.Time{},
+					},
+					RefreshToken: domain.AccessToken{
+						Value:     "456",
+						ExpiresAt: time.Time{},
+					},
+				}
+
+				authTokens, _ := domain.NewAuthToken(
+					user.ID,
+					tokensPair.AccessToken.Value,
+					tokensPair.RefreshToken.Value,
+				)
+
+				f.jwtService.EXPECT().
+					GenerateTokensPair(user.ID).
+					Return(tokensPair, nil).Once()
+
+				f.postgres.EXPECT().
+					Login(mock.Anything, authTokens).
+					Return(nil).Once()
+			},
+			wantErr: false,
+		},
+		{
+			name:  "generate tokens failed",
+			input: Input{Login: "admin", Password: "admin"},
+			prepare: func(f fields) {
 				f.postgres.EXPECT().
 					GetUserByLogin(mock.Anything, "admin").
 					Return(domain.User{
+						ID:           uuid.New(),
 						Login:        "admin",
 						PasswordHash: "hash",
 					}, nil).Once()
@@ -51,32 +98,11 @@ func TestUsecase_Login(t *testing.T) {
 					CompareHashAndPassword("hash", "admin").
 					Return(nil).Once()
 
-				tokensPair := domain.TokensPair{
-					AccessToken: domain.Token{
-						Value:     "123",
-						ExpiresAt: time.Time{},
-					},
-					RefreshToken: domain.Token{
-						Value:     "456",
-						ExpiresAt: time.Time{},
-					},
-				}
-
-				authTokens, _ := domain.NewAuthToken(
-					uuid.UUID{},
-					tokensPair.AccessToken.Value,
-					tokensPair.RefreshToken.Value,
-				)
-
 				f.jwtService.EXPECT().
-					GenerateTokensPair(uuid.UUID{}).
-					Return(tokensPair, nil).Once()
-
-				f.postgres.EXPECT().
-					Login(mock.Anything, authTokens).
-					Return(nil).Once()
+					GenerateTokensPair(mock.Anything).
+					Return(domain.TokensPair{}, jwt.ErrHashUnavailable).Once()
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:  "User not exists",
@@ -109,6 +135,7 @@ func TestUsecase_Login(t *testing.T) {
 				f.postgres.EXPECT().
 					GetUserByLogin(mock.Anything, "admin").
 					Return(domain.User{
+						ID:           uuid.New(),
 						Login:        "admin",
 						PasswordHash: "hash",
 					}, nil).Once()
@@ -120,39 +147,42 @@ func TestUsecase_Login(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:  "Tokens saving error",
+			name:  "tokens saving error",
 			input: Input{Login: "admin", Password: "admin"},
 			prepare: func(f fields) {
+				user := domain.User{
+					ID:           uuid.New(),
+					Login:        "admin",
+					PasswordHash: "hash",
+				}
+
 				f.postgres.EXPECT().
 					GetUserByLogin(mock.Anything, "admin").
-					Return(domain.User{
-						Login:        "admin",
-						PasswordHash: "hash",
-					}, nil).Once()
+					Return(user, nil).Once()
 
 				f.hasher.EXPECT().
-					CompareHashAndPassword("hash", "admin").
+					CompareHashAndPassword(user.PasswordHash, "admin").
 					Return(nil).Once()
 
 				tokensPair := domain.TokensPair{
-					AccessToken: domain.Token{
+					AccessToken: domain.AccessToken{
 						Value:     "123",
 						ExpiresAt: time.Time{},
 					},
-					RefreshToken: domain.Token{
+					RefreshToken: domain.AccessToken{
 						Value:     "456",
 						ExpiresAt: time.Time{},
 					},
 				}
 
 				authTokens, _ := domain.NewAuthToken(
-					uuid.UUID{},
+					user.ID,
 					tokensPair.AccessToken.Value,
 					tokensPair.RefreshToken.Value,
 				)
 
 				f.jwtService.EXPECT().
-					GenerateTokensPair(uuid.UUID{}).
+					GenerateTokensPair(mock.Anything).
 					Return(tokensPair, nil).Once()
 
 				f.postgres.EXPECT().

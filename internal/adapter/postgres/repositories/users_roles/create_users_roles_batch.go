@@ -10,7 +10,7 @@ import (
 
 func (r *Repository) CreateUsersRolesBatch(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error) {
 	batchSize := len(usersRoles)
-	if batchSize == 0 || batchSize > 1000 {
+	if batchSize == 0 || batchSize > 100 {
 		return nil, ErrInvalidBatchSize
 	}
 

@@ -39,16 +39,16 @@ func (_m *MockPostgres) EXPECT() *MockPostgres_Expecter {
 }
 
 // UpdateTaskStatusByID provides a mock function for the type MockPostgres
-func (_mock *MockPostgres) UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status string) error {
-	ret := _mock.Called(ctx, id, status)
+func (_mock *MockPostgres) UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status string, oldStatus string) error {
+	ret := _mock.Called(ctx, id, status, oldStatus)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateTaskStatusByID")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) error); ok {
-		r0 = returnFunc(ctx, id, status)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, string) error); ok {
+		r0 = returnFunc(ctx, id, status, oldStatus)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -64,11 +64,12 @@ type MockPostgres_UpdateTaskStatusByID_Call struct {
 //   - ctx context.Context
 //   - id uuid.UUID
 //   - status string
-func (_e *MockPostgres_Expecter) UpdateTaskStatusByID(ctx interface{}, id interface{}, status interface{}) *MockPostgres_UpdateTaskStatusByID_Call {
-	return &MockPostgres_UpdateTaskStatusByID_Call{Call: _e.mock.On("UpdateTaskStatusByID", ctx, id, status)}
+//   - oldStatus string
+func (_e *MockPostgres_Expecter) UpdateTaskStatusByID(ctx interface{}, id interface{}, status interface{}, oldStatus interface{}) *MockPostgres_UpdateTaskStatusByID_Call {
+	return &MockPostgres_UpdateTaskStatusByID_Call{Call: _e.mock.On("UpdateTaskStatusByID", ctx, id, status, oldStatus)}
 }
 
-func (_c *MockPostgres_UpdateTaskStatusByID_Call) Run(run func(ctx context.Context, id uuid.UUID, status string)) *MockPostgres_UpdateTaskStatusByID_Call {
+func (_c *MockPostgres_UpdateTaskStatusByID_Call) Run(run func(ctx context.Context, id uuid.UUID, status string, oldStatus string)) *MockPostgres_UpdateTaskStatusByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -82,10 +83,15 @@ func (_c *MockPostgres_UpdateTaskStatusByID_Call) Run(run func(ctx context.Conte
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
 		run(
 			arg0,
 			arg1,
 			arg2,
+			arg3,
 		)
 	})
 	return _c
@@ -96,7 +102,7 @@ func (_c *MockPostgres_UpdateTaskStatusByID_Call) Return(err error) *MockPostgre
 	return _c
 }
 
-func (_c *MockPostgres_UpdateTaskStatusByID_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, status string) error) *MockPostgres_UpdateTaskStatusByID_Call {
+func (_c *MockPostgres_UpdateTaskStatusByID_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, status string, oldStatus string) error) *MockPostgres_UpdateTaskStatusByID_Call {
 	_c.Call.Return(run)
 	return _c
 }

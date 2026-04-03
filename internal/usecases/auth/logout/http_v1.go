@@ -19,7 +19,7 @@ func HttpV1Handler(log zerolog.Logger) http.HandlerFunc {
 func httpV1(w http.ResponseWriter, r *http.Request, log zerolog.Logger) {
 	log = log.With().Ctx(r.Context()).Logger()
 
-	userID := r.Context().Value(auth.UserIDKey).(uuid.UUID)
+	userID := r.Context().Value(auth.UserClaimsKey).(uuid.UUID)
 
 	err := usecase.Logout(r.Context(), Input{ID: userID})
 	if err != nil {

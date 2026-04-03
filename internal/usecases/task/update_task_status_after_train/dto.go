@@ -7,7 +7,8 @@ import (
 )
 
 type Input struct {
-	ID uuid.UUID `validate:"required,uuid"`
+	ID             uuid.UUID `validate:"required,uuid"`
+	IdempotencyKey string    `validate:"required"`
 }
 
 func (i Input) Validate() error {
