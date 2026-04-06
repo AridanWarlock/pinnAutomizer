@@ -12,19 +12,19 @@ type Postgres interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (domain.User, error)
 }
 
-type Usecase struct {
+type usecase struct {
 	postgres Postgres
 }
 
 func New(
 	postgres Postgres,
-) *Usecase {
-	return &Usecase{
+) Usecase {
+	return &usecase{
 		postgres: postgres,
 	}
 }
 
-func (u *Usecase) Me(ctx context.Context, in Input) (Output, error) {
+func (u *usecase) Me(ctx context.Context, in Input) (Output, error) {
 	if err := in.Validate(); err != nil {
 		return Output{}, domain.ErrInputValidation
 	}

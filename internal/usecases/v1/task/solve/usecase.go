@@ -23,19 +23,22 @@ type Postgres interface {
 	PublishEvent(ctx context.Context, event domain.Event) error
 }
 
-type Usecase struct {
+type usecase struct {
 	postgres Postgres
 	redis    Redis
 }
 
-func New(postgres Postgres, redis Redis) *Usecase {
-	return &Usecase{
+func New(
+	postgres Postgres,
+	redis Redis,
+) Usecase {
+	return &usecase{
 		postgres: postgres,
 		redis:    redis,
 	}
 }
 
-func (u *Usecase) SolveTask(ctx context.Context, in Input) error {
+func (u *usecase) SolveTask(ctx context.Context, in Input) error {
 	log := logger.FromContext(ctx)
 
 	if err := in.Validate(); err != nil {
@@ -96,7 +99,7 @@ func (u *Usecase) SolveTask(ctx context.Context, in Input) error {
 	return nil
 }
 
-func (u *Usecase) createSolveTaskEvent(task domain.Task, solveConstants map[string]any) (domain.Event, error) {
+func (u *usecase) createSolveTaskEvent(task domain.Task, solveConstants map[string]any) (domain.Event, error) {
 	msg := domain.SolveTaskMessage{
 		TaskID:    task.ID,
 		ModelPath: task.ResultsPath,

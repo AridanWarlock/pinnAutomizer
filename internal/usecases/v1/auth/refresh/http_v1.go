@@ -1,7 +1,6 @@
 package auth_refresh
 
 import (
-	"context"
 	"net/http"
 
 	core_http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
@@ -13,17 +12,13 @@ type Response struct {
 	AccessToken string `json:"accessToken"`
 }
 
-type Service interface {
-	Refresh(ctx context.Context, in Input) (Output, error)
-}
-
 type HttpHandler struct {
-	service Service
+	usecase Usecase
 }
 
-func NewHttpHandler(service Service) *HttpHandler {
+func NewHttpHandler(usecase Usecase) *HttpHandler {
 	return &HttpHandler{
-		service: service,
+		usecase: usecase,
 	}
 }
 
@@ -48,7 +43,7 @@ func (h *HttpHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	in := Input{RefreshTokenString: refreshToken.Value}
 
-	out, err := h.service.Refresh(ctx, in)
+	out, err := h.usecase.Refresh(ctx, in)
 	if err != nil {
 		rh.ErrorResponse(err, "failed to refresh access token")
 		return

@@ -1,6 +1,8 @@
 package tasks_create
 
 import (
+	"context"
+
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 
@@ -24,4 +26,8 @@ func (i Input) Validate() error {
 type Output struct {
 	Task     domain.Task     `json:"task"`
 	Equation domain.Equation `json:"equation"`
+}
+
+type Usecase interface {
+	CreateTask(ctx context.Context, in Input) (Output, error)
 }

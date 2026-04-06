@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	core_errors "github.com/AridanWarlock/pinnAutomizer/internal/errors"
 	"github.com/rs/zerolog"
 )
@@ -77,6 +76,6 @@ func (h *Handler) PanicResponse(p any, msg string) {
 }
 
 func (h *Handler) errorResponse(statusCode int, err error, msg string) {
-	response := domain.NewErrorMessage(msg, err)
+	response := NewErrorResponse(err, msg)
 	h.JsonResponse(response, statusCode)
 }

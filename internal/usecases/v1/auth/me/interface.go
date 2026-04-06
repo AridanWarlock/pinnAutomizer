@@ -1,6 +1,8 @@
 package auth_me
 
 import (
+	"context"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 
 	"github.com/google/uuid"
@@ -17,4 +19,8 @@ func (i Input) Validate() error {
 type Output struct {
 	UserID uuid.UUID
 	Login  string
+}
+
+type Usecase interface {
+	Me(ctx context.Context, in Input) (Output, error)
 }

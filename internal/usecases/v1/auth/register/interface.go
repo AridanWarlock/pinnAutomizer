@@ -1,6 +1,8 @@
 package auth_register
 
 import (
+	"context"
+
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
@@ -17,4 +19,8 @@ func (i Input) Validate() error {
 
 type Output struct {
 	User domain.User `json:"user"`
+}
+
+type Usecase interface {
+	Register(ctx context.Context, in Input) (Output, error)
 }

@@ -17,19 +17,19 @@ type Postgres interface {
 	GetEquationsByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.Equation, error)
 }
 
-type Usecase struct {
+type usecase struct {
 	postgres Postgres
 }
 
 func New(
 	postgres Postgres,
-) *Usecase {
-	return &Usecase{
+) Usecase {
+	return &usecase{
 		postgres: postgres,
 	}
 }
 
-func (u *Usecase) GetTasks(ctx context.Context, in Input) (Output, error) {
+func (u *usecase) GetTasks(ctx context.Context, in Input) (Output, error) {
 	if err := in.Validate(); err != nil {
 		return Output{}, domain.ErrInputValidation
 	}

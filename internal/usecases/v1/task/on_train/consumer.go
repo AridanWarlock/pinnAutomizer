@@ -15,19 +15,15 @@ type Message struct {
 	TaskID uuid.UUID `json:"task_id"`
 }
 
-type Service interface {
-	UpdateTaskOnTrain(ctx context.Context, in Input) error
-}
-
 type Consumer struct {
-	service Service
+	usecase Usecase
 
 	log zerolog.Logger
 }
 
-func NewConsumer(service Service, log zerolog.Logger) *Consumer {
+func NewConsumer(usecase Usecase, log zerolog.Logger) *Consumer {
 	return &Consumer{
-		service: service,
+		usecase: usecase,
 		log:     log,
 	}
 }
@@ -43,7 +39,7 @@ func (c *Consumer) HandleMessage(ctx context.Context, msg kafka.Message, idempot
 		IdempotencyKey: idempotencyKey,
 	}
 
-	err := c.service.UpdateTaskOnTrain(ctx, input)
+	err := c.usecase.UpdateTaskOnTrain(ctx, input)
 	if err != nil {
 		if errors.Is(err, domain.ErrAlreadyExists) {
 			return nil

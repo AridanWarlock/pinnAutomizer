@@ -21,7 +21,7 @@ type Postgres interface {
 	UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status, oldStatus string) error
 }
 
-type Usecase struct {
+type usecase struct {
 	postgres Postgres
 	redis    Redis
 }
@@ -29,14 +29,14 @@ type Usecase struct {
 func New(
 	postgres Postgres,
 	redis Redis,
-) *Usecase {
-	return &Usecase{
+) Usecase {
+	return &usecase{
 		postgres: postgres,
 		redis:    redis,
 	}
 }
 
-func (u *Usecase) UpdateTaskOnTrain(ctx context.Context, in Input) error {
+func (u *usecase) UpdateTaskOnTrain(ctx context.Context, in Input) error {
 	log := logger.FromContext(ctx)
 
 	if err := in.Validate(); err != nil {

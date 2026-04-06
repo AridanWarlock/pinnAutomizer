@@ -1,7 +1,6 @@
 package tasks_get
 
 import (
-	"context"
 	"net/http"
 	"time"
 
@@ -34,17 +33,13 @@ type Response struct {
 	Tasks []taskDto `json:"tasks"`
 }
 
-type Service interface {
-	GetTasks(ctx context.Context, in Input) (Output, error)
-}
-
 type HttpHandler struct {
-	service Service
+	usecase Usecase
 }
 
-func NewHttpHandler(service Service) *HttpHandler {
+func NewHttpHandler(usecase Usecase) *HttpHandler {
 	return &HttpHandler{
-		service: service,
+		usecase: usecase,
 	}
 }
 
@@ -73,7 +68,7 @@ func (h *HttpHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 		UserID: userClaims.UserID,
 	}
 
-	out, err := h.service.GetTasks(ctx, in)
+	out, err := h.usecase.GetTasks(ctx, in)
 	if err != nil {
 		rh.ErrorResponse(err, "failed to get tasks info")
 		return

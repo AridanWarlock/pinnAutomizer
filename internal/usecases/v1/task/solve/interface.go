@@ -1,7 +1,8 @@
 package tasks_solve
 
 import (
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"context"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 
 	"github.com/google/uuid"
@@ -20,6 +21,6 @@ func (i Input) Validate() error {
 	return validate.V.Struct(i)
 }
 
-type Output struct {
-	Task domain.Task `json:"task"`
+type Usecase interface {
+	SolveTask(cxt context.Context, in Input) error
 }

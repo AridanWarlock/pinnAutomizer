@@ -1,6 +1,8 @@
 package tasks_get
 
 import (
+	"context"
+
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 
@@ -17,5 +19,9 @@ func (i Input) Validate() error {
 }
 
 type Output struct {
-	TasksToEquation map[*domain.Task]domain.Equation
+	TasksToEquation map[*domain.Task]domain.Equation `json:"tasks_to_equation"`
+}
+
+type Usecase interface {
+	GetTasks(ctx context.Context, in Input) (Output, error)
 }

@@ -22,7 +22,7 @@ type AccessTokenGenerator interface {
 	Generate(user domain.User, roles []domain.Role) (domain.AccessToken, error)
 }
 
-type Usecase struct {
+type usecase struct {
 	postgres             Postgres
 	accessTokenGenerator AccessTokenGenerator
 }
@@ -30,14 +30,14 @@ type Usecase struct {
 func New(
 	postgres Postgres,
 	accessTokenGenerator AccessTokenGenerator,
-) *Usecase {
-	return &Usecase{
+) Usecase {
+	return &usecase{
 		postgres:             postgres,
 		accessTokenGenerator: accessTokenGenerator,
 	}
 }
 
-func (u *Usecase) Refresh(ctx context.Context, in Input) (Output, error) {
+func (u *usecase) Refresh(ctx context.Context, in Input) (Output, error) {
 	if err := in.Validate(); err != nil {
 		return Output{}, domain.ErrInputValidation
 	}

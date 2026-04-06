@@ -18,7 +18,7 @@ env-cleanup:
   	  echo "Очистка окружения отменена"; \
   	  exit 0; \
   	fi; \
-	docker compose down pinn-postgres redis && \
+	docker compose down pinn-postgres port-forwarder redis && \
 	rm -rf out/pgdata out/redis_data && \
 	echo "Файлы окружения очищены"
 

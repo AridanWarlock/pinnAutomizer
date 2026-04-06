@@ -26,7 +26,7 @@ type Redis interface {
 	Delete(ctx context.Context, key string) error
 }
 
-type Usecase struct {
+type usecase struct {
 	postgres Postgres
 	redis    Redis
 }
@@ -34,14 +34,14 @@ type Usecase struct {
 func New(
 	postgres Postgres,
 	redis Redis,
-) *Usecase {
-	return &Usecase{
+) Usecase {
+	return &usecase{
 		postgres: postgres,
 		redis:    redis,
 	}
 }
 
-func (u *Usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
+func (u *usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 	log := logger.FromContext(ctx)
 
 	if err := in.Validate(); err != nil {
@@ -105,7 +105,7 @@ func (u *Usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 	return out, nil
 }
 
-func (u *Usecase) createAndPublishTask(
+func (u *usecase) createAndPublishTask(
 	ctx context.Context,
 	task domain.Task,
 	equation domain.Equation,
@@ -143,7 +143,7 @@ func (u *Usecase) createAndPublishTask(
 	return out, nil
 }
 
-func (u *Usecase) createTaskTrainEvent(task domain.Task) (domain.Event, error) {
+func (u *usecase) createTaskTrainEvent(task domain.Task) (domain.Event, error) {
 	msg := domain.TrainMessage{
 		TaskID:      task.ID,
 		MatFilePath: task.TrainingDataPath,

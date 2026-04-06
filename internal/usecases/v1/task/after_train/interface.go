@@ -1,6 +1,8 @@
-package tasks_on_train
+package tasks_after_train
 
 import (
+	"context"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 
 	"github.com/google/uuid"
@@ -13,4 +15,8 @@ type Input struct {
 
 func (i Input) Validate() error {
 	return validate.V.Struct(i)
+}
+
+type Usecase interface {
+	UpdateTaskAfterTrain(ctx context.Context, in Input) error
 }

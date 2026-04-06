@@ -20,7 +20,7 @@ type PasswordHasher interface {
 	HashPassword(password string) (string, error)
 }
 
-type Usecase struct {
+type usecase struct {
 	postgres       Postgres
 	passwordHasher PasswordHasher
 }
@@ -28,14 +28,14 @@ type Usecase struct {
 func New(
 	postgres Postgres,
 	passwordHasher PasswordHasher,
-) *Usecase {
-	return &Usecase{
+) Usecase {
+	return &usecase{
 		postgres:       postgres,
 		passwordHasher: passwordHasher,
 	}
 }
 
-func (u *Usecase) Register(ctx context.Context, in Input) (Output, error) {
+func (u *usecase) Register(ctx context.Context, in Input) (Output, error) {
 	if err := in.Validate(); err != nil {
 		return Output{}, domain.ErrInputValidation
 	}
@@ -69,7 +69,7 @@ func (u *Usecase) Register(ctx context.Context, in Input) (Output, error) {
 	}, nil
 }
 
-func (u *Usecase) createUser(ctx context.Context, user domain.User, roles []domain.Role) (domain.User, error) {
+func (u *usecase) createUser(ctx context.Context, user domain.User, roles []domain.Role) (domain.User, error) {
 	user, err := u.postgres.CreateUser(ctx, user)
 	if err != nil {
 		return domain.User{}, fmt.Errorf("create user in postgres: %w", err)

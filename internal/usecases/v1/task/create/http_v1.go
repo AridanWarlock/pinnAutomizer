@@ -1,7 +1,6 @@
 package tasks_create
 
 import (
-	"context"
 	"net/http"
 	"time"
 
@@ -33,17 +32,13 @@ type Response struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type Service interface {
-	CreateTask(ctx context.Context, in Input) (Output, error)
-}
-
 type HttpHandler struct {
-	service Service
+	usecase Usecase
 }
 
-func NewHttpHandler(service Service) *HttpHandler {
+func NewHttpHandler(usecase Usecase) *HttpHandler {
 	return &HttpHandler{
-		service: service,
+		usecase: usecase,
 	}
 }
 
@@ -88,7 +83,7 @@ func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		UserID:       userClaims.UserID,
 	}
 
-	out, err := h.service.CreateTask(ctx, in)
+	out, err := h.usecase.CreateTask(ctx, in)
 	if err != nil {
 		rh.ErrorResponse(err, "failed to create task")
 		return

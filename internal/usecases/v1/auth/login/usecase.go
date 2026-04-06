@@ -26,7 +26,7 @@ type PasswordHasher interface {
 	CompareHashAndPassword(hasherPassword, password string) error
 }
 
-type Usecase struct {
+type usecase struct {
 	postgres              Postgres
 	accessTokenGenerator  AccessTokenGenerator
 	refreshTokenGenerator RefreshTokenGenerator
@@ -38,8 +38,8 @@ func New(
 	accessTokenGenerator AccessTokenGenerator,
 	refreshTokenGenerator RefreshTokenGenerator,
 	hasher PasswordHasher,
-) *Usecase {
-	return &Usecase{
+) Usecase {
+	return &usecase{
 		postgres:              postgres,
 		accessTokenGenerator:  accessTokenGenerator,
 		refreshTokenGenerator: refreshTokenGenerator,
@@ -47,7 +47,7 @@ func New(
 	}
 }
 
-func (u *Usecase) Login(ctx context.Context, in Input) (Output, error) {
+func (u *usecase) Login(ctx context.Context, in Input) (Output, error) {
 	if err := in.Validate(); err != nil {
 		return Output{}, domain.ErrInputValidation
 	}
@@ -95,7 +95,7 @@ func (u *Usecase) Login(ctx context.Context, in Input) (Output, error) {
 	}, nil
 }
 
-func (u *Usecase) getValidUser(ctx context.Context, in Input) (domain.User, error) {
+func (u *usecase) getValidUser(ctx context.Context, in Input) (domain.User, error) {
 	user, err := u.postgres.GetUserByLogin(ctx, in.Login)
 	if err != nil {
 		return domain.User{}, fmt.Errorf("getting user by login from postgres: %w", err)

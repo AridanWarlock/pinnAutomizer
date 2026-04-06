@@ -1,7 +1,6 @@
 package auth_logout
 
 import (
-	"context"
 	"net/http"
 
 	core_http "github.com/AridanWarlock/pinnAutomizer/internal/transport/http"
@@ -10,17 +9,13 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
-type Service interface {
-	Logout(ctx context.Context, in Input) error
-}
-
 type HttpHandler struct {
-	service Service
+	usecase Usecase
 }
 
-func NewHttpHandler(service Service) *HttpHandler {
+func NewHttpHandler(usecase Usecase) *HttpHandler {
 	return &HttpHandler{
-		service: service,
+		usecase: usecase,
 	}
 }
 
@@ -38,7 +33,7 @@ func (h *HttpHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	userClaims := core_http.ClaimsFromContext(ctx)
 	rh := core_http_response.NewHandler(w, log)
 
-	err := h.service.Logout(ctx, Input{ID: userClaims.UserID})
+	err := h.usecase.Logout(ctx, Input{ID: userClaims.UserID})
 	if err != nil {
 		rh.ErrorResponse(err, "failed to logout")
 		return

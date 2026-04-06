@@ -1,7 +1,6 @@
 package tasks_solve
 
 import (
-	"context"
 	"net/http"
 
 	core_http "github.com/AridanWarlock/pinnAutomizer/internal/transport/http"
@@ -17,17 +16,13 @@ type Request struct {
 	Constants map[string]any `json:"constants"`
 }
 
-type Service interface {
-	SolveTask(ctx context.Context, in Input) error
-}
-
 type HttpHandler struct {
-	service Service
+	usecase Usecase
 }
 
-func NewHttpHandler(service Service) *HttpHandler {
+func NewHttpHandler(usecase Usecase) *HttpHandler {
 	return &HttpHandler{
-		service: service,
+		usecase: usecase,
 	}
 }
 
@@ -57,7 +52,7 @@ func (h *HttpHandler) SolveTask(w http.ResponseWriter, r *http.Request) {
 		UserID:    userClaims.UserID,
 	}
 
-	err := h.service.SolveTask(ctx, in)
+	err := h.usecase.SolveTask(ctx, in)
 	if err != nil {
 		rh.ErrorResponse(err, "failed to solve task")
 		return

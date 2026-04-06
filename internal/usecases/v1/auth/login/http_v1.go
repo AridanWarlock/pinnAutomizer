@@ -1,7 +1,6 @@
 package auth_login
 
 import (
-	"context"
 	"encoding/hex"
 	"net/http"
 
@@ -20,17 +19,17 @@ type Response struct {
 	AccessToken string `json:"access_token"`
 }
 
-type Service interface {
-	Login(ctx context.Context, in Input) (Output, error)
-}
+//type Service interface {
+//	Login(ctx context.Context, in Input) (Output, error)
+//}
 
 type HttpHandler struct {
-	service Service
+	usecase Usecase
 }
 
-func NewHttpHandler(service Service) *HttpHandler {
+func NewHttpHandler(usecase Usecase) *HttpHandler {
 	return &HttpHandler{
-		service: service,
+		usecase: usecase,
 	}
 }
 
@@ -65,7 +64,7 @@ func (h *HttpHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Fingerprint: fingerprint,
 	}
 
-	out, err := h.service.Login(ctx, in)
+	out, err := h.usecase.Login(ctx, in)
 	if err != nil {
 		rh.ErrorResponse(err, "failed to login")
 		return

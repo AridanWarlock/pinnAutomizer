@@ -1,6 +1,8 @@
 package auth_refresh
 
 import (
+	"context"
+
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
@@ -15,4 +17,8 @@ func (i Input) Validate() error {
 
 type Output struct {
 	AccessToken domain.AccessToken
+}
+
+type Usecase interface {
+	Refresh(ctx context.Context, in Input) (Output, error)
 }

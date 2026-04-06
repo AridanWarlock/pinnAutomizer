@@ -1,6 +1,7 @@
 package auth_login
 
 import (
+	"context"
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
@@ -21,4 +22,8 @@ type Output struct {
 	AccessTokenString     string
 	RefreshTokenString    string
 	RefreshTokenExpiresAt time.Time
+}
+
+type Usecase interface {
+	Login(ctx context.Context, in Input) (Output, error)
 }

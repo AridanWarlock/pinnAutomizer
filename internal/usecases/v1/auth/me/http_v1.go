@@ -1,7 +1,6 @@
 package auth_me
 
 import (
-	"context"
 	"net/http"
 
 	core_http "github.com/AridanWarlock/pinnAutomizer/internal/transport/http"
@@ -16,17 +15,13 @@ type Response struct {
 	Login string    `json:"login"`
 }
 
-type Service interface {
-	Me(ctx context.Context, in Input) (Output, error)
-}
-
 type HttpHandler struct {
-	service Service
+	usecase Usecase
 }
 
-func NewHttpHandler(service Service) *HttpHandler {
+func NewHttpHandler(usecase Usecase) *HttpHandler {
 	return &HttpHandler{
-		service: service,
+		usecase: usecase,
 	}
 }
 
@@ -44,7 +39,7 @@ func (h *HttpHandler) Me(w http.ResponseWriter, r *http.Request) {
 	userClaims := core_http.ClaimsFromContext(ctx)
 	rh := core_http_response.NewHandler(w, log)
 
-	out, err := h.service.Me(ctx, Input{UserID: userClaims.UserID})
+	out, err := h.usecase.Me(ctx, Input{UserID: userClaims.UserID})
 	if err != nil {
 		rh.ErrorResponse(err, "failed to get me info")
 		return

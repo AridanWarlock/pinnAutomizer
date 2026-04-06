@@ -1,7 +1,6 @@
 package auth_register
 
 import (
-	"context"
 	"net/http"
 
 	core_http_request "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
@@ -22,17 +21,13 @@ type Response struct {
 	Login string    `json:"login"`
 }
 
-type Service interface {
-	Register(ctx context.Context, in Input) (Output, error)
-}
-
 type HttpHandler struct {
-	service Service
+	usecase Usecase
 }
 
-func NewHttpHandler(service Service) *HttpHandler {
+func NewHttpHandler(usecase Usecase) *HttpHandler {
 	return &HttpHandler{
-		service: service,
+		usecase: usecase,
 	}
 }
 
@@ -61,7 +56,7 @@ func (h *HttpHandler) Register(w http.ResponseWriter, r *http.Request) {
 		PasswordConfirmed: req.PasswordConfirmed,
 	}
 
-	out, err := h.service.Register(ctx, in)
+	out, err := h.usecase.Register(ctx, in)
 	if err != nil {
 		rh.ErrorResponse(err, "failed to register")
 		return

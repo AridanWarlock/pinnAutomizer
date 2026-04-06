@@ -12,19 +12,19 @@ type Postgres interface {
 	Logout(ctx context.Context, userID uuid.UUID) error
 }
 
-type Usecase struct {
+type usecase struct {
 	postgres Postgres
 }
 
 func New(
 	postgres Postgres,
-) *Usecase {
-	return &Usecase{
+) Usecase {
+	return &usecase{
 		postgres: postgres,
 	}
 }
 
-func (u *Usecase) Logout(ctx context.Context, in Input) error {
+func (u *usecase) Logout(ctx context.Context, in Input) error {
 	if err := in.Validate(); err != nil {
 		return domain.ErrInputValidation
 	}
