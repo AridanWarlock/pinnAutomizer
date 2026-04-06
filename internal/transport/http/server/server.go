@@ -81,7 +81,7 @@ func (s *Server) Run(ctx context.Context) error {
 			return fmt.Errorf("shutdown HTTP server: %w", err)
 		}
 
-		s.log.Warn().Msg("shutdown HTTP server...")
+		s.log.Warn().Msg("HTTP server shutdown gracefully")
 	}
 
 	return nil

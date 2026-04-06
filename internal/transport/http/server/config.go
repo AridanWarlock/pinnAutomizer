@@ -3,8 +3,8 @@ package core_http_server
 import "time"
 
 type Config struct {
-	Addr            string        `env:"HTTP_ADDR" env-required:"true"`
-	Timeout         time.Duration `env:"HTTP_TIMEOUT" env-required:"true"`
-	IdleTimeout     time.Duration `env:"HTTP_IDLE_TIMEOUT" env-required:"true"`
-	ShutdownTimeout time.Duration `env:"HTTP_SHUTDOWN_TIMEOUT" env-required:"true"`
+	Addr            string        `env:"ADDR,required"`
+	Timeout         time.Duration `env:"TIMEOUT,required"`
+	IdleTimeout     time.Duration `env:"IDLE_TIMEOUT,required"`
+	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT,required"`
 }

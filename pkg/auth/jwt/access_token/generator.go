@@ -19,11 +19,6 @@ var (
 
 var signingMethod = jwt.SigningMethodHS256
 
-type Config struct {
-	Secret   []byte        `env:"JWT_SECRET" env-required:"true"`
-	TokenTTL time.Duration `env:"JWT_TOKEN_TTL" env-required:"true"`
-}
-
 type Claims struct {
 	UserID uuid.UUID     `json:"user_id"`
 	Roles  []domain.Role `json:"roles"`
@@ -38,7 +33,7 @@ type Generator struct {
 
 func New(c Config) *Generator {
 	return &Generator{
-		secret: c.Secret,
+		secret: []byte(c.Secret),
 		ttl:    c.TokenTTL,
 	}
 }

@@ -13,7 +13,11 @@ services:
       - LOGGER_ENVIRONMENT=${LOGGER_ENVIRONMENT}
       - LOGGER_LEVEL=${LOGGER_LEVEL}
       - LOGGER_FOLDER=/app/out/logs
-      - POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pinn-postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_HOST=pinn-postgres
+      - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_TIMEOUT=${POSTGRES_TIMEOUT}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_TOKEN_TTL=${JWT_TOKEN_TTL}
@@ -37,7 +41,12 @@ services:
       - ${PROJECT_ROOT}/out/logs:/app/out/logs
     ports:
       - "${HTTP_PORT}:${HTTP_PORT}"
-    restart: always
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
 
   pinn-postgres:
     image: postgres:18.1-alpine

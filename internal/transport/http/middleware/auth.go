@@ -3,10 +3,13 @@ package core_http_middleware
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	core_errors "github.com/AridanWarlock/pinnAutomizer/internal/errors"
+	core_http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
@@ -40,6 +43,7 @@ func Authentication(tokenParser TokenParser) Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 			log := logger.FromContext(ctx)
+			rh := core_http_response.NewHandler(w, log)
 
 			if isPublicURL(r.URL.Path) {
 				next.ServeHTTP(w, r)
@@ -48,19 +52,23 @@ func Authentication(tokenParser TokenParser) Middleware {
 
 			accessToken, err := extractAccessTokenFromHeaders(r)
 			if err != nil {
-				log.Info().Err(err).Msg("extract access token from headers")
-				http.Error(w, err.Error(), http.StatusUnauthorized)
+				rh.ErrorResponse(
+					fmt.Errorf("%w: extract access token from headers: %v", core_errors.ErrAuthorizationFailed, err),
+					"failed to extract access token from headers",
+				)
 				return
 			}
 
 			claims, err := tokenParser.GetClaims(domain.AccessToken(accessToken))
 			if err != nil {
-				log.Info().Err(err).Msg("parsing claims from access token")
-				http.Error(w, err.Error(), http.StatusUnauthorized)
+				rh.ErrorResponse(
+					fmt.Errorf("%w: parse user claims from access token: %v", core_errors.ErrAuthorizationFailed, err),
+					"failed to parse valid claims from access token",
+				)
 				return
 			}
 
-			ctx = context.WithValue(r.Context(), UserClaimsKey, claims)
+			ctx = context.WithValue(ctx, UserClaimsKey, claims)
 			log.Info().Msg("successful auth")
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

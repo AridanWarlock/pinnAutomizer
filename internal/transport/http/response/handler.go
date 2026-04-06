@@ -43,6 +43,10 @@ func (h *Handler) ErrorResponse(err error, msg string) {
 	)
 
 	switch {
+	case errors.Is(err, core_errors.ErrAuthorizationFailed):
+		statusCode = http.StatusUnauthorized
+		log = h.log.Debug()
+
 	case errors.Is(err, core_errors.ErrInvalidArgument):
 		statusCode = http.StatusBadRequest
 		log = h.log.Warn()

@@ -3,6 +3,11 @@ package postgres
 import "time"
 
 type Config struct {
-	Addr    string        `env:"POSTGRES_URL" env-required:"true"`
-	Timeout time.Duration `env:"POSTGRES_TIMEOUT" env-required:"true"`
+	User     string        `env:"USER,required"`
+	Password string        `env:"PASSWORD,required"`
+	Host     string        `env:"HOST,required"`
+	Port     int           `env:"PORT,required"`
+	DB       string        `env:"DB,required"`
+	SslMode  string        `env:"SSLMODE" default:"disable"`
+	Timeout  time.Duration `env:"TIMEOUT,required"`
 }

@@ -40,7 +40,16 @@ func New(cfg Config) (*Repository, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	config, err := pgxpool.ParseConfig(cfg.Addr)
+	connString := fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		cfg.User,
+		cfg.Password,
+		cfg.Host,
+		cfg.Port,
+		cfg.DB,
+		cfg.SslMode,
+	)
+	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		return nil, fmt.Errorf("parse pgxconfig: %w", err)
 	}

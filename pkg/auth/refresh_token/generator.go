@@ -12,7 +12,7 @@ import (
 var DefaultEncoder = base64.RawURLEncoding
 
 type Config struct {
-	Ttl time.Duration `env:"REFRESH_TOKEN_TTL" env-required:"true"`
+	Ttl time.Duration `env:"TOKEN_TTL,required"`
 }
 
 type Generator struct {
