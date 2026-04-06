@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errors"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
@@ -53,7 +53,7 @@ func Authentication(tokenParser TokenParser) Middleware {
 			accessToken, err := extractAccessTokenFromHeaders(r)
 			if err != nil {
 				rh.ErrorResponse(
-					fmt.Errorf("%w: extract access token from headers: %v", core_errors.ErrAuthorizationFailed, err),
+					fmt.Errorf("%w: extract access token from headers: %v", errs.ErrAuthorizationFailed, err),
 					"failed to extract access token from headers",
 				)
 				return
@@ -62,7 +62,7 @@ func Authentication(tokenParser TokenParser) Middleware {
 			claims, err := tokenParser.GetClaims(domain.AccessToken(accessToken))
 			if err != nil {
 				rh.ErrorResponse(
-					fmt.Errorf("%w: parse user claims from access token: %v", core_errors.ErrAuthorizationFailed, err),
+					fmt.Errorf("%w: parse user claims from access token: %v", errs.ErrAuthorizationFailed, err),
 					"failed to parse valid claims from access token",
 				)
 				return

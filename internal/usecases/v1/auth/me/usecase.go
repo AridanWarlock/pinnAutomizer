@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/google/uuid"
 )
 
@@ -26,7 +27,7 @@ func New(
 
 func (u *usecase) Me(ctx context.Context, in Input) (Output, error) {
 	if err := in.Validate(); err != nil {
-		return Output{}, domain.ErrInputValidation
+		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
 	user, err := u.postgres.GetUserByID(ctx, in.UserID)

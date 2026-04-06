@@ -3,9 +3,9 @@ package equations
 import (
 	"context"
 
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-
 	. "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 )
@@ -18,7 +18,7 @@ func (r *Repository) GetEquationsByIDs(ctx context.Context, ids []uuid.UUID) ([]
 
 	var outRows []EquationRow
 	if err := r.pool.Selectx(ctx, &outRows, query); err != nil {
-		return nil, err
+		return nil, pgerr.ScanErr(err)
 	}
 
 	equations := make([]domain.Equation, len(outRows))

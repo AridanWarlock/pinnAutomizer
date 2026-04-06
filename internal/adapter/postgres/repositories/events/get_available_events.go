@@ -2,15 +2,21 @@ package events
 
 import (
 	"context"
+	"fmt"
 
-	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 )
 
 func (r *Repository) GetAvailableEvents(ctx context.Context, batchSize int) ([]domain.Event, error) {
 	if batchSize < 0 || batchSize > 100 {
-		return nil, ErrInvalidBatchSize
+		return nil, fmt.Errorf(
+			"%w: invalid batch size=%d",
+			errs.ErrInvalidArgument,
+			batchSize,
+		)
 	}
 
 	query := r.sb.
@@ -22,7 +28,7 @@ func (r *Repository) GetAvailableEvents(ctx context.Context, batchSize int) ([]d
 
 	var rows []EventRow
 	if err := r.pool.Selectx(ctx, &rows, query); err != nil {
-		return nil, err
+		return nil, pgerr.ScanErr(err)
 	}
 
 	events := make([]domain.Event, len(rows))

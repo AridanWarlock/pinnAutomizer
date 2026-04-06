@@ -2,14 +2,14 @@ package users
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
-	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx/v5"
 )
 
 func (r *Repository) GetUserByLogin(ctx context.Context, login string) (domain.User, error) {
@@ -20,10 +20,14 @@ func (r *Repository) GetUserByLogin(ctx context.Context, login string) (domain.U
 
 	var outRow UserRow
 	if err := r.pool.Getx(ctx, &outRow, query); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.User{}, ErrNotFound
+		if pgerr.IsNotFound(err) {
+			return domain.User{}, fmt.Errorf(
+				"user with login=%s: %w",
+				login,
+				errs.ErrNotFound,
+			)
 		}
-		return domain.User{}, err
+		return domain.User{}, pgerr.ScanErr(err)
 	}
 
 	return ToModel(outRow), nil

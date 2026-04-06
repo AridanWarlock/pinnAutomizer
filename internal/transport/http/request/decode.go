@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/errors"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/json_decoder"
 	"github.com/go-playground/validator/v10"
 )
@@ -20,13 +20,13 @@ func DecodeAndValidateRequest(w http.ResponseWriter, r *http.Request, dst any) e
 		return fmt.Errorf(
 			"decode json: %v: %w",
 			err,
-			core_errors.ErrInvalidArgument,
+			errs.ErrInvalidArgument,
 		)
 	case errors.Is(err, json_decoder.ErrEntityToLarge):
 		return fmt.Errorf(
 			"decode json: %v: %w",
 			err,
-			core_errors.ErrEntityToLarge,
+			errs.ErrEntityToLarge,
 		)
 	default:
 		panic(fmt.Sprintf("unexpected decode json: %v", err))
@@ -36,7 +36,7 @@ func DecodeAndValidateRequest(w http.ResponseWriter, r *http.Request, dst any) e
 		return fmt.Errorf(
 			"request validation: %v: %w",
 			err,
-			core_errors.ErrInvalidArgument,
+			errs.ErrInvalidArgument,
 		)
 	}
 

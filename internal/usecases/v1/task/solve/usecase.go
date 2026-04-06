@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/google/uuid"
 )
@@ -20,7 +21,7 @@ type Redis interface {
 
 type Postgres interface {
 	GetTaskByIDAndUserID(ctx context.Context, id, userID uuid.UUID) (domain.Task, error)
-	PublishEvent(ctx context.Context, event domain.Event) error
+	PublishEvent(ctx context.Context, event domain.Event) (domain.Event, error)
 }
 
 type usecase struct {
@@ -42,7 +43,7 @@ func (u *usecase) SolveTask(ctx context.Context, in Input) error {
 	log := logger.FromContext(ctx)
 
 	if err := in.Validate(); err != nil {
-		return domain.ErrInputValidation
+		return fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
 	ok, err := u.redis.TryLock(ctx, in.IdempotencyKey, 3*time.Minute)
@@ -85,7 +86,7 @@ func (u *usecase) SolveTask(ctx context.Context, in Input) error {
 		return fmt.Errorf("create solve task event: %w", err)
 	}
 
-	err = u.postgres.PublishEvent(ctx, event)
+	_, err = u.postgres.PublishEvent(ctx, event)
 	if err != nil {
 		return fmt.Errorf("publish event in postgres: %w", err)
 	}

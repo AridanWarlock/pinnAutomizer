@@ -2,15 +2,15 @@ package user_sessions
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 func (r *Repository) GetUserSessionById(ctx context.Context, id uuid.UUID) (domain.UserSession, error) {
@@ -20,10 +20,14 @@ func (r *Repository) GetUserSessionById(ctx context.Context, id uuid.UUID) (doma
 
 	var row UserSessionRaw
 	if err := r.pool.Getx(ctx, &row, q); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.UserSession{}, pg_errors.ErrNotFound
+		if pgerr.IsNotFound(err) {
+			return domain.UserSession{}, fmt.Errorf(
+				"session with id=%v: %w",
+				id,
+				errs.ErrNotFound,
+			)
 		}
-		return domain.UserSession{}, err
+		return domain.UserSession{}, pgerr.ScanErr(err)
 	}
 
 	return ToModel(row), nil

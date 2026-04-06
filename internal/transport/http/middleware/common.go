@@ -1,7 +1,6 @@
 package http_middleware
 
 import (
-	"context"
 	"net/http"
 	"time"
 
@@ -43,7 +42,7 @@ func Logger(log zerolog.Logger) Middleware {
 				Str("path", r.URL.Path).
 				Logger()
 
-			ctx := context.WithValue(r.Context(), logger.ContextKey, log)
+			ctx := logger.WithContext(r.Context(), log)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/tx"
 )
 
@@ -37,7 +38,7 @@ func New(
 
 func (u *usecase) Register(ctx context.Context, in Input) (Output, error) {
 	if err := in.Validate(); err != nil {
-		return Output{}, domain.ErrInputValidation
+		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
 	passwordHash, err := u.passwordHasher.HashPassword(in.Password)

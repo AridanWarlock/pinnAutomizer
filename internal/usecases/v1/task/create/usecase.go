@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/tx"
 )
@@ -14,7 +15,7 @@ import (
 type Postgres interface {
 	CreateTask(ctx context.Context, task domain.Task) (domain.Task, error)
 	GetEquationByType(ctx context.Context, equationType string) (domain.Equation, error)
-	PublishEvent(ctx context.Context, event domain.Event) error
+	PublishEvent(ctx context.Context, event domain.Event) (domain.Event, error)
 
 	tx.Wrapper
 }
@@ -45,7 +46,7 @@ func (u *usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 	log := logger.FromContext(ctx)
 
 	if err := in.Validate(); err != nil {
-		return Output{}, domain.ErrInputValidation
+		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
 	ok, err := u.redis.TryLock(ctx, in.IdempotencyKey, 3*time.Minute)
@@ -128,7 +129,7 @@ func (u *usecase) createAndPublishTask(
 			return fmt.Errorf("create task train event in postgres: %w", err)
 		}
 
-		err = u.postgres.PublishEvent(ctx, event)
+		_, err = u.postgres.PublishEvent(ctx, event)
 		if err != nil {
 			return fmt.Errorf("publish event in postgres: %w", err)
 		}

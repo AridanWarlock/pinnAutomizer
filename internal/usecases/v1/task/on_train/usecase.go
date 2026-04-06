@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/google/uuid"
 )
@@ -40,7 +41,7 @@ func (u *usecase) UpdateTaskOnTrain(ctx context.Context, in Input) error {
 	log := logger.FromContext(ctx)
 
 	if err := in.Validate(); err != nil {
-		return domain.ErrInputValidation
+		return fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
 	ok, err := u.redis.TryLock(ctx, in.IdempotencyKey, 3*time.Minute)

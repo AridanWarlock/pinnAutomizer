@@ -2,16 +2,15 @@ package tasks
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
-
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
 )
 
 type TaskStatus string
 
 func (s *TaskStatus) Scan(value any) error {
 	if value == nil {
-		return pg_errors.ErrNilScanValue
+		return errors.New("scan nil value")
 	}
 
 	switch v := value.(type) {

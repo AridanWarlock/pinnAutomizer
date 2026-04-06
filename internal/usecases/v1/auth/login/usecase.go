@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/google/uuid"
 )
 
@@ -48,13 +50,15 @@ func New(
 }
 
 func (u *usecase) Login(ctx context.Context, in Input) (Output, error) {
+	log := logger.FromContext(ctx)
 	if err := in.Validate(); err != nil {
-		return Output{}, domain.ErrInputValidation
+		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
 	user, err := u.getValidUser(ctx, in)
 	if err != nil {
-		return Output{}, fmt.Errorf("getting valid user: %w", err)
+		log.Info().Err(err).Msg("getting and validate user")
+		return Output{}, errs.ErrInvalidCredentials
 	}
 
 	roles, err := u.postgres.GetRolesByUserID(ctx, user.ID)

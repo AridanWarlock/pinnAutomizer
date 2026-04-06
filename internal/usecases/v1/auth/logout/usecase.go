@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/google/uuid"
 )
 
@@ -26,7 +26,7 @@ func New(
 
 func (u *usecase) Logout(ctx context.Context, in Input) error {
 	if err := in.Validate(); err != nil {
-		return domain.ErrInputValidation
+		return fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
 	if err := u.postgres.Logout(ctx, in.ID); err != nil {

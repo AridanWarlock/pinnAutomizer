@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/google/uuid"
 )
 
@@ -39,7 +40,7 @@ func New(
 
 func (u *usecase) Refresh(ctx context.Context, in Input) (Output, error) {
 	if err := in.Validate(); err != nil {
-		return Output{}, domain.ErrInputValidation
+		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
 	sessionID, tokenSha256, err := parseRefreshTokenFromString(in.RefreshTokenString)

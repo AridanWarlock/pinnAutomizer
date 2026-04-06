@@ -1,10 +1,14 @@
 package password_hasher
 
 import (
+	"errors"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
 const hashingCost = 12
+
+var ErrInvalidPassword = errors.New("invalid password")
 
 type Hasher struct {
 }
@@ -23,5 +27,8 @@ func (h *Hasher) HashPassword(password string) (string, error) {
 }
 
 func (h *Hasher) CompareHashAndPassword(hashedPassword, password string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+		return ErrInvalidPassword
+	}
+	return nil
 }

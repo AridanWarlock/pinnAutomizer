@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
@@ -31,7 +32,7 @@ func New(
 
 func (u *usecase) GetTasks(ctx context.Context, in Input) (Output, error) {
 	if err := in.Validate(); err != nil {
-		return Output{}, domain.ErrInputValidation
+		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
 	tasks, err := u.postgres.GetTasksByIDs(ctx, in.IDs, in.UserID)

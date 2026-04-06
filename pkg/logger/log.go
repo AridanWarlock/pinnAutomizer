@@ -11,10 +11,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type ctxKey struct{}
-
-var ContextKey = ctxKey{}
-
 const (
 	envLocal = "local"
 	envDev   = "dev"
@@ -23,8 +19,14 @@ const (
 	LatencyTimeMeasurement = time.Millisecond
 )
 
+type ctxKey struct{}
+
+func WithContext(ctx context.Context, log zerolog.Logger) context.Context {
+	return context.WithValue(ctx, ctxKey{}, log)
+}
+
 func FromContext(ctx context.Context) zerolog.Logger {
-	log, ok := ctx.Value(ContextKey).(zerolog.Logger)
+	log, ok := ctx.Value(ctxKey{}).(zerolog.Logger)
 	if !ok {
 		panic("no logger in context")
 	}

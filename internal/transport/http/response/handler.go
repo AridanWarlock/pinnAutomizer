@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/errors"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/errors_utils"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/rs/zerolog"
 )
 
@@ -44,23 +43,27 @@ func (h *Handler) ErrorResponse(err error, msg string) {
 	errors.Join()
 
 	switch {
-	case errors.Is(err, core_errors.ErrAuthorizationFailed):
+	case errs.OneOf(
+		err,
+		errs.ErrAuthorizationFailed,
+		errs.ErrInvalidCredentials,
+	):
 		statusCode = http.StatusUnauthorized
 		log = h.log.Debug()
 
-	case errors_utils.OneOf(
+	case errs.OneOf(
 		err,
-		core_errors.ErrInvalidArgument,
-		core_errors.ErrEntityToLarge,
+		errs.ErrInvalidArgument,
+		errs.ErrEntityToLarge,
 	):
 		statusCode = http.StatusBadRequest
 		log = h.log.Warn()
 
-	case errors.Is(err, core_errors.ErrNotFound):
+	case errors.Is(err, errs.ErrNotFound):
 		statusCode = http.StatusNotFound
 		log = h.log.Debug()
 
-	case errors.Is(err, core_errors.ErrConflict):
+	case errors.Is(err, errs.ErrConflict):
 		statusCode = http.StatusConflict
 		log = h.log.Warn()
 
