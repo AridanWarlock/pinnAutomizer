@@ -1,4 +1,4 @@
-package core_http_middleware
+package http_middleware
 
 import (
 	"net/http"

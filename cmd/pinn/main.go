@@ -11,18 +11,18 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis"
 	"github.com/AridanWarlock/pinnAutomizer/internal/outbox"
-	core_http_middleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
-	core_http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
-	auth_login "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/login"
-	auth_logout "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/logout"
-	auth_me "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/me"
-	auth_refresh "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/refresh"
-	auth_register "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/register"
-	tasks_after_train "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/after_train"
-	tasks_create "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/create"
-	tasks_get "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/get"
-	tasks_on_train "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/on_train"
-	tasks_solve "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/solve"
+	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
+	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/login"
+	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/logout"
+	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/me"
+	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/refresh"
+	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/register"
+	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/after_train"
+	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/create"
+	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/get"
+	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/on_train"
+	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/solve"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/auth/jwt/access_token"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/auth/refresh_token"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
@@ -136,7 +136,7 @@ func AppRun(
 	tasksGetHandler := tasks_get.NewHttpHandler(tasksGetUsecase)
 	tasksSolveHandler := tasks_solve.NewHttpHandler(tasksSolveUsecase)
 
-	apiV1Router := core_http_server.NewApiVersionRouter(core_http_server.ApiVersion1)
+	apiV1Router := http_server.NewApiVersionRouter(http_server.ApiVersion1)
 	apiV1Router.RegisterHandlers(
 		//auth
 		authLoginHandler,
@@ -150,15 +150,15 @@ func AppRun(
 		tasksSolveHandler,
 	)
 
-	httpServer := core_http_server.New(
+	httpServer := http_server.New(
 		cfg.HTTP,
 		log,
-		core_http_middleware.NewChiCORS(core_http_middleware.DefaultCORSConfig()),
-		core_http_middleware.RequestID(),
-		core_http_middleware.Logger(log),
-		core_http_middleware.Recover(),
-		core_http_middleware.TraceID(),
-		core_http_middleware.Authentication(accessTokenGenerator),
+		http_middleware.NewChiCORS(http_middleware.DefaultCORSConfig()),
+		http_middleware.RequestID(),
+		http_middleware.Logger(log),
+		http_middleware.Recover(),
+		http_middleware.TraceID(),
+		http_middleware.Authentication(accessTokenGenerator),
 	)
 	httpServer.RegisterApiRouters(apiV1Router)
 

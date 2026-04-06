@@ -1,4 +1,4 @@
-package core_http_response
+package http_response
 
 import (
 	"encoding/json"
@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	core_errors "github.com/AridanWarlock/pinnAutomizer/internal/errors"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errors"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errors_utils"
 	"github.com/rs/zerolog"
 )
 
@@ -40,13 +41,18 @@ func (h *Handler) ErrorResponse(err error, msg string) {
 		statusCode int
 		log        *zerolog.Event
 	)
+	errors.Join()
 
 	switch {
 	case errors.Is(err, core_errors.ErrAuthorizationFailed):
 		statusCode = http.StatusUnauthorized
 		log = h.log.Debug()
 
-	case errors.Is(err, core_errors.ErrInvalidArgument):
+	case errors_utils.OneOf(
+		err,
+		core_errors.ErrInvalidArgument,
+		core_errors.ErrEntityToLarge,
+	):
 		statusCode = http.StatusBadRequest
 		log = h.log.Warn()
 

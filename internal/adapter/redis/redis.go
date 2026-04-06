@@ -35,6 +35,7 @@ func New(cfg Config) (*Client, error) {
 
 	_, err := client.Ping(ctx).Result()
 	if err != nil {
+		_ = client.Close()
 		return nil, fmt.Errorf("ping redis: %w", err)
 	}
 

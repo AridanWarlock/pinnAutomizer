@@ -1,4 +1,4 @@
-package core_http_middleware
+package http_middleware
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	core_errors "github.com/AridanWarlock/pinnAutomizer/internal/errors"
-	core_http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errors"
+	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
@@ -43,7 +43,7 @@ func Authentication(tokenParser TokenParser) Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 			log := logger.FromContext(ctx)
-			rh := core_http_response.NewHandler(w, log)
+			rh := http_response.NewHandler(w, log)
 
 			if isPublicURL(r.URL.Path) {
 				next.ServeHTTP(w, r)

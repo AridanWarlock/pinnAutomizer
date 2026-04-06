@@ -1,4 +1,4 @@
-package core_http_server
+package http_server
 
 import (
 	"context"
@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"net/http"
 
-	core_http_middleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
+	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
 	"github.com/rs/zerolog"
 )
 
 type Server struct {
 	mux         *http.ServeMux
-	middlewares []core_http_middleware.Middleware
+	middlewares []http_middleware.Middleware
 
 	cfg Config
 	log zerolog.Logger
@@ -21,7 +21,7 @@ type Server struct {
 func New(
 	cfg Config,
 	log zerolog.Logger,
-	middlewares ...core_http_middleware.Middleware,
+	middlewares ...http_middleware.Middleware,
 ) *Server {
 	return &Server{
 		mux:         http.NewServeMux(),
@@ -41,7 +41,7 @@ func (s *Server) RegisterApiRouters(routers ...*ApiVersionRouter) {
 }
 
 func (s *Server) Run(ctx context.Context) error {
-	mux := core_http_middleware.ChainMiddleware(s.mux, s.middlewares...)
+	mux := http_middleware.ChainMiddleware(s.mux, s.middlewares...)
 
 	server := &http.Server{
 		Addr:         s.cfg.Addr,

@@ -4,9 +4,9 @@ import (
 	"encoding/hex"
 	"net/http"
 
-	core_http_request "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
-	core_http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
-	core_http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
+	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
@@ -33,8 +33,8 @@ func NewHttpHandler(usecase Usecase) *HttpHandler {
 	}
 }
 
-func (h *HttpHandler) Route() core_http_server.Route {
-	return core_http_server.Route{
+func (h *HttpHandler) Route() http_server.Route {
+	return http_server.Route{
 		Method:  http.MethodPost,
 		Path:    "/auth/login",
 		Handler: h.Login,
@@ -44,10 +44,10 @@ func (h *HttpHandler) Route() core_http_server.Route {
 func (h *HttpHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	rh := core_http_response.NewHandler(w, log)
+	rh := http_response.NewHandler(w, log)
 
 	var req Request
-	if err := core_http_request.DecodeAndValidateRequest(r, &req); err != nil {
+	if err := http_request.DecodeAndValidateRequest(w, r, &req); err != nil {
 		rh.ErrorResponse(err, "failed to decode and validate HTTP request")
 		return
 	}

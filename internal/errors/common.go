@@ -7,4 +7,5 @@ var (
 	ErrInvalidArgument     = errors.New("invalid argument")
 	ErrConflict            = errors.New("conflict")
 	ErrAuthorizationFailed = errors.New("authorization failed")
+	ErrEntityToLarge       = errors.New("entity to large")
 )

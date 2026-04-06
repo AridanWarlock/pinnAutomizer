@@ -1,11 +1,11 @@
-package core_http_middleware
+package http_middleware
 
 import (
 	"context"
 	"net/http"
 	"time"
 
-	core_http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -39,7 +39,8 @@ func Logger(log zerolog.Logger) Middleware {
 
 			log = log.With().
 				Str("request_id", requestID).
-				Str("url", r.URL.String()).
+				Str("method", r.Method).
+				Str("path", r.URL.Path).
 				Logger()
 
 			ctx := context.WithValue(r.Context(), logger.ContextKey, log)
@@ -52,7 +53,7 @@ func Recover() Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log := logger.FromContext(r.Context())
-			handler := core_http_response.NewHandler(w, log)
+			handler := http_response.NewHandler(w, log)
 
 			defer func() {
 				if p := recover(); p != nil {
@@ -69,7 +70,7 @@ func TraceID() Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log := logger.FromContext(r.Context())
-			rw := core_http_response.NewResponseWriter(w)
+			rw := http_response.NewResponseWriter(w)
 
 			log.Debug().
 				Msg(">>> incoming HTTP request")

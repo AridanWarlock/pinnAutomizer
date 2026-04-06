@@ -1,4 +1,4 @@
-package core_http_server
+package http_server
 
 import "time"
 
