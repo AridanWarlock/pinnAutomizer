@@ -26,7 +26,7 @@ func (r *Repository) Login(ctx context.Context, session domain.UserSession) erro
 
 	tag, err := r.pool.Execx(ctx, q)
 	if err != nil {
-		return pgerr.ScanErr(err)
+		return pgerr.ExecErr(err)
 	}
 	if tag.RowsAffected() != 1 {
 		log.Info().Msg("postgres: conflict on insert session")

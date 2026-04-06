@@ -19,7 +19,7 @@ func (r *Repository) Logout(ctx context.Context, sessionId uuid.UUID) error {
 
 	tag, err := r.pool.Execx(ctx, q)
 	if err != nil {
-		return pgerr.ScanErr(err)
+		return pgerr.ExecErr(err)
 	}
 	if tag.RowsAffected() != 1 {
 		return fmt.Errorf(

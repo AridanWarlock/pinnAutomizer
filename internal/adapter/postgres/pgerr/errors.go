@@ -12,5 +12,9 @@ func IsNotFound(err error) bool {
 }
 
 func ScanErr(err error) error {
-	return fmt.Errorf("scan error: %w", err)
+	return fmt.Errorf("scan: %w", err)
+}
+
+func ExecErr(err error) error {
+	return fmt.Errorf("exec query: %w", err)
 }
