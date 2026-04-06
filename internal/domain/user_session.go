@@ -1,8 +1,9 @@
 package domain
 
 import (
-	"pinnAutomizer/pkg/validate"
 	"time"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 
 	"github.com/google/uuid"
 )

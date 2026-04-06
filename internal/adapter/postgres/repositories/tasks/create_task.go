@@ -2,9 +2,10 @@ package tasks
 
 import (
 	"context"
-	. "pinnAutomizer/internal/adapter/postgres/schema"
-	"pinnAutomizer/internal/domain"
 	"strings"
+
+	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 )
 
 func (r *Repository) CreateTask(ctx context.Context, task domain.Task) (domain.Task, error) {

@@ -2,9 +2,10 @@ package users
 
 import (
 	"context"
-	. "pinnAutomizer/internal/adapter/postgres/schema"
-	"pinnAutomizer/internal/domain"
 	"strings"
+
+	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 )
 
 func (r *Repository) CreateUser(ctx context.Context, user domain.User) (domain.User, error) {

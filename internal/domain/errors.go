@@ -5,6 +5,8 @@ import "errors"
 var (
 	ErrIdempotencyKeyNotFound = errors.New("idempotency key not found")
 	ErrOperationInProgress    = errors.New("operation in progress")
+	ErrRedisTryLock           = errors.New("redis try lock")
+	ErrMultipleRequestJsons   = errors.New("multiple request jsons")
 )
 
 var (

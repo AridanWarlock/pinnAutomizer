@@ -2,8 +2,9 @@ package events
 
 import (
 	"context"
-	. "pinnAutomizer/internal/adapter/postgres/schema"
-	"pinnAutomizer/internal/domain"
+
+	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 )
 
 func (r *Repository) PublishEvent(ctx context.Context, event domain.Event) error {

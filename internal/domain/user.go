@@ -2,7 +2,8 @@ package domain
 
 import (
 	"fmt"
-	"pinnAutomizer/pkg/validate"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 
 	"github.com/google/uuid"
 )

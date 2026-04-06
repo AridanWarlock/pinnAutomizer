@@ -2,13 +2,14 @@ package events
 
 import (
 	"context"
-	. "pinnAutomizer/internal/adapter/postgres/pg_errors"
-	. "pinnAutomizer/internal/adapter/postgres/schema"
-	"pinnAutomizer/internal/domain"
+
+	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
+	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 )
 
 func (r *Repository) GetAvailableEvents(ctx context.Context, batchSize int) ([]domain.Event, error) {
-	if batchSize < 0 || batchSize > 1000 {
+	if batchSize < 0 || batchSize > 100 {
 		return nil, ErrInvalidBatchSize
 	}
 

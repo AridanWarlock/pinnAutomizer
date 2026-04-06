@@ -1,0 +1,104 @@
+package tasks_get
+
+import (
+	"context"
+	"net/http"
+	"time"
+
+	core_http "github.com/AridanWarlock/pinnAutomizer/internal/transport/http"
+	core_http_request "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
+	core_http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	core_http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/google/uuid"
+)
+
+type Request struct {
+	IDs []uuid.UUID `json:"ids"`
+}
+
+type taskDto struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+
+	Status    string         `json:"status"`
+	Constants map[string]any `json:"constants"`
+
+	EquationType string `json:"equation_type"`
+
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type Response struct {
+	Tasks []taskDto `json:"tasks"`
+}
+
+type Service interface {
+	GetTasks(ctx context.Context, in Input) (Output, error)
+}
+
+type HttpHandler struct {
+	service Service
+}
+
+func NewHttpHandler(service Service) *HttpHandler {
+	return &HttpHandler{
+		service: service,
+	}
+}
+
+func (h *HttpHandler) Route() core_http_server.Route {
+	return core_http_server.Route{
+		Method:  http.MethodGet,
+		Path:    "/tasks",
+		Handler: h.GetTasks,
+	}
+}
+
+func (h *HttpHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	log := logger.FromContext(ctx)
+	userClaims := core_http.ClaimsFromContext(ctx)
+	rh := core_http_response.NewHandler(w, log)
+
+	var req Request
+	if err := core_http_request.DecodeAndValidateRequest(r, &req); err != nil {
+		rh.ErrorResponse(err, "failed to decode and validate HTTP request")
+		return
+	}
+
+	in := Input{
+		IDs:    req.IDs,
+		UserID: userClaims.UserID,
+	}
+
+	out, err := h.service.GetTasks(ctx, in)
+	if err != nil {
+		rh.ErrorResponse(err, "failed to get tasks info")
+		return
+	}
+
+	tasks := out.TasksToEquation
+	taskModels := make([]taskDto, 0, len(tasks))
+
+	for task, equation := range tasks {
+		taskModel := taskDto{
+			ID:          task.ID,
+			Name:        task.Name,
+			Description: task.Description,
+			Status:      string(task.Status),
+
+			Constants:    task.Constants,
+			EquationType: equation.Type,
+			CreatedAt:    task.CreatedAt,
+		}
+
+		taskModels = append(taskModels, taskModel)
+	}
+
+	response := Response{
+		Tasks: taskModels,
+	}
+	rh.JsonResponse(response, http.StatusOK)
+}

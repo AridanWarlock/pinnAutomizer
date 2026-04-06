@@ -2,10 +2,11 @@ package users_roles
 
 import (
 	"context"
-	. "pinnAutomizer/internal/adapter/postgres/pg_errors"
-	. "pinnAutomizer/internal/adapter/postgres/schema"
-	"pinnAutomizer/internal/domain"
 	"strings"
+
+	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
+	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 )
 
 func (r *Repository) CreateUsersRolesBatch(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error) {

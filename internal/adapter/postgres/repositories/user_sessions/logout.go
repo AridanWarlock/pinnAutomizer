@@ -2,8 +2,9 @@ package user_sessions
 
 import (
 	"context"
-	"pinnAutomizer/internal/adapter/postgres/pg_errors"
-	. "pinnAutomizer/internal/adapter/postgres/schema"
+
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
+	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"

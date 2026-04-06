@@ -1,7 +1,7 @@
 package equations
 
 import (
-	"pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 
 	"github.com/google/uuid"
 )

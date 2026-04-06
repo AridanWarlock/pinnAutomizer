@@ -1,15 +1,13 @@
 package config
 
 import (
-	"fmt"
-	"pinnAutomizer/internal/adapter/kafka_produce"
-	"pinnAutomizer/internal/adapter/postgres"
-	"pinnAutomizer/internal/adapter/redis"
-	"pinnAutomizer/pkg/auth/jwt/access_token"
-	"pinnAutomizer/pkg/auth/refresh_token"
-	"pinnAutomizer/pkg/httpserver"
-	"pinnAutomizer/pkg/log"
-
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafka_produce"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis"
+	core_http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/auth/jwt/access_token"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/auth/refresh_token"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
@@ -19,8 +17,8 @@ type App struct {
 
 type Config struct {
 	App                   App
-	HTTP                  httpserver.Config
-	Log                   log.Config
+	HTTP                  core_http_server.Config
+	Log                   logger.Config
 	Postgres              postgres.Config
 	Redis                 redis.Config
 	AccessTokenGenerator  access_token.Config
@@ -34,8 +32,6 @@ type Config struct {
 func InitConfig() (Config, error) {
 	c := Config{}
 	err := cleanenv.ReadEnv(&c)
-
-	fmt.Println(c)
 
 	return c, err
 }

@@ -3,11 +3,14 @@ export
 
 export PROJECT_ROOT=$(shell pwd)
 
+ps:
+	@docker ps
+
 env-up:
-	@docker compose up -d pinn-postgres
+	@docker compose up -d pinn-postgres redis
 
 env-down:
-	@docker compose down pinn-postgres
+	@docker compose down pinn-postgres redis
 
 env-cleanup:
 	@read -p "Очистить все volume файлы окружения? Опасность утери данных. [y/n]: " ans; \
@@ -15,8 +18,8 @@ env-cleanup:
   	  echo "Очистка окружения отменена"; \
   	  exit 0; \
   	fi; \
-	docker compose down pinn-postgres && \
-	rm -rf out/pgdata && \
+	docker compose down pinn-postgres redis && \
+	rm -rf out/pgdata out/redis_data && \
 	echo "Файлы окружения очищены"
 
 env-port-forward:
@@ -37,6 +40,12 @@ goose-create:
 
 goose-up:
 	@docker compose run --rm pinn-postgres-goose
+
+pinnapp-local-run:
+	@docker compose up --build pinn-backend
+
+pinnapp-local-shutdown:
+	@docker compose down pinn-backend
 
 pinnapp-deploy:
 	@docker compose up -d --build pinn-backend

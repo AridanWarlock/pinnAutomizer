@@ -3,35 +3,31 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/signal"
-	"pinnAutomizer/config"
-	"pinnAutomizer/internal/adapter/kafka_consumer/at_least_once"
-	"pinnAutomizer/internal/adapter/kafka_produce"
-	postgresAdapter "pinnAutomizer/internal/adapter/postgres"
-	"pinnAutomizer/internal/adapter/redis"
-	"pinnAutomizer/internal/controller/http_v1"
-	"pinnAutomizer/internal/middleware/auth"
-	"pinnAutomizer/internal/outbox"
-	"pinnAutomizer/internal/usecases/auth/login"
-	"pinnAutomizer/internal/usecases/auth/logout"
-	"pinnAutomizer/internal/usecases/auth/me"
-	"pinnAutomizer/internal/usecases/auth/refresh"
-	"pinnAutomizer/internal/usecases/auth/register"
-	"pinnAutomizer/internal/usecases/task/create_task"
-	"pinnAutomizer/internal/usecases/task/get_tasks"
-	"pinnAutomizer/internal/usecases/task/solve_task"
-	"pinnAutomizer/internal/usecases/task/update_task_status_after_train"
-	"pinnAutomizer/internal/usecases/task/update_task_status_on_train"
-	"pinnAutomizer/pkg/auth/jwt/access_token"
-	"pinnAutomizer/pkg/auth/refresh_token"
-	"pinnAutomizer/pkg/httpserver"
-	"pinnAutomizer/pkg/log"
-	"pinnAutomizer/pkg/password_hasher"
 	"syscall"
 
+	"github.com/AridanWarlock/pinnAutomizer/config"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafka_produce"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis"
+	"github.com/AridanWarlock/pinnAutomizer/internal/outbox"
+	core_http_middleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
+	core_http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	auth_login "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/login"
+	auth_logout "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/logout"
+	auth_me "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/me"
+	auth_refresh "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/refresh"
+	auth_register "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/register"
+	tasks_after_train "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/after_train"
+	tasks_create "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/create"
+	tasks_get "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/get"
+	tasks_on_train "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/on_train"
+	tasks_solve "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/solve"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/auth/jwt/access_token"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/auth/refresh_token"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/password_hasher"
 	"github.com/rs/zerolog"
-	"github.com/segmentio/kafka-go"
 )
 
 // @title 		PINN Automizer App
@@ -44,121 +40,127 @@ func main() {
 		panic(err)
 	}
 
-	logger, err := log.New(cfg.App.Env, cfg.Log)
+	log, closeLogger, err := logger.New(cfg.Log)
 	if err != nil {
 		panic(err)
 	}
-	logger.Info().Msg("zerolog logger configured")
+	defer closeLogger()
+	log.Info().Msg("logger configured")
 
-	err = AppRun(context.Background(), cfg, logger)
+	err = AppRun(cfg, log)
 	if err != nil {
 		panic(err)
 	}
 }
 
 func AppRun(
-	ctx context.Context,
-	c config.Config,
+	cfg config.Config,
 	log zerolog.Logger,
 ) error {
-	postgres, err := postgresAdapter.New(ctx, c.Postgres, log)
+	ctx, cancel := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT, syscall.SIGTERM,
+	)
+	defer cancel()
+
+	//adapters
+	//postgres
+	postgresAdapter, err := postgres.New(cfg.Postgres)
 	if err != nil {
-		return fmt.Errorf("db connect error, %w", err)
+		return fmt.Errorf("postgres connect: %w", err)
 	}
-	defer postgres.Close()
+	defer func() {
+		postgresAdapter.Close()
+		log.Info().Msg("postgres pool shutdown gracefully")
+	}()
 	log.Info().Msg("postgres connected")
-
-	redisAdapter := redis.New(c.Redis)
-	defer redisAdapter.Close()
-
-	kafkaProducer := kafka_produce.New(c.KafkaProducer, log)
-	defer kafkaProducer.Close()
+	//redis
+	redisAdapter, err := redis.New(cfg.Redis)
+	if err != nil {
+		return fmt.Errorf("redis connect: %w", err)
+	}
+	defer func() {
+		if err := redisAdapter.Close(); err != nil {
+			log.Error().Err(err).Msg("shutdown redis error")
+			return
+		}
+		log.Info().Msg("redis shutdown gracefully")
+	}()
+	//kafka producer
+	kafkaProducer := kafka_produce.New(cfg.KafkaProducer)
+	defer func() {
+		if err := kafkaProducer.Close(); err != nil {
+			log.Error().Err(err).Msg("kafka producer shutdown error")
+			return
+		}
+		log.Info().Msg("kafka producer shutdown gracefully")
+	}()
 	log.Info().Msg("kafka_produce connected")
-
-	kafkaConsumer := at_least_once.New(kafkaProducer, log)
-
-	writer := outbox.New(postgres, kafkaProducer, log)
-	defer writer.Close()
+	//outbox writer
+	writer := outbox.New(postgresAdapter, kafkaProducer, log)
+	defer func() {
+		writer.Close()
+		log.Info().Msg("outbox writer shutdown gracefully")
+	}()
 	log.Info().Msg("outbox worker started")
-
-	accessTokenGenerator := access_token.New(c.AccessTokenGenerator)
-	refreshTokenGenerator := refresh_token.New(c.RefreshTokenGenerator)
+	//access token generator
+	accessTokenGenerator := access_token.New(cfg.AccessTokenGenerator)
+	//refresh token generator
+	refreshTokenGenerator := refresh_token.New(cfg.RefreshTokenGenerator)
+	//password hasher
 	passwordHasher := password_hasher.New()
 
+	//usecases
 	//auth
-	login.New(postgres, accessTokenGenerator, refreshTokenGenerator, passwordHasher, log)
-	logout.New(postgres, log)
-	me.New(postgres, log)
-	register.New(postgres, passwordHasher, log)
-	refresh.New(postgres, accessTokenGenerator, log)
-
+	authLoginUsecase := auth_login.New(postgresAdapter, accessTokenGenerator, refreshTokenGenerator, passwordHasher)
+	authLogoutUsecase := auth_logout.New(postgresAdapter)
+	authMeUsecase := auth_me.New(postgresAdapter)
+	authRegisterUsecase := auth_register.New(postgresAdapter, passwordHasher)
+	authRefreshUsecase := auth_refresh.New(postgresAdapter, accessTokenGenerator)
 	//tasks
-	create_task.New(postgres, redisAdapter, log)
-	get_tasks.New(postgres, log)
-	solve_task.New(postgres, redisAdapter, log)
-	update_task_status_after_train.New(postgres, redisAdapter, log)
-	update_task_status_on_train.New(postgres, redisAdapter, log)
+	tasksCreateUsecase := tasks_create.New(postgresAdapter, redisAdapter)
+	tasksGetUsecase := tasks_get.New(postgresAdapter)
+	tasksSolveUsecase := tasks_solve.New(postgresAdapter, redisAdapter)
+	_ = tasks_after_train.New(postgresAdapter, redisAdapter)
+	_ = tasks_on_train.New(postgresAdapter, redisAdapter)
 
-	log.Info().Msg("usecases injected")
-
-	//kafka consumers
+	//http handlers
+	//auth
+	authLoginHandler := auth_login.NewHttpHandler(authLoginUsecase)
+	authLogoutHandler := auth_logout.NewHttpHandler(authLogoutUsecase)
+	authMeHandler := auth_me.NewHttpHandler(authMeUsecase)
+	authRegisterHandler := auth_register.NewHttpHandler(authRegisterUsecase)
+	authRefreshHandler := auth_refresh.NewHttpHandler(authRefreshUsecase)
 	//tasks
-	updateTaskStatusAfterTrainConsumer := update_task_status_after_train.NewConsumer(log)
-	updateTaskStatusOnTrainConsumer := update_task_status_on_train.NewConsumer(log)
+	tasksCreateHandler := tasks_create.NewHttpHandler(tasksCreateUsecase)
+	tasksGetHandler := tasks_get.NewHttpHandler(tasksGetUsecase)
+	tasksSolveHandler := tasks_solve.NewHttpHandler(tasksSolveUsecase)
 
-	kafkaConsumer.Run(ctx, "dev.tasks.solver.on-train.v1", updateTaskStatusOnTrainConsumer.HandleMessage)
-	kafkaConsumer.Run(ctx, "dev.tasks.solver.after-train.v1", updateTaskStatusAfterTrainConsumer.HandleMessage)
+	apiV1Router := core_http_server.NewApiVersionRouter(core_http_server.ApiVersion1)
+	apiV1Router.RegisterHandlers(
+		//auth
+		authLoginHandler,
+		authLogoutHandler,
+		authMeHandler,
+		authRegisterHandler,
+		authRefreshHandler,
+		//tasks
+		tasksCreateHandler,
+		tasksGetHandler,
+		tasksSolveHandler,
+	)
 
-	//middleware
-	authMiddleware := auth.NewMiddleware(accessTokenGenerator, log)
-	router := http_v1.Router(authMiddleware, log)
-	httpServer := httpserver.New(router, c.HTTP, log)
-	defer httpServer.Shutdown(ctx)
+	httpServer := core_http_server.New(
+		cfg.HTTP,
+		log,
+		core_http_middleware.NewChiCORS(core_http_middleware.DefaultCORSConfig()),
+		core_http_middleware.RequestID(),
+		core_http_middleware.Logger(log),
+		core_http_middleware.Recover(),
+		core_http_middleware.TraceID(),
+		core_http_middleware.Authentication(accessTokenGenerator),
+	)
+	httpServer.RegisterApiRouters(apiV1Router)
 
-	go func() {
-		log.Info().Msg("http server listening...")
-		if err := httpServer.ListenAndServer(); err != nil {
-			log.Error().Msg("server stopped")
-		}
-	}()
-
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-	<-sig
-
-	return nil
-}
-
-func newKafkaReader(topic string) *kafka.Reader {
-	return kafka.NewReader(kafka.ReaderConfig{
-		Brokers:                nil,
-		GroupID:                "",
-		GroupTopics:            nil,
-		Topic:                  topic,
-		Partition:              0,
-		Dialer:                 nil,
-		QueueCapacity:          0,
-		MinBytes:               0,
-		MaxBytes:               0,
-		MaxWait:                0,
-		ReadBatchTimeout:       0,
-		ReadLagInterval:        0,
-		GroupBalancers:         nil,
-		HeartbeatInterval:      0,
-		CommitInterval:         0,
-		PartitionWatchInterval: 0,
-		WatchPartitionChanges:  false,
-		SessionTimeout:         0,
-		RebalanceTimeout:       0,
-		JoinGroupBackoff:       0,
-		RetentionTime:          0,
-		StartOffset:            0,
-		ReadBackoffMin:         0,
-		ReadBackoffMax:         0,
-		Logger:                 nil,
-		ErrorLogger:            nil,
-		IsolationLevel:         0,
-		MaxAttempts:            0,
-		OffsetOutOfRangeError:  false,
-	})
+	return httpServer.Run(ctx)
 }

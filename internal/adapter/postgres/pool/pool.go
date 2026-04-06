@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/rs/zerolog"
 )
 
 type Sqlizer interface {
@@ -19,13 +20,13 @@ type Sqlizer interface {
 type Poolx struct {
 	*pgxpool.Pool
 
-	log zerolog.Logger
+	timeout time.Duration
 }
 
-func New(pool *pgxpool.Pool, log zerolog.Logger) Poolx {
+func New(pool *pgxpool.Pool, timeout time.Duration) Poolx {
 	return Poolx{
-		Pool: pool,
-		log:  log.With().Str("component", "poolx").Logger(),
+		Pool:    pool,
+		timeout: timeout,
 	}
 }
 
@@ -56,6 +57,9 @@ func toSqlErr(err error) error {
 }
 
 func (p *Poolx) Getx(ctx context.Context, dest interface{}, sqlizer Sqlizer) error {
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
 	query, args, err := sqlizer.ToSql()
 	if err != nil {
 		return toSqlErr(err)
@@ -65,6 +69,9 @@ func (p *Poolx) Getx(ctx context.Context, dest interface{}, sqlizer Sqlizer) err
 }
 
 func (p *Poolx) Selectx(ctx context.Context, dest interface{}, sqlizer Sqlizer) error {
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
 	query, args, err := sqlizer.ToSql()
 	if err != nil {
 		return toSqlErr(err)
@@ -74,6 +81,9 @@ func (p *Poolx) Selectx(ctx context.Context, dest interface{}, sqlizer Sqlizer) 
 }
 
 func (p *Poolx) Execx(ctx context.Context, sqlizer Sqlizer) (pgconn.CommandTag, error) {
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
 	query, args, err := sqlizer.ToSql()
 	if err != nil {
 		return pgconn.CommandTag{}, toSqlErr(err)
@@ -83,6 +93,9 @@ func (p *Poolx) Execx(ctx context.Context, sqlizer Sqlizer) (pgconn.CommandTag, 
 }
 
 func (p *Poolx) Wrap(ctx context.Context, fn func(context.Context) error) error {
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
 	tx, err := p.Pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -91,7 +104,8 @@ func (p *Poolx) Wrap(ctx context.Context, fn func(context.Context) error) error 
 	defer func() {
 		err := tx.Rollback(ctx)
 		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			p.log.Error().Err(err).Msg("poolx: tx.Roolback")
+			log := logger.FromContext(ctx)
+			log.Error().Err(err).Msg("poolx: tx.Roolback")
 		}
 	}()
 

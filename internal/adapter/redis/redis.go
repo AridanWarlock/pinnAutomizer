@@ -4,31 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"pinnAutomizer/internal/domain"
 	"time"
+
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 
 	"github.com/redis/go-redis/v9"
 )
-
-type Config struct {
-	Addr     string `env:"REDIS_ADDR" env-default:"localhost:6379"`
-	Password string `env:"REDIS_PASSWORD" env-default:""`
-	DB       int    `env:"REDIS_DB" env-default:"0"`
-
-	DialTimeout  time.Duration `env:"REDIS_DIAL_TIMEOUT" env-default:"5s"`
-	ReadTimeout  time.Duration `env:"REDIS_READ_TIMEOUT" env-default:"3s"`
-	WriteTimeout time.Duration `env:"REDIS_WRITE_TIMEOUT" env-default:"3s"`
-
-	PoolSize           int           `env:"REDIS_POOL_SIZE" env-default:"10"`
-	MinIdleConnections int           `env:"REDIS_MIN_IDLE_CONNECTIONS" env-default:"5"`
-	PoolTimeout        time.Duration `env:"REDIS_POOL_TIMEOUT" env-default:"4s"`
-}
 
 type Client struct {
 	client *redis.Client
 }
 
-func New(cfg Config) *Client {
+func New(cfg Config) (*Client, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     cfg.Addr,
 		Password: cfg.Password,
@@ -43,9 +30,17 @@ func New(cfg Config) *Client {
 		PoolTimeout:  cfg.PoolTimeout,
 	})
 
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err := client.Ping(ctx).Result()
+	if err != nil {
+		return nil, fmt.Errorf("ping redis: %w", err)
+	}
+
 	return &Client{
 		client: client,
-	}
+	}, nil
 }
 
 func (c *Client) Close() error {

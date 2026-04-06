@@ -3,22 +3,18 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"pinnAutomizer/internal/adapter/postgres/pool"
-	"pinnAutomizer/internal/adapter/postgres/repositories/equations"
-	"pinnAutomizer/internal/adapter/postgres/repositories/events"
-	"pinnAutomizer/internal/adapter/postgres/repositories/roles"
-	"pinnAutomizer/internal/adapter/postgres/repositories/tasks"
-	"pinnAutomizer/internal/adapter/postgres/repositories/user_sessions"
-	"pinnAutomizer/internal/adapter/postgres/repositories/users"
-	"pinnAutomizer/internal/adapter/postgres/repositories/users_roles"
+	"time"
 
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pool"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/repositories/equations"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/repositories/events"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/repositories/roles"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/repositories/tasks"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/repositories/user_sessions"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/repositories/users"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/repositories/users_roles"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/rs/zerolog"
 )
-
-type Config struct {
-	Addr string `env:"POSTGRES_URL" env-required:"true"`
-}
 
 type EquationRepository = *equations.Repository
 type EventsRepository = *events.Repository
@@ -40,19 +36,26 @@ type Repository struct {
 	UserSessionsRepository
 }
 
-func New(ctx context.Context, c Config, log zerolog.Logger) (*Repository, error) {
-	fmt.Println(c.Addr)
-	pgxPool, err := pgxpool.New(ctx, c.Addr)
+func New(cfg Config) (*Repository, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	config, err := pgxpool.ParseConfig(cfg.Addr)
+	if err != nil {
+		return nil, fmt.Errorf("parse pgxconfig: %w", err)
+	}
+
+	pgxPool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("pgxpool connect: %w", err)
 	}
 
 	err = pgxPool.Ping(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ping postgres: %w", err)
 	}
 
-	poolx := pool.New(pgxPool, log)
+	poolx := pool.New(pgxPool, cfg.Timeout)
 
 	return &Repository{
 		pool: poolx,

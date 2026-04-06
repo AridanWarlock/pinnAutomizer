@@ -1,7 +1,7 @@
 package roles
 
 import (
-	"pinnAutomizer/internal/adapter/postgres/pool"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pool"
 
 	"github.com/Masterminds/squirrel"
 )

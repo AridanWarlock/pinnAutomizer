@@ -2,8 +2,9 @@ package tasks
 
 import (
 	"database/sql"
-	"pinnAutomizer/internal/domain"
 	"time"
+
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 
 	"github.com/google/uuid"
 )

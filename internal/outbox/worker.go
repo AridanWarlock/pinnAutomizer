@@ -2,12 +2,14 @@ package outbox
 
 import (
 	"context"
-	"pinnAutomizer/internal/domain"
-	"pinnAutomizer/pkg/tx"
+	"fmt"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/tx"
 	"github.com/rs/zerolog"
+
+	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -64,7 +66,7 @@ func (w *Worker) ProcessEvents(ctx context.Context) {
 	err := w.postgres.Wrap(ctx, w.getAndPublishEvents)
 
 	if err != nil {
-		w.log.Error().Err(err).Msg("outbox worker: ProcessEvents")
+		w.log.Error().Err(err).Msg("process event error")
 		return
 	}
 }
@@ -72,8 +74,7 @@ func (w *Worker) ProcessEvents(ctx context.Context) {
 func (w *Worker) getAndPublishEvents(ctx context.Context) error {
 	events, err := w.postgres.GetAvailableEvents(ctx, BatchSize)
 	if err != nil {
-		w.log.Error().Err(err).Msg("outbox worker: postgres.GetAvailableEvents")
-		return err
+		return fmt.Errorf("getting available events from postgres: %w", err)
 	}
 
 	msgs := make([]kafka.Message, 0, len(events))
@@ -104,23 +105,16 @@ func (w *Worker) getAndPublishEvents(ctx context.Context) error {
 			}
 		}
 	default:
-		w.log.Error().Err(err).Msg("outbox worker: WriteMessages")
-		return err
+		return fmt.Errorf("write messages to kafka: %w", err)
 	}
 
-	err = w.postgres.DeleteEventsByIDs(ctx, deliveredEvents)
-	if err != nil {
-		w.log.Error().Err(err).Msg("outbox worker: postgres.DeleteEventsByIDs")
-		return err
+	if err = w.postgres.DeleteEventsByIDs(ctx, deliveredEvents); err != nil {
+		return fmt.Errorf("deleting sent events from postgres: %w", err)
 	}
 
 	return nil
 }
 
 func (w *Worker) Close() {
-	w.log.Info().Msg("outbox worker: closing")
-
 	w.stop()
-
-	w.log.Info().Msg("outbox worker: closed")
 }

@@ -3,7 +3,8 @@ package equations
 import (
 	"database/sql/driver"
 	"fmt"
-	"pinnAutomizer/internal/adapter/postgres/pg_errors"
+
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
 )
 
 type EquationType string

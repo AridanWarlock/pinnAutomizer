@@ -1,12 +1,13 @@
 package domain
 
 import (
-	"pinnAutomizer/pkg/validate"
 	"time"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
 
 type RefreshToken struct {
-	RandomBase64String string    `validate:"required,len=44" json:"random_base64_string"`
+	RandomBase64String string    `validate:"required,len=43" json:"random_base64_string"`
 	Sha256             []byte    `validate:"required,len=32" json:"token_hash"`
 	CreatedAt          time.Time `validate:"required" json:"created_at"`
 	ExpiresAt          time.Time `validate:"required,gtfield=CreatedAt" json:"expires_at"`

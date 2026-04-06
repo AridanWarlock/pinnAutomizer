@@ -3,8 +3,9 @@ package access_token
 import (
 	"errors"
 	"fmt"
-	"pinnAutomizer/internal/domain"
 	"time"
+
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"

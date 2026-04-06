@@ -2,8 +2,9 @@ package equations
 
 import (
 	"context"
-	. "pinnAutomizer/internal/adapter/postgres/schema"
-	"pinnAutomizer/internal/domain"
+
+	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 
 	sq "github.com/Masterminds/squirrel"
 )

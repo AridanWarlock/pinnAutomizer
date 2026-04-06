@@ -2,9 +2,10 @@ package user_sessions
 
 import (
 	"context"
-	"pinnAutomizer/internal/adapter/postgres/pg_errors"
-	. "pinnAutomizer/internal/adapter/postgres/schema"
-	"pinnAutomizer/internal/domain"
+
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
+	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 )
 
 func (r *Repository) Login(ctx context.Context, session domain.UserSession) error {

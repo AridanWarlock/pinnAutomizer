@@ -6,13 +6,15 @@ services:
     container_name: pinn-backend
     environment:
       - ENVIRONMENT=${ENVIRONMENT}
-      - HTTP_PORT=${HTTP_PORT}
+      - HTTP_ADDR=${HTTP_ADDR}
       - HTTP_TIMEOUT=${HTTP_TIMEOUT}
       - HTTP_IDLE_TIMEOUT=${HTTP_IDLE_TIMEOUT}
+      - HTTP_SHUTDOWN_TIMEOUT=${HTTP_SHUTDOWN_TIMEOUT}
+      - LOGGER_ENVIRONMENT=${LOGGER_ENVIRONMENT}
       - LOGGER_LEVEL=${LOGGER_LEVEL}
-      - LOGGER_PRETTY_CONSOLE=${LOGGER_PRETTY_CONSOLE}
       - LOGGER_FOLDER=/app/out/logs
-      - POSTGRES_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pinn-postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
+      - POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pinn-postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
+      - POSTGRES_TIMEOUT=${POSTGRES_TIMEOUT}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_TOKEN_TTL=${JWT_TOKEN_TTL}
       - REFRESH_TOKEN_TTL=${REFRESH_TOKEN_TTL}
@@ -22,6 +24,15 @@ services:
       - KAFKA_CONSUMER_AFTER_TRAIN_TOPIC=${KAFKA_CONSUMER_AFTER_TRAIN_TOPIC}
       - KAFKA_CONSUMER_ON_TRAIN_GROUP=${KAFKA_CONSUMER_ON_TRAIN_GROUP}
       - KAFKA_CONSUMER_AFTER_TRAIN_GROUP=${KAFKA_CONSUMER_AFTER_TRAIN_GROUP}
+      - REDIS_ADDR=redis:${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB}
+      - REDIS_DIAL_TIMEOUT=${REDIS_DIAL_TIMEOUT}
+      - REDIS_READ_TIMEOUT=${REDIS_READ_TIMEOUT}
+      - REDIS_WRITE_TIMEOUT=${REDIS_WRITE_TIMEOUT}
+      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE}
+      - REDIS_MIN_IDLE_CONNECTIONS=${REDIS_MIN_IDLE_CONNECTIONS}
+      - REDIS_POOL_TIMEOUT=${REDIS_POOL_TIMEOUT}
     volumes:
       - ${PROJECT_ROOT}/out/logs:/app/out/logs
     ports:
@@ -41,7 +52,6 @@ services:
 
   pinn-postgres-goose:
     image: kukymbr/goose-docker:3.27.0
-
     environment:
       - GOOSE_DRIVER=postgres
       - GOOSE_DBSTRING=host=pinn-postgres port=5432 user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB}
@@ -66,6 +76,13 @@ services:
         ENTRYPOINT ["swag"]
     volumes:
       - ${PROJECT_ROOT}:/code
+
+  redis:
+    image: redis:7-alpine
+    container_name: pinn-env-redis
+    volumes:
+      - ${PROJECT_ROOT}/out/redis_data:/redis/data
+    command: [ "redis-server", "--appendonly", "yes" ]
 #  kafka:
 #    image: apache/kafka:latest
 #    container_name: pinn-automizer-kafka

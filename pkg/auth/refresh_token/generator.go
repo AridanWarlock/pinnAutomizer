@@ -4,8 +4,9 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"pinnAutomizer/internal/domain"
 	"time"
+
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 )
 
 var DefaultEncoder = base64.RawURLEncoding

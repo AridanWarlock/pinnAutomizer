@@ -3,7 +3,8 @@ package events
 import (
 	"context"
 	"fmt"
-	. "pinnAutomizer/internal/adapter/postgres/schema"
+
+	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
