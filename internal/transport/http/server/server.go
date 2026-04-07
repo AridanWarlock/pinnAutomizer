@@ -1,4 +1,4 @@
-package http_server
+package httpServer
 
 import (
 	"context"
@@ -7,14 +7,14 @@ import (
 	"net/http"
 
 	"github.com/AridanWarlock/pinnAutomizer/docs"
-	http_middleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
+	httpMiddleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
 	"github.com/rs/zerolog"
-	httpSwagger "github.com/swaggo/http-swagger"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 type Server struct {
 	mux         *http.ServeMux
-	middlewares []http_middleware.Middleware
+	middlewares []httpMiddleware.Middleware
 
 	cfg Config
 	log zerolog.Logger
@@ -23,7 +23,7 @@ type Server struct {
 func New(
 	cfg Config,
 	log zerolog.Logger,
-	middlewares ...http_middleware.Middleware,
+	middlewares ...httpMiddleware.Middleware,
 ) *Server {
 	return &Server{
 		mux:         http.NewServeMux(),
@@ -53,12 +53,13 @@ func (s *Server) RegisterSwagger() {
 		"/swagger/",
 		httpSwagger.Handler(
 			httpSwagger.URL("/swagger/doc.json"),
+			httpSwagger.DefaultModelsExpandDepth(-1),
 		),
 	)
 }
 
 func (s *Server) Run(ctx context.Context) error {
-	mux := http_middleware.ChainMiddleware(s.mux, s.middlewares...)
+	mux := httpMiddleware.ChainMiddleware(s.mux, s.middlewares...)
 
 	server := &http.Server{
 		Addr:         s.cfg.Addr,

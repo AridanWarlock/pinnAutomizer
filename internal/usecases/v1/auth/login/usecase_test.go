@@ -1,11 +1,10 @@
-package auth_login
+package authLogin
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 
 	"github.com/golang-jwt/jwt/v5"

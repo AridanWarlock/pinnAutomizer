@@ -1,4 +1,4 @@
-package auth_register
+package authRegister
 
 import (
 	"context"

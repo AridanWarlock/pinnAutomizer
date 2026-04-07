@@ -1,10 +1,9 @@
-package auth_logout
+package authLogout
 
 import (
 	"context"
 	"testing"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 
 	"github.com/google/uuid"

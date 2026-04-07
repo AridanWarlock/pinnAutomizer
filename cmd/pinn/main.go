@@ -7,26 +7,26 @@ import (
 	"syscall"
 
 	"github.com/AridanWarlock/pinnAutomizer/config"
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafka_produce"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/auth/refreshToken"
+	jwtToken "github.com/AridanWarlock/pinnAutomizer/internal/adapter/jwt/token"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaProducer"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis"
 	"github.com/AridanWarlock/pinnAutomizer/internal/outbox"
-	http_middleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
-	http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
-	auth_login "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/login"
-	auth_logout "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/logout"
-	auth_me "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/me"
-	auth_refresh "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/refresh"
-	auth_register "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/register"
-	tasks_after_train "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/after_train"
-	tasks_create "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/create"
-	tasks_get "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/get"
-	tasks_on_train "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/on_train"
-	tasks_solve "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/solve"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/auth/jwt/access_token"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/auth/refresh_token"
+	httpMiddleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
+	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	authLogin "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/login"
+	authLogout "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/logout"
+	authMe "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/me"
+	authRefresh "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/refresh"
+	authRegister "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/register"
+	tasksAfterTrain "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/afterTrain"
+	tasksCreate "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/create"
+	tasksGet "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/get"
+	tasksOnTrain "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/onTrain"
+	tasksSolve "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/solve"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/password_hasher"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/passwordHasher"
 	"github.com/rs/zerolog"
 
 	_ "github.com/AridanWarlock/pinnAutomizer/docs"
@@ -65,8 +65,8 @@ func AppRun(
 	)
 	defer cancel()
 
-	//adapters
-	//postgres
+	// adapters
+	// postgres
 	postgresAdapter, err := postgres.New(cfg.Postgres)
 	if err != nil {
 		return fmt.Errorf("postgres connect: %w", err)
@@ -76,7 +76,7 @@ func AppRun(
 		log.Info().Msg("postgres pool shutdown gracefully")
 	}()
 	log.Info().Msg("postgres connected")
-	//redis
+	// redis
 	redisAdapter, err := redis.New(cfg.Redis)
 	if err != nil {
 		return fmt.Errorf("redis connect: %w", err)
@@ -88,81 +88,81 @@ func AppRun(
 		}
 		log.Info().Msg("redis shutdown gracefully")
 	}()
-	//kafka producer
-	kafkaProducer := kafka_produce.New(cfg.KafkaProducer)
+	// kafka producer
+	producer := kafkaProducer.New(cfg.KafkaProducer)
 	defer func() {
-		if err := kafkaProducer.Close(); err != nil {
+		if err := producer.Close(); err != nil {
 			log.Error().Err(err).Msg("kafka producer shutdown error")
 			return
 		}
 		log.Info().Msg("kafka producer shutdown gracefully")
 	}()
 	log.Info().Msg("kafka_produce connected")
-	//outbox writer
-	writer := outbox.New(postgresAdapter, kafkaProducer, log)
+	// outbox writer
+	writer := outbox.NewWorker(postgresAdapter, producer, log)
 	defer func() {
 		writer.Close()
 		log.Info().Msg("outbox writer shutdown gracefully")
 	}()
 	log.Info().Msg("outbox worker started")
-	//access token generator
-	accessTokenGenerator := access_token.New(cfg.AccessTokenGenerator)
-	//refresh token generator
-	refreshTokenGenerator := refresh_token.New(cfg.RefreshTokenGenerator)
-	//password hasher
-	passwordHasher := password_hasher.New()
+	// access token generator
+	accessTokenGenerator := jwtToken.NewGenerator(cfg.AccessTokenGenerator)
+	// refresh token generator
+	refreshTokenGenerator := refreshToken.NewGenerator(cfg.RefreshTokenGenerator)
+	// password hasher
+	hasher := passwordHasher.New()
 
-	//usecases
-	//auth
-	authLoginUsecase := auth_login.New(postgresAdapter, accessTokenGenerator, refreshTokenGenerator, passwordHasher)
-	authLogoutUsecase := auth_logout.New(postgresAdapter)
-	authMeUsecase := auth_me.New(postgresAdapter)
-	authRegisterUsecase := auth_register.New(postgresAdapter, passwordHasher)
-	authRefreshUsecase := auth_refresh.New(postgresAdapter, accessTokenGenerator)
-	//tasks
-	tasksCreateUsecase := tasks_create.New(postgresAdapter, redisAdapter)
-	tasksGetUsecase := tasks_get.New(postgresAdapter)
-	tasksSolveUsecase := tasks_solve.New(postgresAdapter, redisAdapter)
-	_ = tasks_after_train.New(postgresAdapter, redisAdapter)
-	_ = tasks_on_train.New(postgresAdapter, redisAdapter)
+	// usecases
+	// auth
+	authLoginUsecase := authLogin.New(postgresAdapter, accessTokenGenerator, refreshTokenGenerator, hasher)
+	authLogoutUsecase := authLogout.New(postgresAdapter)
+	authMeUsecase := authMe.New(postgresAdapter)
+	authRegisterUsecase := authRegister.New(postgresAdapter, hasher)
+	authRefreshUsecase := authRefresh.New(postgresAdapter, accessTokenGenerator)
+	// tasks
+	tasksCreateUsecase := tasksCreate.New(postgresAdapter, redisAdapter)
+	tasksGetUsecase := tasksGet.New(postgresAdapter)
+	tasksSolveUsecase := tasksSolve.New(postgresAdapter, redisAdapter)
+	_ = tasksAfterTrain.New(postgresAdapter, redisAdapter)
+	_ = tasksOnTrain.New(postgresAdapter, redisAdapter)
 
-	//http handlers
-	//auth
-	authLoginHandler := auth_login.NewHttpHandler(authLoginUsecase)
-	authLogoutHandler := auth_logout.NewHttpHandler(authLogoutUsecase)
-	authMeHandler := auth_me.NewHttpHandler(authMeUsecase)
-	authRegisterHandler := auth_register.NewHttpHandler(authRegisterUsecase)
-	authRefreshHandler := auth_refresh.NewHttpHandler(authRefreshUsecase)
-	//tasks
-	tasksCreateHandler := tasks_create.NewHttpHandler(tasksCreateUsecase)
-	tasksGetHandler := tasks_get.NewHttpHandler(tasksGetUsecase)
-	tasksSolveHandler := tasks_solve.NewHttpHandler(tasksSolveUsecase)
+	// http handlers
+	// auth
+	authLoginHandler := authLogin.NewHttpHandler(authLoginUsecase)
+	authLogoutHandler := authLogout.NewHttpHandler(authLogoutUsecase)
+	authMeHandler := authMe.NewHttpHandler(authMeUsecase)
+	authRegisterHandler := authRegister.NewHttpHandler(authRegisterUsecase)
+	authRefreshHandler := authRefresh.NewHttpHandler(authRefreshUsecase)
+	// tasks
+	tasksCreateHandler := tasksCreate.NewHttpHandler(tasksCreateUsecase)
+	tasksGetHandler := tasksGet.NewHttpHandler(tasksGetUsecase)
+	tasksSolveHandler := tasksSolve.NewHttpHandler(tasksSolveUsecase)
 
-	apiV1Router := http_server.NewApiVersionRouter(http_server.ApiVersion1)
+	apiV1Router := httpServer.NewApiVersionRouter(httpServer.ApiVersion1)
 	apiV1Router.RegisterHandlers(
-		//auth
+		// auth
 		authLoginHandler,
 		authLogoutHandler,
 		authMeHandler,
 		authRegisterHandler,
 		authRefreshHandler,
-		//tasks
+		// tasks
 		tasksCreateHandler,
 		tasksGetHandler,
 		tasksSolveHandler,
 	)
-	httpServer := http_server.New(
+	server := httpServer.New(
 		cfg.HTTP,
 		log,
-		http_middleware.NewChiCORS(http_middleware.DefaultCORSConfig()),
-		http_middleware.RequestID(),
-		http_middleware.Logger(log),
-		http_middleware.TraceID(),
-		http_middleware.Recover(),
-		http_middleware.Authentication(accessTokenGenerator),
+		httpMiddleware.Cors(),
+		httpMiddleware.RequestID(),
+		httpMiddleware.Logger(log),
+		httpMiddleware.TraceID(),
+		httpMiddleware.Recover(),
+		httpMiddleware.Authentication(accessTokenGenerator),
 	)
-	httpServer.RegisterApiRouters(apiV1Router)
-	httpServer.RegisterSwagger()
+	server.RegisterApiRouters(apiV1Router)
+	server.RegisterSwagger()
 
-	return httpServer.Run(ctx)
+	return server.Run(ctx)
 }

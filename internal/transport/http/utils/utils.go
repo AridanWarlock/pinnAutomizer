@@ -1,14 +1,14 @@
-package http_utils
+package httpUtils
 
 import (
 	"context"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	http_middleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
+	httpMiddleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
 )
 
 func ClaimsFromContext(ctx context.Context) domain.UserClaims {
-	claims, ok := ctx.Value(http_middleware.UserClaimsKey).(domain.UserClaims)
+	claims, ok := ctx.Value(httpMiddleware.UserClaimsKey).(domain.UserClaims)
 	if !ok {
 		panic("no user claims in context")
 	}

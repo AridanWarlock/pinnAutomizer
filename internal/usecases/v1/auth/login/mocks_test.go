@@ -2,7 +2,7 @@
 // github.com/vektra/mockery
 // template: testify
 
-package auth_login
+package authLogin
 
 import (
 	"context"

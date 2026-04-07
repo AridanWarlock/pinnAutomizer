@@ -1,8 +1,12 @@
-package http_middleware
+package httpMiddleware
 
 import (
 	"net/http"
 	"slices"
+)
+
+const (
+	requestIDHeader = "X-Request-ID"
 )
 
 type Middleware func(next http.Handler) http.Handler

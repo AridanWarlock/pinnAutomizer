@@ -1,4 +1,4 @@
-package tasks_solve
+package tasksSolve
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 
 	"github.com/google/uuid"
@@ -116,7 +116,7 @@ func TestUsecase_SolveTask(t *testing.T) {
 			prepare: func(f fields, i Input) {
 				f.postgres.EXPECT().
 					GetTaskByIDAndUserID(mock.Anything, i.TaskID, i.UserID).
-					Return(domain.Task{}, pg_errors.ErrNotFound).Once()
+					Return(domain.Task{}, errs.ErrNotFound).Once()
 			},
 			wantErr: true,
 		},
@@ -161,7 +161,7 @@ func TestUsecase_SolveTask(t *testing.T) {
 			}
 			tt.prepare(f, tt.input)
 
-			uc := New(f.postgres, zerolog.Logger{})
+			uc := New(f.postgres)
 			err := uc.SolveTask(context.Background(), tt.input)
 
 			test.AssertErr(t, err, tt.wantErr)

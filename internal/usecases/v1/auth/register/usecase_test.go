@@ -1,10 +1,9 @@
-package auth_register
+package authRegister
 
 import (
 	"context"
 	"testing"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 

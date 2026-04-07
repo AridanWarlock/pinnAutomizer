@@ -1,4 +1,4 @@
-package tasks_get
+package tasksGet
 
 import (
 	"context"
