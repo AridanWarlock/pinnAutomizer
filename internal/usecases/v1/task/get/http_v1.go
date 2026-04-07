@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/utils"
+	http_request "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
+	http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	http_utils "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/utils"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/google/uuid"
 )
@@ -51,6 +51,18 @@ func (h *HttpHandler) Route() http_server.Route {
 	}
 }
 
+// GetTasks 			godoc
+//
+//	@Summary		Получить статус задач
+//	@Description	Получить статус  PINN задач по id
+//	@Tags			tasks
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		Request						true	"GetTasks тело запроса"
+//	@Success		200		{object}	Response					"Статус PINN задач"
+//	@Failure		400		{object}	http_response.ErrorResponse	"Bad request"
+//	@Failure		500		{object}	http_response.ErrorResponse	"Internal server error"
+//	@Router			/tasks 	[get]
 func (h *HttpHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)

@@ -3,10 +3,10 @@ package tasks_solve
 import (
 	"net/http"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/utils"
+	http_request "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
+	http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	http_utils "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/utils"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/google/uuid"
 )

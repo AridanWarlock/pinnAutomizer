@@ -9,7 +9,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
@@ -27,10 +27,10 @@ var publicPaths = map[string]struct{}{
 	"/health":               {},
 	"/metrics":              {},
 	"/docs":                 {},
-	"/swagger":              {},
 }
 
 var publicPrefixes = []string{
+	"/swagger/",
 	"/api/v1/scripts/from-translate/",
 }
 
@@ -43,13 +43,13 @@ func Authentication(tokenParser TokenParser) Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 			log := logger.FromContext(ctx)
-			rh := http_response.NewHandler(w, log)
 
 			if isPublicURL(r.URL.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}
 
+			rh := http_response.NewHandler(w, log)
 			accessToken, err := extractAccessTokenFromHeaders(r)
 			if err != nil {
 				rh.ErrorResponse(

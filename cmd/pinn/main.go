@@ -11,29 +11,31 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis"
 	"github.com/AridanWarlock/pinnAutomizer/internal/outbox"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
-	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/login"
-	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/logout"
-	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/me"
-	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/refresh"
-	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/register"
-	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/after_train"
-	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/create"
-	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/get"
-	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/on_train"
-	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/solve"
+	http_middleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
+	http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	auth_login "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/login"
+	auth_logout "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/logout"
+	auth_me "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/me"
+	auth_refresh "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/refresh"
+	auth_register "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/register"
+	tasks_after_train "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/after_train"
+	tasks_create "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/create"
+	tasks_get "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/get"
+	tasks_on_train "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/on_train"
+	tasks_solve "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/solve"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/auth/jwt/access_token"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/auth/refresh_token"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/password_hasher"
 	"github.com/rs/zerolog"
+
+	_ "github.com/AridanWarlock/pinnAutomizer/docs"
 )
 
-// @title 		PINN Automizer App
-// @version 	1.0
-// @host 		127.0.0.1:8080
-// @BasePath 	/api/v1
+// @title		PINN Automizer App
+// @version	1.0
+// @host		127.0.0.1:8080
+// @BasePath	/api/v1
 func main() {
 	cfg, err := config.InitConfig()
 	if err != nil {
@@ -149,18 +151,18 @@ func AppRun(
 		tasksGetHandler,
 		tasksSolveHandler,
 	)
-
 	httpServer := http_server.New(
 		cfg.HTTP,
 		log,
 		http_middleware.NewChiCORS(http_middleware.DefaultCORSConfig()),
 		http_middleware.RequestID(),
 		http_middleware.Logger(log),
-		http_middleware.Recover(),
 		http_middleware.TraceID(),
+		http_middleware.Recover(),
 		http_middleware.Authentication(accessTokenGenerator),
 	)
 	httpServer.RegisterApiRouters(apiV1Router)
+	httpServer.RegisterSwagger()
 
 	return httpServer.Run(ctx)
 }

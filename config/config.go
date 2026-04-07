@@ -6,7 +6,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafka_produce"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/auth/jwt/access_token"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/auth/refresh_token"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"

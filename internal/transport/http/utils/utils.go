@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
+	http_middleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
 )
 
 func ClaimsFromContext(ctx context.Context) domain.UserClaims {

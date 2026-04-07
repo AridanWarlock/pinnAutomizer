@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
+	"github.com/AridanWarlock/pinnAutomizer/docs"
+	http_middleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
 	"github.com/rs/zerolog"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type Server struct {
@@ -38,6 +40,21 @@ func (s *Server) RegisterApiRouters(routers ...*ApiVersionRouter) {
 
 		s.mux.Handle(prefix+"/", http.StripPrefix(prefix, router))
 	}
+}
+
+func (s *Server) RegisterSwagger() {
+	s.mux.HandleFunc("/swagger/doc.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		_, _ = w.Write([]byte(docs.SwaggerInfo.ReadDoc()))
+	})
+
+	s.mux.Handle(
+		"/swagger/",
+		httpSwagger.Handler(
+			httpSwagger.URL("/swagger/doc.json"),
+		),
+	)
 }
 
 func (s *Server) Run(ctx context.Context) error {

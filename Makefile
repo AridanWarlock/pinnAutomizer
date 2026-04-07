@@ -19,7 +19,7 @@ env-cleanup:
   	  exit 0; \
   	fi; \
 	docker compose down pinn-postgres port-forwarder redis && \
-	rm -rf out/pgdata out/redis_data && \
+	rm -rf ${PROJECT_ROOT}/out/pgdata ${PROJECT_ROOT}/out/redis_data && \
 	echo "Файлы окружения очищены"
 
 env-port-forward:
@@ -59,4 +59,7 @@ swagger-gen:
 		-g cmd/pinn/main.go \
 		-o docs \
 		--parseInternal \
-		--parseDependency
+		--exclude internal/usecases/**/**/*_test.go \
+		--quiet
+swagger-fmt:
+	@docker compose run --rm swagger fmt

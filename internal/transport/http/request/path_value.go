@@ -1,4 +1,4 @@
-package http_utils
+package http_request
 
 import (
 	"fmt"

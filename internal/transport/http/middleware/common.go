@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"

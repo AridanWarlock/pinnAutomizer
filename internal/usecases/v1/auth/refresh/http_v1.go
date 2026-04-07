@@ -3,8 +3,8 @@ package auth_refresh
 import (
 	"net/http"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 

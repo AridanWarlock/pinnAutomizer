@@ -4,20 +4,20 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
-	"github.com/AridanWarlock/pinnAutomizer/internal/transport/http/utils"
+	http_request "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
+	http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	http_utils "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/utils"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/google/uuid"
 )
 
 type Request struct {
-	Name         string         `json:"name"`
-	Description  string         `json:"description"`
+	Name         string         `json:"name" example:"Теплопроводность стержня"`
+	Description  string         `json:"description" example:"Теплопроводность железного стержня"`
 	Constants    map[string]any `json:"constants"`
-	EquationType string         `json:"equation_type"`
-}
+	EquationType string         `json:"equation_type" example:"heat"`
+} //	@name	CreateTaskRequest
 
 type Response struct {
 	ID          uuid.UUID `json:"id"`
@@ -30,7 +30,7 @@ type Response struct {
 	EquationType string `json:"equation_type"`
 
 	CreatedAt time.Time `json:"created_at"`
-}
+} //	@name	CreateTaskResponse
 
 type HttpHandler struct {
 	usecase Usecase
@@ -51,16 +51,17 @@ func (h *HttpHandler) Route() http_server.Route {
 }
 
 // CreateTask 			godoc
-// @Summary 	Создать задачу
-// @Description Создать новую PINN задачу
-// @Tags 		tasks
-// @Accept 		json
-// @Produce 	json
-// @Param		request body 		Request 	true "CreateTask тело запроса"
-// @Success 	201 	{object}	Response 	"Успешно созданная PINN задача"
-// @Failure 	400		{object} 	http_v1.ErrorResponse 	"Bad request"
-// @Failure		500 	{object} 	http_v1.ErrorResponse 	"Internal server error"
-// @Router 		/tasks 	[post]
+//
+//	@Summary		Создать задачу
+//	@Description	Создать новую PINN задачу
+//	@Tags			tasks
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		Request						true	"CreateTask тело запроса"
+//	@Success		201		{object}	Response					"Успешно созданная PINN задача"
+//	@Failure		400		{object}	http_response.ErrorResponse	"Bad request"
+//	@Failure		500		{object}	http_response.ErrorResponse	"Internal server error"
+//	@Router			/tasks 	[post]
 func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
