@@ -2,8 +2,10 @@ package authLogin
 
 import (
 	"encoding/hex"
+	"fmt"
 	"net/http"
 
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	httpRequest "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
 	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
@@ -11,12 +13,12 @@ import (
 )
 
 type Request struct {
-	Login    string `json:"login"`
-	Password string `json:"password"`
+	Login    string `json:"login" example:"Ivan Ivanov"`
+	Password string `json:"password" example:"12345678"`
 }
 
 type Response struct {
-	AccessToken string `json:"access_token"`
+	AccessToken string `json:"access_token" example:"very.long.access_token"`
 }
 
 type HttpHandler struct {
@@ -37,6 +39,20 @@ func (h *HttpHandler) Route() httpServer.Route {
 	}
 }
 
+// Login godoc
+//
+//	@Summary		Авторизация в системе
+//	@Description	Авторизация в системе PINN Automizer
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request			body		Request						true	"Login тело запроса"
+//	@Param			X-Fingerprint	header		string						true	"Sha-256 fingerprint"
+//	@Success		200				{object}	Response					"Успешная авторизация"
+//	@Failure		400				{object}	httpResponse.ErrorResponse	"Bad request"
+//	@Failure		404				{object}	httpResponse.ErrorResponse	"Not found"
+//	@Failure		500				{object}	httpResponse.ErrorResponse	"Internal server error"
+//	@Router			/auth/login [post]
 func (h *HttpHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
@@ -50,7 +66,10 @@ func (h *HttpHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	fingerprint, err := hex.DecodeString(r.Header.Get("X-Fingerprint"))
 	if err != nil {
-		rh.ErrorResponse(err, "failed to decode and fingerprint")
+		rh.ErrorResponse(
+			fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err),
+			"failed to decode fingerprint header",
+		)
 		return
 	}
 
