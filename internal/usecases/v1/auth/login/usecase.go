@@ -102,11 +102,11 @@ func (u *usecase) Login(ctx context.Context, in Input) (Output, error) {
 func (u *usecase) getValidUser(ctx context.Context, in Input) (domain.User, error) {
 	user, err := u.postgres.GetUserByLogin(ctx, in.Login)
 	if err != nil {
-		return domain.User{}, fmt.Errorf("getting user by login from postgres: %w", err)
+		return domain.User{}, fmt.Errorf("getting user by login from postgres: %v", err)
 	}
 
 	if err := u.hasher.CompareHashAndPassword(user.PasswordHash, in.Password); err != nil {
-		return domain.User{}, fmt.Errorf("compare passwords hashes: %w", err)
+		return domain.User{}, fmt.Errorf("compare passwords hashes: %v", err)
 	}
 
 	return user, nil

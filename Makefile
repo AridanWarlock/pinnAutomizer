@@ -63,3 +63,6 @@ swagger-gen:
 		--quiet
 swagger-fmt:
 	@docker compose run --rm swagger fmt
+
+mockery:
+	@docker compose run --rm mockery

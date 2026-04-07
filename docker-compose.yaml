@@ -89,6 +89,13 @@ services:
     volumes:
       - ${PROJECT_ROOT}:/code
 
+  mockery:
+    image: vektra/mockery:3.7
+    volumes:
+      - ${PROJECT_ROOT}:/src
+    working_dir: /src
+#    command: migrate
+
   redis:
     image: redis:7-alpine
     container_name: pinn-env-redis

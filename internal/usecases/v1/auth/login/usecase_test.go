@@ -47,6 +47,10 @@ func TestUsecase_Login(t *testing.T) {
 					PasswordHash: "hash",
 				}
 
+				f.postgres.GetUserByLoginFunc = func(ctx context.Context, login string) (domain.User, error) {
+					return user, nil
+				}
+
 				f.postgres.EXPECT().
 					GetUserByLogin(mock.Anything, "admin").
 					Return(user, nil).Once()
