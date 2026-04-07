@@ -1,11 +1,10 @@
-package auth_refresh
+package authRefresh
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pg_errors"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 

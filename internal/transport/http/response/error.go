@@ -1,4 +1,4 @@
-package http_response
+package httpResponse
 
 type ErrorResponse struct {
 	Error   string `json:"error"`

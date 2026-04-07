@@ -38,7 +38,7 @@ type Worker struct {
 	log  zerolog.Logger
 }
 
-func New(postgres Postgres, writer Writer, log zerolog.Logger) *Worker {
+func NewWorker(postgres Postgres, writer Writer, log zerolog.Logger) *Worker {
 	ctx, stop := context.WithCancel(context.Background())
 
 	w := &Worker{

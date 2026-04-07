@@ -1,4 +1,4 @@
-package tasks_solve
+package tasksSolve
 
 import (
 	"context"

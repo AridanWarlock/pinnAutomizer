@@ -1,4 +1,4 @@
-package auth_login
+package authLogin
 
 import (
 	"context"

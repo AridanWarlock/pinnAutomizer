@@ -1,4 +1,4 @@
-package http_request
+package httpRequest
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/json_decoder"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/jsonDecoder"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -14,26 +14,26 @@ type validatable interface {
 	Validate() error
 }
 
-var requestValidator = validator.New()
+var requestValidator = validator.New(validator.WithRequiredStructEnabled())
 
 func DecodeAndValidateRequest(w http.ResponseWriter, r *http.Request, dst any) error {
-	err := json_decoder.ParseRequestBody(w, r, dst)
+	err := jsonDecoder.ParseRequestBody(w, r, dst)
 	switch {
 	case err == nil:
-	case errors.Is(err, json_decoder.ErrBadJson):
+	case errors.Is(err, jsonDecoder.ErrBadJson):
 		return fmt.Errorf(
 			"decode json: %v: %w",
 			err,
 			errs.ErrInvalidArgument,
 		)
-	case errors.Is(err, json_decoder.ErrEntityToLarge):
+	case errors.Is(err, jsonDecoder.ErrEntityToLarge):
 		return fmt.Errorf(
 			"decode json: %v: %w",
 			err,
 			errs.ErrEntityToLarge,
 		)
 	default:
-		panic(fmt.Sprintf("unexpected decode json: %v", err))
+		return fmt.Errorf("unexpected decode json error: %w", err)
 	}
 
 	if err := requestValidator.Struct(dst); err != nil {

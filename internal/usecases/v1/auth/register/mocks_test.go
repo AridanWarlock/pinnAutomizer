@@ -2,7 +2,7 @@
 // github.com/vektra/mockery
 // template: testify
 
-package auth_register
+package authRegister
 
 import (
 	"context"

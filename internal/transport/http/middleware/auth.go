@@ -1,4 +1,4 @@
-package http_middleware
+package httpMiddleware
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
-	http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
@@ -49,7 +49,7 @@ func Authentication(tokenParser TokenParser) Middleware {
 				return
 			}
 
-			rh := http_response.NewHandler(w, log)
+			rh := httpResponse.NewHandler(w, log)
 			accessToken, err := extractAccessTokenFromHeaders(r)
 			if err != nil {
 				rh.ErrorResponse(

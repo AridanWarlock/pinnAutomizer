@@ -1,0 +1,76 @@
+basePath: /api/v1
+definitions:
+  Request:
+    properties:
+      constants:
+        additionalProperties: {}
+        type: object
+      description:
+        type: string
+      equation_type:
+        type: string
+      name:
+        type: string
+    type: object
+  http_response.ErrorResponse:
+    properties:
+      error:
+        type: string
+      message:
+        type: string
+    type: object
+  tasks_create.Response:
+    properties:
+      constants:
+        additionalProperties: {}
+        type: object
+      created_at:
+        type: string
+      description:
+        type: string
+      equation_type:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      status:
+        type: string
+    type: object
+host: 127.0.0.1:8080
+info:
+  contact: {}
+  title: PINN Automizer App
+  version: "1.0"
+paths:
+  /tasks:
+    post:
+      consumes:
+      - application/json
+      description: Создать новую PINN задачу
+      parameters:
+      - description: CreateTask тело запроса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/Request'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешно созданная PINN задача
+          schema:
+            $ref: '#/definitions/tasks_create.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/http_response.ErrorResponse'
+      summary: Создать задачу
+      tags:
+      - tasks
+swagger: "2.0"

@@ -1,4 +1,4 @@
-package auth_refresh
+package authRefresh
 
 import (
 	"context"

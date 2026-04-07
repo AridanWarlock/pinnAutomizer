@@ -1,4 +1,4 @@
-package http_response
+package httpResponse
 
 import "net/http"
 

@@ -1,4 +1,4 @@
-package auth_logout
+package authLogout
 
 import (
 	"context"
