@@ -12,11 +12,15 @@ type Input struct {
 	Login    string `validate:"required,min=5,alphanum"`
 	Password string `validate:"required,min=5"`
 
-	Fingerprint []byte `validate:"required,len=32"`
+	Fingerprint domain.Fingerprint
 }
 
 func (i Input) Validate() error {
-	return validate.V.Struct(i)
+	if err := validate.V.Struct(i); err != nil {
+		return err
+	}
+
+	return i.Fingerprint.Validate()
 }
 
 type Output struct {

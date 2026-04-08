@@ -1,10 +1,10 @@
 package authLogin
 
 import (
-	"encoding/hex"
 	"fmt"
 	"net/http"
 
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	httpRequest "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
 	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
@@ -50,7 +50,7 @@ func (h *HttpHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fingerprint, err := hex.DecodeString(r.Header.Get("X-Fingerprint"))
+	fingerprint, err := domain.NewFingerprintFromHex(r.Header.Get("X-Fingerprint"))
 	if err != nil {
 		rh.ErrorResponse(
 			fmt.Errorf("%w: decode fingerprint header", errs.ErrInvalidArgument),

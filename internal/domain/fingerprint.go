@@ -13,8 +13,8 @@ type Fingerprint []byte
 
 func NewFingerprint(hash []byte) (Fingerprint, error) {
 	f := Fingerprint(hash)
-	if !f.IsValid() {
-		return nil, ErrInvalidFingerprint
+	if err := f.Validate(); err != nil {
+		return nil, err
 	}
 	return f, nil
 }
@@ -28,14 +28,10 @@ func NewFingerprintFromHex(s string) (Fingerprint, error) {
 }
 
 func (f Fingerprint) Validate() error {
-	if !f.IsValid() {
+	if len(f) != 32 || bytes.Equal(f, zeroFingerprint) {
 		return ErrInvalidFingerprint
 	}
 	return nil
-}
-
-func (f Fingerprint) IsValid() bool {
-	return len(f) == 32 && !bytes.Equal(f, zeroFingerprint)
 }
 
 func (f Fingerprint) Equal(other Fingerprint) bool {

@@ -67,7 +67,7 @@ func (g *Generator) Generate(user domain.User, roles []domain.Role, fingerprint 
 func (g *Generator) GetClaims(token domain.AccessToken) (domain.UserClaims, error) {
 	parsedToken, err := jwt.ParseWithClaims(string(token), &Claims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("неожиданный метод подписи: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 
 		return g.secret, nil

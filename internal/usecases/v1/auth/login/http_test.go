@@ -3,13 +3,13 @@ package authLogin
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
@@ -23,11 +23,11 @@ func TestHttpHandler_Login(t *testing.T) {
 	}
 
 	var (
-		fixedFingerprint       = "66696e6765727072696e74"
-		fixedFingerprintRaw, _ = hex.DecodeString(fixedFingerprint)
-		fixedAccessToken       = fixtures.NewAccessToken()
-		fixedRefreshToken      = "session_id.refresh_token"
-		fixedExpiry            = time.Now().Add(time.Hour).Truncate(time.Second)
+		fixedFingerprintRaw = "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+		fixedAccessToken    = fixtures.NewAccessToken()
+		fixedFingerprint, _ = domain.NewFingerprintFromHex(fixedFingerprintRaw)
+		fixedRefreshToken   = "session_id.refresh_token"
+		fixedExpiry         = time.Now().Add(time.Hour).Truncate(time.Second)
 	)
 
 	tests := []struct {
@@ -44,11 +44,11 @@ func TestHttpHandler_Login(t *testing.T) {
 				Login:    "admin",
 				Password: "password123",
 			},
-			headers: map[string]string{"X-Fingerprint": fixedFingerprint},
+			headers: map[string]string{"X-Fingerprint": fixedFingerprintRaw},
 			prepare: func(f *fields) {
 				f.usecase.LoginFunc = func(ctx context.Context, in Input) (Output, error) {
 					assert.Equal(t, "admin", in.Login)
-					assert.Equal(t, fixedFingerprintRaw, in.Fingerprint)
+					assert.Equal(t, fixedFingerprint, in.Fingerprint)
 
 					return Output{
 						AccessToken:           fixedAccessToken,
@@ -88,7 +88,7 @@ func TestHttpHandler_Login(t *testing.T) {
 				Login:    "bad-user",
 				Password: "bad-password",
 			},
-			headers: map[string]string{"X-Fingerprint": fixedFingerprint},
+			headers: map[string]string{"X-Fingerprint": fixedFingerprintRaw},
 			prepare: func(f *fields) {
 				f.usecase.LoginFunc = func(ctx context.Context, in Input) (Output, error) {
 					return Output{}, errs.ErrInvalidCredentials
@@ -99,7 +99,7 @@ func TestHttpHandler_Login(t *testing.T) {
 		{
 			name:           "error - empty body",
 			requestBody:    nil,
-			headers:        map[string]string{"X-Fingerprint": fixedFingerprint},
+			headers:        map[string]string{"X-Fingerprint": fixedFingerprintRaw},
 			prepare:        func(f *fields) {},
 			expectedStatus: http.StatusBadRequest,
 		},

@@ -10,7 +10,6 @@ import (
 
 func NewUserSession(mods ...mod[domain.UserSession]) domain.UserSession {
 	tokenSha256 := sha256.Sum256([]byte("token"))
-	fingerprint := sha256.Sum256([]byte("fingerprint"))
 	now := time.Now()
 
 	us := domain.UserSession{
@@ -19,7 +18,7 @@ func NewUserSession(mods ...mod[domain.UserSession]) domain.UserSession {
 		TokenSha256: tokenSha256[:],
 		CreatedAt:   now,
 		ExpiresAt:   now.Add(time.Hour),
-		Fingerprint: fingerprint[:],
+		Fingerprint: NewFingerprint(),
 	}
 
 	return fixture(us, mods)
