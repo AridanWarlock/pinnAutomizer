@@ -11,7 +11,7 @@ import (
 type UserClaims struct {
 	UserID      uuid.UUID   `validate:"required,uuid" json:"user_id"`
 	Roles       []Role      `validate:"required" json:"roles"`
-	Fingerprint Fingerprint `validate:"required,len=32" json:"fingerprint"`
+	Fingerprint Fingerprint `json:"fingerprint"`
 	IssuedAt    time.Time   `validate:"required" json:"issued_at"`
 	ExpiresAt   time.Time   `validate:"required" json:"expires_at"`
 }
@@ -39,13 +39,9 @@ func NewUserClaims(
 }
 
 func (c UserClaims) Validate() error {
-	if err := c.Fingerprint.Validate(); err != nil {
-		return err
-	}
-
 	if err := validate.V.Struct(c); err != nil {
 		return err
 	}
 
-	return nil
+	return c.Fingerprint.Validate()
 }
