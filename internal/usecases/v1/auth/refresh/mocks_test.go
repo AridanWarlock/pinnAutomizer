@@ -266,7 +266,7 @@ var _ AccessTokenGenerator = &MockAccessTokenGenerator{}
 //
 //		// make and configure a mocked AccessTokenGenerator
 //		mockedAccessTokenGenerator := &MockAccessTokenGenerator{
-//			GenerateFunc: func(user domain.User, roles []domain.Role) (domain.AccessToken, error) {
+//			GenerateFunc: func(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error) {
 //				panic("mock out the Generate method")
 //			},
 //		}
@@ -277,7 +277,7 @@ var _ AccessTokenGenerator = &MockAccessTokenGenerator{}
 //	}
 type MockAccessTokenGenerator struct {
 	// GenerateFunc mocks the Generate method.
-	GenerateFunc func(user domain.User, roles []domain.Role) (domain.AccessToken, error)
+	GenerateFunc func(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -287,27 +287,31 @@ type MockAccessTokenGenerator struct {
 			User domain.User
 			// Roles is the roles argument value.
 			Roles []domain.Role
+			// Fingerprint is the fingerprint argument value.
+			Fingerprint domain.Fingerprint
 		}
 	}
 	lockGenerate sync.RWMutex
 }
 
 // Generate calls GenerateFunc.
-func (mock *MockAccessTokenGenerator) Generate(user domain.User, roles []domain.Role) (domain.AccessToken, error) {
+func (mock *MockAccessTokenGenerator) Generate(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error) {
 	if mock.GenerateFunc == nil {
 		panic("MockAccessTokenGenerator.GenerateFunc: method is nil but AccessTokenGenerator.Generate was just called")
 	}
 	callInfo := struct {
-		User  domain.User
-		Roles []domain.Role
+		User        domain.User
+		Roles       []domain.Role
+		Fingerprint domain.Fingerprint
 	}{
-		User:  user,
-		Roles: roles,
+		User:        user,
+		Roles:       roles,
+		Fingerprint: fingerprint,
 	}
 	mock.lockGenerate.Lock()
 	mock.calls.Generate = append(mock.calls.Generate, callInfo)
 	mock.lockGenerate.Unlock()
-	return mock.GenerateFunc(user, roles)
+	return mock.GenerateFunc(user, roles, fingerprint)
 }
 
 // GenerateCalls gets all the calls that were made to Generate.
@@ -315,12 +319,14 @@ func (mock *MockAccessTokenGenerator) Generate(user domain.User, roles []domain.
 //
 //	len(mockedAccessTokenGenerator.GenerateCalls())
 func (mock *MockAccessTokenGenerator) GenerateCalls() []struct {
-	User  domain.User
-	Roles []domain.Role
+	User        domain.User
+	Roles       []domain.Role
+	Fingerprint domain.Fingerprint
 } {
 	var calls []struct {
-		User  domain.User
-		Roles []domain.Role
+		User        domain.User
+		Roles       []domain.Role
+		Fingerprint domain.Fingerprint
 	}
 	mock.lockGenerate.RLock()
 	calls = mock.calls.Generate

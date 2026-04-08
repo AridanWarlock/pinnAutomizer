@@ -33,7 +33,10 @@ func (h *HttpHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	userClaims := httpUtils.ClaimsFromContext(ctx)
 	rh := httpResponse.NewHandler(w, log)
 
-	err := h.usecase.Logout(ctx, Input{ID: userClaims.UserID})
+	err := h.usecase.Logout(ctx, Input{
+		UserID:      userClaims.UserID,
+		Fingerprint: userClaims.Fingerprint,
+	})
 	if err != nil {
 		rh.ErrorResponse(err, "failed to logout")
 		return
@@ -41,7 +44,7 @@ func (h *HttpHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refreshToken",
-		Path:     "/api/v1/auøth/refresh",
+		Path:     "/api/v1/auth/refresh",
 		MaxAge:   -1,
 		HttpOnly: true,
 	})

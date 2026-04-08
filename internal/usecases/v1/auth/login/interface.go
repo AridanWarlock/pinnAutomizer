@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
 
@@ -19,7 +20,7 @@ func (i Input) Validate() error {
 }
 
 type Output struct {
-	AccessTokenString     string
+	AccessToken           domain.AccessToken
 	RefreshTokenString    string
 	RefreshTokenExpiresAt time.Time
 }

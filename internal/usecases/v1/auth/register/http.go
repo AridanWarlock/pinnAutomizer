@@ -11,9 +11,9 @@ import (
 )
 
 type Request struct {
-	Login             string `json:"login"`
-	Password          string `json:"password"`
-	PasswordConfirmed string `json:"password_confirmed"`
+	Login             string `json:"login" validate:"required"`
+	Password          string `json:"password" validate:"required,min=5"`
+	PasswordConfirmed string `json:"password_confirmed" validate:"required,eqfield=Password"`
 }
 
 type Response struct {

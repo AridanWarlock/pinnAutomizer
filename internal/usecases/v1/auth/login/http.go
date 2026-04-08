@@ -2,8 +2,10 @@ package authLogin
 
 import (
 	"encoding/hex"
+	"fmt"
 	"net/http"
 
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	httpRequest "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
 	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
@@ -11,8 +13,8 @@ import (
 )
 
 type Request struct {
-	Login    string `json:"login"`
-	Password string `json:"password"`
+	Login    string `json:"login" validate:"required"`
+	Password string `json:"password" validate:"required,min=5"`
 }
 
 type Response struct {
@@ -50,7 +52,10 @@ func (h *HttpHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	fingerprint, err := hex.DecodeString(r.Header.Get("X-Fingerprint"))
 	if err != nil {
-		rh.ErrorResponse(err, "failed to decode and fingerprint")
+		rh.ErrorResponse(
+			fmt.Errorf("%w: decode fingerprint header", errs.ErrInvalidArgument),
+			"failed to decode and fingerprint",
+		)
 		return
 	}
 
@@ -76,7 +81,7 @@ func (h *HttpHandler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 
 	response := Response{
-		AccessToken: out.AccessTokenString,
+		AccessToken: string(out.AccessToken),
 	}
 
 	rh.JsonResponse(response, http.StatusOK)

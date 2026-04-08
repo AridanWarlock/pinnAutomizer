@@ -1,10 +1,13 @@
 package authRefresh
 
 import (
+	"fmt"
 	"net/http"
 
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	httpUtils "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/utils"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
@@ -33,15 +36,22 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
+	claims := httpUtils.ClaimsFromContext(ctx)
 	rh := httpResponse.NewHandler(w, log)
 
 	refreshToken, err := r.Cookie("refreshToken")
 	if err != nil {
-		rh.ErrorResponse(err, "not found refresh token in cookies")
+		rh.ErrorResponse(
+			fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, err),
+			"not found refresh token in cookies",
+		)
 		return
 	}
 
-	in := Input{RefreshTokenString: refreshToken.Value}
+	in := Input{
+		RefreshTokenString: refreshToken.Value,
+		Fingerprint:        claims.Fingerprint,
+	}
 
 	out, err := h.usecase.Refresh(ctx, in)
 	if err != nil {

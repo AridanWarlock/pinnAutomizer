@@ -20,8 +20,9 @@ var (
 var signingMethod = jwt.SigningMethodHS256
 
 type Claims struct {
-	UserID uuid.UUID     `json:"user_id"`
-	Roles  []domain.Role `json:"roles"`
+	UserID      uuid.UUID          `json:"user_id"`
+	Roles       []domain.Role      `json:"roles"`
+	Fingerprint domain.Fingerprint `json:"fingerprint"`
 
 	jwt.RegisteredClaims
 }
@@ -38,15 +39,16 @@ func NewGenerator(c Config) *Generator {
 	}
 }
 
-func (g *Generator) Generate(user domain.User, roles []domain.Role) (domain.AccessToken, error) {
+func (g *Generator) Generate(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error) {
 	issuedAt := time.Now()
 	expiresAt := issuedAt.Add(g.ttl)
 
 	claims := Claims{
-		UserID: user.ID,
-		Roles:  roles,
+		UserID:      user.ID,
+		Roles:       roles,
+		Fingerprint: fingerprint,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ID:        uuid.New().String(),
+			ID:        uuid.NewString(),
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(issuedAt),
 			Issuer:    Issuer,
@@ -111,6 +113,7 @@ func validateToken(token *jwt.Token) (domain.UserClaims, error) {
 	return domain.NewUserClaims(
 		claims.UserID,
 		claims.Roles,
+		claims.Fingerprint,
 		issuedAt.Time,
 		expiresAt.Time,
 	)

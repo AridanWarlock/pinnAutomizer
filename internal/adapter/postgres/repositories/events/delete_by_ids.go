@@ -20,7 +20,7 @@ func (r *Repository) DeleteEventsByIDs(ctx context.Context, ids []uuid.UUID) err
 
 	tag, err := r.pool.Execx(ctx, query)
 	if err != nil {
-		return pgerr.ExecErr(err)
+		return pgerr.ScanErr(err)
 	}
 
 	expected := int64(len(ids))

@@ -14,10 +14,12 @@ import (
 )
 
 const UserClaimsKey = "userClaimsKey"
+const FingerprintHeader = "X-Fingerprint"
 
 var (
 	ErrBearerTokenIsNotSet = errors.New("bearer token is not set")
 	ErrUnsupportedAuthType = errors.New("unsupported auth type")
+	ErrFingerprintIsNotSet = errors.New("fingerprint is not set")
 )
 
 var publicPaths = map[string]struct{}{
@@ -50,6 +52,16 @@ func Authentication(tokenParser TokenParser) Middleware {
 			}
 
 			rh := httpResponse.NewHandler(w, log)
+
+			fingerprint, err := extractFingerprintFromHeaders(r)
+			if err != nil {
+				rh.ErrorResponse(
+					fmt.Errorf("%w: extract fingerprint from headers: %v", errs.ErrAuthorizationFailed, err),
+					"failed to extract fingerprint from headers",
+				)
+				return
+			}
+
 			accessToken, err := extractAccessTokenFromHeaders(r)
 			if err != nil {
 				rh.ErrorResponse(
@@ -59,11 +71,19 @@ func Authentication(tokenParser TokenParser) Middleware {
 				return
 			}
 
-			claims, err := tokenParser.GetClaims(domain.AccessToken(accessToken))
+			claims, err := tokenParser.GetClaims(accessToken)
 			if err != nil {
 				rh.ErrorResponse(
 					fmt.Errorf("%w: parse user claims from access token: %v", errs.ErrAuthorizationFailed, err),
 					"failed to parse valid claims from access token",
+				)
+				return
+			}
+
+			if !fingerprint.Equal(claims.Fingerprint) {
+				rh.ErrorResponse(
+					fmt.Errorf("%w: fingerprint from header and token not equals", errs.ErrSessionIsCompromised),
+					"fingerprint from header and token not equals",
 				)
 				return
 			}
@@ -89,7 +109,15 @@ func isPublicURL(url string) bool {
 	return false
 }
 
-func extractAccessTokenFromHeaders(r *http.Request) (string, error) {
+func extractFingerprintFromHeaders(r *http.Request) (domain.Fingerprint, error) {
+	fingerprintHex := r.Header.Get(FingerprintHeader)
+	if fingerprintHex == "" {
+		return nil, ErrFingerprintIsNotSet
+	}
+	return domain.NewFingerprintFromHex(fingerprintHex)
+}
+
+func extractAccessTokenFromHeaders(r *http.Request) (domain.AccessToken, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		return "", ErrBearerTokenIsNotSet
@@ -101,5 +129,5 @@ func extractAccessTokenFromHeaders(r *http.Request) (string, error) {
 	}
 
 	token := parts[1]
-	return token, nil
+	return domain.NewAccessToken(token)
 }

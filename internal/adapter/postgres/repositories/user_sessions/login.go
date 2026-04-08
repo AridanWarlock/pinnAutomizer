@@ -2,15 +2,14 @@ package user_sessions
 
 import (
 	"context"
+	"strings"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
-func (r *Repository) Login(ctx context.Context, session domain.UserSession) error {
-	log := logger.FromContext(ctx)
+func (r *Repository) Login(ctx context.Context, session domain.UserSession) (domain.UserSession, error) {
 	raw := FromModel(session)
 
 	q := r.sb.Insert(UserSessionsTable).
@@ -22,14 +21,11 @@ func (r *Repository) Login(ctx context.Context, session domain.UserSession) erro
 				created_at = EXCLUDED.created_at,
 				expires_at = EXCLUDED.expires_at,
 				id = EXCLUDED.id
-		`)
+			RETURNING ` + strings.Join(UserSessionsTableColumns, ","))
 
-	tag, err := r.pool.Execx(ctx, q)
-	if err != nil {
-		return pgerr.ExecErr(err)
+	var outRow UserSessionRaw
+	if err := r.pool.Getx(ctx, &outRow, q); err != nil {
+		return domain.UserSession{}, pgerr.ScanErr(err)
 	}
-	if tag.RowsAffected() != 1 {
-		log.Info().Msg("postgres: conflict on insert session")
-	}
-	return nil
+	return ToModel(outRow), nil
 }

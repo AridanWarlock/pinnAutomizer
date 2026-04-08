@@ -20,7 +20,7 @@ func (r *Repository) UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, sta
 
 	tag, err := r.pool.Execx(ctx, query)
 	if err != nil {
-		return pgerr.ExecErr(err)
+		return pgerr.ScanErr(err)
 	}
 	if tag.RowsAffected() == 0 {
 		return fmt.Errorf(

@@ -3,6 +3,7 @@ package authLogin
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
@@ -13,11 +14,11 @@ import (
 type Postgres interface {
 	GetUserByLogin(ctx context.Context, login string) (domain.User, error)
 	GetRolesByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Role, error)
-	Login(ctx context.Context, session domain.UserSession) error
+	Login(ctx context.Context, session domain.UserSession) (domain.UserSession, error)
 }
 
 type AccessTokenGenerator interface {
-	Generate(user domain.User, roles []domain.Role) (domain.AccessToken, error)
+	Generate(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error)
 }
 
 type RefreshTokenGenerator interface {
@@ -25,7 +26,11 @@ type RefreshTokenGenerator interface {
 }
 
 type PasswordHasher interface {
-	CompareHashAndPassword(hasherPassword, password string) error
+	CompareHashAndPassword(hash, password string) error
+}
+
+type Clock interface {
+	Now() time.Time
 }
 
 type usecase struct {
@@ -33,6 +38,7 @@ type usecase struct {
 	accessTokenGenerator  AccessTokenGenerator
 	refreshTokenGenerator RefreshTokenGenerator
 	hasher                PasswordHasher
+	clock                 Clock
 }
 
 func New(
@@ -40,12 +46,14 @@ func New(
 	accessTokenGenerator AccessTokenGenerator,
 	refreshTokenGenerator RefreshTokenGenerator,
 	hasher PasswordHasher,
+	clock Clock,
 ) Usecase {
 	return &usecase{
 		postgres:              postgres,
 		accessTokenGenerator:  accessTokenGenerator,
 		refreshTokenGenerator: refreshTokenGenerator,
 		hasher:                hasher,
+		clock:                 clock,
 	}
 }
 
@@ -66,7 +74,7 @@ func (u *usecase) Login(ctx context.Context, in Input) (Output, error) {
 		return Output{}, fmt.Errorf("getting roles by user: %w", err)
 	}
 
-	accessToken, err := u.accessTokenGenerator.Generate(user, roles)
+	accessToken, err := u.accessTokenGenerator.Generate(user, roles, in.Fingerprint)
 	if err != nil {
 		return Output{}, fmt.Errorf("generate access token: %w", err)
 	}
@@ -81,19 +89,21 @@ func (u *usecase) Login(ctx context.Context, in Input) (Output, error) {
 		refreshToken.Sha256,
 		refreshToken.ExpiresAt,
 		in.Fingerprint,
+		u.clock.Now(),
 	)
 	if err != nil {
 		return Output{}, fmt.Errorf("create session: %w", err)
 	}
 
-	if err = u.postgres.Login(ctx, session); err != nil {
+	session, err = u.postgres.Login(ctx, session)
+	if err != nil {
 		return Output{}, fmt.Errorf("saving session in postgres: %w", err)
 	}
 
 	refreshTokenWithSessionID := fmt.Sprintf("%s.%s", session.ID.String(), refreshToken.RandomBase64String)
 
 	return Output{
-		AccessTokenString:     string(accessToken),
+		AccessToken:           accessToken,
 		RefreshTokenString:    refreshTokenWithSessionID,
 		RefreshTokenExpiresAt: refreshToken.ExpiresAt,
 	}, nil

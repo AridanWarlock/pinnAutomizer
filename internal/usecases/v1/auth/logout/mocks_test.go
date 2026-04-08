@@ -8,6 +8,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/google/uuid"
 )
 
@@ -93,7 +94,7 @@ var _ Postgres = &MockPostgres{}
 //
 //		// make and configure a mocked Postgres
 //		mockedPostgres := &MockPostgres{
-//			LogoutFunc: func(ctx context.Context, userID uuid.UUID) error {
+//			LogoutFunc: func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
 //				panic("mock out the Logout method")
 //			},
 //		}
@@ -104,7 +105,7 @@ var _ Postgres = &MockPostgres{}
 //	}
 type MockPostgres struct {
 	// LogoutFunc mocks the Logout method.
-	LogoutFunc func(ctx context.Context, userID uuid.UUID) error
+	LogoutFunc func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -114,27 +115,31 @@ type MockPostgres struct {
 			Ctx context.Context
 			// UserID is the userID argument value.
 			UserID uuid.UUID
+			// Fingerprint is the fingerprint argument value.
+			Fingerprint domain.Fingerprint
 		}
 	}
 	lockLogout sync.RWMutex
 }
 
 // Logout calls LogoutFunc.
-func (mock *MockPostgres) Logout(ctx context.Context, userID uuid.UUID) error {
+func (mock *MockPostgres) Logout(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
 	if mock.LogoutFunc == nil {
 		panic("MockPostgres.LogoutFunc: method is nil but Postgres.Logout was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		UserID uuid.UUID
+		Ctx         context.Context
+		UserID      uuid.UUID
+		Fingerprint domain.Fingerprint
 	}{
-		Ctx:    ctx,
-		UserID: userID,
+		Ctx:         ctx,
+		UserID:      userID,
+		Fingerprint: fingerprint,
 	}
 	mock.lockLogout.Lock()
 	mock.calls.Logout = append(mock.calls.Logout, callInfo)
 	mock.lockLogout.Unlock()
-	return mock.LogoutFunc(ctx, userID)
+	return mock.LogoutFunc(ctx, userID, fingerprint)
 }
 
 // LogoutCalls gets all the calls that were made to Logout.
@@ -142,12 +147,14 @@ func (mock *MockPostgres) Logout(ctx context.Context, userID uuid.UUID) error {
 //
 //	len(mockedPostgres.LogoutCalls())
 func (mock *MockPostgres) LogoutCalls() []struct {
-	Ctx    context.Context
-	UserID uuid.UUID
+	Ctx         context.Context
+	UserID      uuid.UUID
+	Fingerprint domain.Fingerprint
 } {
 	var calls []struct {
-		Ctx    context.Context
-		UserID uuid.UUID
+		Ctx         context.Context
+		UserID      uuid.UUID
+		Fingerprint domain.Fingerprint
 	}
 	mock.lockLogout.RLock()
 	calls = mock.calls.Logout

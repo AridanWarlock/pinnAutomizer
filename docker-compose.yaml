@@ -94,7 +94,7 @@ services:
     volumes:
       - ${PROJECT_ROOT}:/src
     working_dir: /src
-#    command: migrate
+#    command:
 
   redis:
     image: redis:7-alpine

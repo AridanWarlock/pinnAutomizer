@@ -7,6 +7,7 @@ package authLogin
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/google/uuid"
@@ -100,7 +101,7 @@ var _ Postgres = &MockPostgres{}
 //			GetUserByLoginFunc: func(ctx context.Context, login string) (domain.User, error) {
 //				panic("mock out the GetUserByLogin method")
 //			},
-//			LoginFunc: func(ctx context.Context, session domain.UserSession) error {
+//			LoginFunc: func(ctx context.Context, session domain.UserSession) (domain.UserSession, error) {
 //				panic("mock out the Login method")
 //			},
 //		}
@@ -117,7 +118,7 @@ type MockPostgres struct {
 	GetUserByLoginFunc func(ctx context.Context, login string) (domain.User, error)
 
 	// LoginFunc mocks the Login method.
-	LoginFunc func(ctx context.Context, session domain.UserSession) error
+	LoginFunc func(ctx context.Context, session domain.UserSession) (domain.UserSession, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -221,7 +222,7 @@ func (mock *MockPostgres) GetUserByLoginCalls() []struct {
 }
 
 // Login calls LoginFunc.
-func (mock *MockPostgres) Login(ctx context.Context, session domain.UserSession) error {
+func (mock *MockPostgres) Login(ctx context.Context, session domain.UserSession) (domain.UserSession, error) {
 	if mock.LoginFunc == nil {
 		panic("MockPostgres.LoginFunc: method is nil but Postgres.Login was just called")
 	}
@@ -266,7 +267,7 @@ var _ AccessTokenGenerator = &MockAccessTokenGenerator{}
 //
 //		// make and configure a mocked AccessTokenGenerator
 //		mockedAccessTokenGenerator := &MockAccessTokenGenerator{
-//			GenerateFunc: func(user domain.User, roles []domain.Role) (domain.AccessToken, error) {
+//			GenerateFunc: func(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error) {
 //				panic("mock out the Generate method")
 //			},
 //		}
@@ -277,7 +278,7 @@ var _ AccessTokenGenerator = &MockAccessTokenGenerator{}
 //	}
 type MockAccessTokenGenerator struct {
 	// GenerateFunc mocks the Generate method.
-	GenerateFunc func(user domain.User, roles []domain.Role) (domain.AccessToken, error)
+	GenerateFunc func(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -287,27 +288,31 @@ type MockAccessTokenGenerator struct {
 			User domain.User
 			// Roles is the roles argument value.
 			Roles []domain.Role
+			// Fingerprint is the fingerprint argument value.
+			Fingerprint domain.Fingerprint
 		}
 	}
 	lockGenerate sync.RWMutex
 }
 
 // Generate calls GenerateFunc.
-func (mock *MockAccessTokenGenerator) Generate(user domain.User, roles []domain.Role) (domain.AccessToken, error) {
+func (mock *MockAccessTokenGenerator) Generate(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error) {
 	if mock.GenerateFunc == nil {
 		panic("MockAccessTokenGenerator.GenerateFunc: method is nil but AccessTokenGenerator.Generate was just called")
 	}
 	callInfo := struct {
-		User  domain.User
-		Roles []domain.Role
+		User        domain.User
+		Roles       []domain.Role
+		Fingerprint domain.Fingerprint
 	}{
-		User:  user,
-		Roles: roles,
+		User:        user,
+		Roles:       roles,
+		Fingerprint: fingerprint,
 	}
 	mock.lockGenerate.Lock()
 	mock.calls.Generate = append(mock.calls.Generate, callInfo)
 	mock.lockGenerate.Unlock()
-	return mock.GenerateFunc(user, roles)
+	return mock.GenerateFunc(user, roles, fingerprint)
 }
 
 // GenerateCalls gets all the calls that were made to Generate.
@@ -315,12 +320,14 @@ func (mock *MockAccessTokenGenerator) Generate(user domain.User, roles []domain.
 //
 //	len(mockedAccessTokenGenerator.GenerateCalls())
 func (mock *MockAccessTokenGenerator) GenerateCalls() []struct {
-	User  domain.User
-	Roles []domain.Role
+	User        domain.User
+	Roles       []domain.Role
+	Fingerprint domain.Fingerprint
 } {
 	var calls []struct {
-		User  domain.User
-		Roles []domain.Role
+		User        domain.User
+		Roles       []domain.Role
+		Fingerprint domain.Fingerprint
 	}
 	mock.lockGenerate.RLock()
 	calls = mock.calls.Generate
@@ -397,7 +404,7 @@ var _ PasswordHasher = &MockPasswordHasher{}
 //
 //		// make and configure a mocked PasswordHasher
 //		mockedPasswordHasher := &MockPasswordHasher{
-//			CompareHashAndPasswordFunc: func(hasherPassword string, password string) error {
+//			CompareHashAndPasswordFunc: func(hash string, password string) error {
 //				panic("mock out the CompareHashAndPassword method")
 //			},
 //		}
@@ -408,14 +415,14 @@ var _ PasswordHasher = &MockPasswordHasher{}
 //	}
 type MockPasswordHasher struct {
 	// CompareHashAndPasswordFunc mocks the CompareHashAndPassword method.
-	CompareHashAndPasswordFunc func(hasherPassword string, password string) error
+	CompareHashAndPasswordFunc func(hash string, password string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
 		// CompareHashAndPassword holds details about calls to the CompareHashAndPassword method.
 		CompareHashAndPassword []struct {
-			// HasherPassword is the hasherPassword argument value.
-			HasherPassword string
+			// Hash is the hash argument value.
+			Hash string
 			// Password is the password argument value.
 			Password string
 		}
@@ -424,21 +431,21 @@ type MockPasswordHasher struct {
 }
 
 // CompareHashAndPassword calls CompareHashAndPasswordFunc.
-func (mock *MockPasswordHasher) CompareHashAndPassword(hasherPassword string, password string) error {
+func (mock *MockPasswordHasher) CompareHashAndPassword(hash string, password string) error {
 	if mock.CompareHashAndPasswordFunc == nil {
 		panic("MockPasswordHasher.CompareHashAndPasswordFunc: method is nil but PasswordHasher.CompareHashAndPassword was just called")
 	}
 	callInfo := struct {
-		HasherPassword string
-		Password       string
+		Hash     string
+		Password string
 	}{
-		HasherPassword: hasherPassword,
-		Password:       password,
+		Hash:     hash,
+		Password: password,
 	}
 	mock.lockCompareHashAndPassword.Lock()
 	mock.calls.CompareHashAndPassword = append(mock.calls.CompareHashAndPassword, callInfo)
 	mock.lockCompareHashAndPassword.Unlock()
-	return mock.CompareHashAndPasswordFunc(hasherPassword, password)
+	return mock.CompareHashAndPasswordFunc(hash, password)
 }
 
 // CompareHashAndPasswordCalls gets all the calls that were made to CompareHashAndPassword.
@@ -446,15 +453,74 @@ func (mock *MockPasswordHasher) CompareHashAndPassword(hasherPassword string, pa
 //
 //	len(mockedPasswordHasher.CompareHashAndPasswordCalls())
 func (mock *MockPasswordHasher) CompareHashAndPasswordCalls() []struct {
-	HasherPassword string
-	Password       string
+	Hash     string
+	Password string
 } {
 	var calls []struct {
-		HasherPassword string
-		Password       string
+		Hash     string
+		Password string
 	}
 	mock.lockCompareHashAndPassword.RLock()
 	calls = mock.calls.CompareHashAndPassword
 	mock.lockCompareHashAndPassword.RUnlock()
+	return calls
+}
+
+// Ensure that MockClock does implement Clock.
+// If this is not the case, regenerate this file with mockery.
+var _ Clock = &MockClock{}
+
+// MockClock is a mock implementation of Clock.
+//
+//	func TestSomethingThatUsesClock(t *testing.T) {
+//
+//		// make and configure a mocked Clock
+//		mockedClock := &MockClock{
+//			NowFunc: func() time.Time {
+//				panic("mock out the Now method")
+//			},
+//		}
+//
+//		// use mockedClock in code that requires Clock
+//		// and then make assertions.
+//
+//	}
+type MockClock struct {
+	// NowFunc mocks the Now method.
+	NowFunc func() time.Time
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Now holds details about calls to the Now method.
+		Now []struct {
+		}
+	}
+	lockNow sync.RWMutex
+}
+
+// Now calls NowFunc.
+func (mock *MockClock) Now() time.Time {
+	if mock.NowFunc == nil {
+		panic("MockClock.NowFunc: method is nil but Clock.Now was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockNow.Lock()
+	mock.calls.Now = append(mock.calls.Now, callInfo)
+	mock.lockNow.Unlock()
+	return mock.NowFunc()
+}
+
+// NowCalls gets all the calls that were made to Now.
+// Check the length with:
+//
+//	len(mockedClock.NowCalls())
+func (mock *MockClock) NowCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockNow.RLock()
+	calls = mock.calls.Now
+	mock.lockNow.RUnlock()
 	return calls
 }

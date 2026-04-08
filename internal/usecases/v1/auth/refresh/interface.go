@@ -8,7 +8,8 @@ import (
 )
 
 type Input struct {
-	RefreshTokenString string `validate:"required"`
+	RefreshTokenString string             `validate:"required"`
+	Fingerprint        domain.Fingerprint `validate:"required,len=32"`
 }
 
 func (i Input) Validate() error {

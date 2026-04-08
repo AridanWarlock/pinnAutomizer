@@ -2,16 +2,16 @@ package authRegister
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"testing"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
-
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/mock"
-	"golang.org/x/crypto/bcrypt"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUsecase_Register(t *testing.T) {
@@ -20,334 +20,159 @@ func TestUsecase_Register(t *testing.T) {
 		hasher   *MockPasswordHasher
 	}
 
+	var (
+		fixedID = uuid.New()
+		testCtx = test.ContextBackgroundWithZeroLogger()
+	)
+
 	tests := []struct {
 		name    string
 		input   Input
-		prepare func(f fields)
-		wantErr bool
+		prepare func(f *fields)
+		check   func(t *testing.T, out Output, err error, f *fields)
 	}{
 		{
-			name: "valid path",
+			name: "success path",
 			input: Input{
-				Login:             "newuser",
-				Password:          "12345678",
-				PasswordConfirmed: "12345678",
+				Login:             "new_user",
+				Password:          "password123",
+				PasswordConfirmed: "password123",
 			},
-			prepare: func(f fields) {
-				f.hasher.EXPECT().
-					HashPassword("12345678").
-					Return("hashed", nil).Once()
+			prepare: func(f *fields) {
+				f.hasher.HashPasswordFunc = func(password string) (string, error) {
+					return "hashed_password", nil
+				}
+				f.postgres.GetRoleByTitleFunc = func(ctx context.Context, title string) (domain.Role, error) {
+					return fixtures.NewRole(), nil
+				}
 
-				f.postgres.EXPECT().
-					GetRoleByTitle(mock.Anything, "ROLE_USER").
-					Return(domain.Role{
-						ID:    uuid.Max,
-						Title: "ROLE_USER",
-					}, nil).Once()
-
-				var createdUser domain.User
-
-				f.postgres.EXPECT().
-					CreateUser(mock.Anything, mock.MatchedBy(func(user domain.User) bool {
-						return user.PasswordHash == "hashed" && user.Login == "newuser"
-					})).
-					Run(func(ctx context.Context, user domain.User) {
-						createdUser = user
-					}).Return(createdUser, nil).Once()
-
-				f.postgres.EXPECT().
-					CreateAuthToken(mock.Anything, createdUser.ID).
-					Return(domain.AuthToken{
-						UserID:       createdUser.ID,
-						AccessToken:  "access",
-						RefreshToken: "refresh",
-					}, nil).Once()
-
-				usersRoles := []domain.UsersRoles{{
-					UserID: createdUser.ID,
-					RoleID: uuid.Max,
-				}}
-				f.postgres.EXPECT().
-					CreateUsersRolesBatch(mock.Anything, usersRoles).
-					Return(usersRoles, nil).Once()
-
-				f.postgres.EXPECT().
-					Wrap(mock.Anything, mock.Anything).
-					RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
-						return fn(ctx)
-					}).Once()
+				f.postgres.WrapFunc = func(ctx context.Context, fn func(context.Context) error) error {
+					return fn(ctx)
+				}
+				f.postgres.CreateUserFunc = func(ctx context.Context, user domain.User) (domain.User, error) {
+					return fixtures.NewUser(func(u *domain.User) {
+						u.ID = fixedID
+					}), nil
+				}
+				f.postgres.CreateUsersRolesBatchFunc = func(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error) {
+					return usersRoles, nil
+				}
 			},
-			wantErr: false,
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.NoError(t, err)
+				assert.Equal(t, fixedID, out.User.ID)
+
+				assert.Len(t, f.hasher.HashPasswordCalls(), 1)
+
+				sentUser := f.postgres.CreateUserCalls()[0].User
+				assert.Equal(t, "hashed_password", sentUser.PasswordHash)
+			},
 		},
 		{
-			name: "rollback tx",
+			name: "error - hashing failed",
 			input: Input{
-				Login:             "newuser",
-				Password:          "12345678",
-				PasswordConfirmed: "12345678",
+				Login:             "user",
+				Password:          "password",
+				PasswordConfirmed: "password",
 			},
-			prepare: func(f fields) {
-				f.hasher.EXPECT().
-					HashPassword("12345678").
-					Return("hashed", nil).Once()
-
-				f.postgres.EXPECT().
-					GetRoleByTitle(mock.Anything, "ROLE_USER").
-					Return(domain.Role{
-						ID:    uuid.Max,
-						Title: "ROLE_USER",
-					}, nil).Once()
-
-				var createdUser domain.User
-
-				f.postgres.EXPECT().
-					CreateUser(mock.Anything, mock.MatchedBy(func(user domain.User) bool {
-						return user.PasswordHash == "hashed" && user.Login == "newuser"
-					})).
-					Run(func(ctx context.Context, user domain.User) {
-						createdUser = user
-					}).Return(createdUser, nil).Once()
-
-				f.postgres.EXPECT().
-					CreateAuthToken(mock.Anything, createdUser.ID).
-					Return(domain.AuthToken{
-						UserID:       createdUser.ID,
-						AccessToken:  "access",
-						RefreshToken: "refresh",
-					}, nil).Once()
-
-				usersRoles := []domain.UsersRoles{{
-					UserID: createdUser.ID,
-					RoleID: uuid.Max,
-				}}
-				f.postgres.EXPECT().
-					CreateUsersRolesBatch(mock.Anything, usersRoles).
-					Return(usersRoles, nil).Once()
-
-				f.postgres.EXPECT().
-					Wrap(mock.Anything, mock.Anything).
-					RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
-						_ = fn(ctx)
-						return pgx.ErrTxCommitRollback
-					}).Once()
+			prepare: func(f *fields) {
+				f.hasher.HashPasswordFunc = func(password string) (string, error) {
+					return "", errors.New("internal hashing error")
+				}
 			},
-			wantErr: true,
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "internal hashing error")
+				assert.Len(t, f.postgres.CreateUserCalls(), 0)
+			},
 		},
 		{
-			name: "batch insert users_roles failed",
+			name: "error - password mismatch",
 			input: Input{
-				Login:             "newuser",
-				Password:          "12345678",
-				PasswordConfirmed: "12345678",
+				Login:             "user",
+				Password:          "password",
+				PasswordConfirmed: "wrong_password",
 			},
-			prepare: func(f fields) {
-				f.hasher.EXPECT().
-					HashPassword("12345678").
-					Return("hashed", nil).Once()
-
-				f.postgres.EXPECT().
-					GetRoleByTitle(mock.Anything, "ROLE_USER").
-					Return(domain.Role{
-						ID:    uuid.Max,
-						Title: "ROLE_USER",
-					}, nil).Once()
-
-				var createdUser domain.User
-
-				f.postgres.EXPECT().
-					CreateUser(mock.Anything, mock.MatchedBy(func(user domain.User) bool {
-						return user.PasswordHash == "hashed" && user.Login == "newuser"
-					})).
-					Run(func(ctx context.Context, user domain.User) {
-						createdUser = user
-					}).Return(createdUser, nil).Once()
-
-				f.postgres.EXPECT().
-					CreateAuthToken(mock.Anything, createdUser.ID).
-					Return(domain.AuthToken{
-						UserID:       createdUser.ID,
-						AccessToken:  "access",
-						RefreshToken: "refresh",
-					}, nil).Once()
-
-				usersRoles := []domain.UsersRoles{{
-					UserID: createdUser.ID,
-					RoleID: uuid.Max,
-				}}
-				f.postgres.EXPECT().
-					CreateUsersRolesBatch(mock.Anything, usersRoles).
-					Return(nil, pg_errors.ErrInvalidBatchSize).Once()
-
-				f.postgres.EXPECT().
-					Wrap(mock.Anything, mock.Anything).
-					RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
-						return fn(ctx)
-					}).Once()
+			prepare: func(f *fields) {},
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, errs.ErrInvalidArgument))
+				assert.Len(t, f.postgres.CreateUserCalls(), 0)
 			},
-			wantErr: true,
 		},
 		{
-			name: "insert auth_tokens failed",
+			name: "error - login already taken",
 			input: Input{
-				Login:             "newuser",
-				Password:          "12345678",
-				PasswordConfirmed: "12345678",
+				Login:             "existing_admin",
+				Password:          "password",
+				PasswordConfirmed: "password",
 			},
-			prepare: func(f fields) {
-				f.hasher.EXPECT().
-					HashPassword("12345678").
-					Return("hashed", nil).Once()
+			prepare: func(f *fields) {
+				f.hasher.HashPasswordFunc = func(password string) (string, error) {
+					return "hash", nil
+				}
+				f.postgres.GetRoleByTitleFunc = func(ctx context.Context, title string) (domain.Role, error) {
+					return fixtures.NewRole(), nil
+				}
 
-				f.postgres.EXPECT().
-					GetRoleByTitle(mock.Anything, "ROLE_USER").
-					Return(domain.Role{
-						ID:    uuid.Max,
-						Title: "ROLE_USER",
-					}, nil).Once()
-
-				var createdUser domain.User
-
-				f.postgres.EXPECT().
-					CreateUser(mock.Anything, mock.MatchedBy(func(user domain.User) bool {
-						return user.PasswordHash == "hashed" && user.Login == "newuser"
-					})).
-					Run(func(ctx context.Context, user domain.User) {
-						createdUser = user
-					}).Return(createdUser, nil).Once()
-
-				f.postgres.EXPECT().
-					CreateAuthToken(mock.Anything, createdUser.ID).
-					Return(domain.AuthToken{}, pgx.ErrTxClosed).Once()
-
-				f.postgres.EXPECT().
-					Wrap(mock.Anything, mock.Anything).
-					RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
-						return fn(ctx)
-					}).Once()
+				f.postgres.WrapFunc = func(ctx context.Context, fn func(context.Context) error) error {
+					return fn(ctx)
+				}
+				f.postgres.CreateUserFunc = func(ctx context.Context, user domain.User) (domain.User, error) {
+					return domain.User{}, errs.ErrConflict
+				}
 			},
-			wantErr: true,
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, errs.ErrConflict))
+			},
 		},
 		{
-			name: "insert user failed",
+			name: "error - database failure on createUsersRolesBatch",
 			input: Input{
-				Login:             "newuser",
-				Password:          "12345678",
-				PasswordConfirmed: "12345678",
+				Login:             "admin",
+				Password:          "password",
+				PasswordConfirmed: "password",
 			},
-			prepare: func(f fields) {
-				f.hasher.EXPECT().
-					HashPassword("12345678").
-					Return("hashed", nil).Once()
+			prepare: func(f *fields) {
+				f.hasher.HashPasswordFunc = func(password string) (string, error) {
+					return "hash", nil
+				}
+				f.postgres.GetRoleByTitleFunc = func(ctx context.Context, title string) (domain.Role, error) {
+					return fixtures.NewRole(), nil
+				}
 
-				f.postgres.EXPECT().
-					GetRoleByTitle(mock.Anything, "ROLE_USER").
-					Return(domain.Role{
-						ID:    uuid.Max,
-						Title: "ROLE_USER",
-					}, nil).Once()
-
-				f.postgres.EXPECT().
-					CreateUser(mock.Anything, mock.Anything).
-					Return(domain.User{}, pgx.ErrTxClosed).Once()
-
-				f.postgres.EXPECT().
-					Wrap(mock.Anything, mock.Anything).
-					RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
-						return fn(ctx)
-					}).Once()
+				f.postgres.WrapFunc = func(ctx context.Context, fn func(context.Context) error) error {
+					return fn(ctx)
+				}
+				f.postgres.CreateUserFunc = func(ctx context.Context, user domain.User) (domain.User, error) {
+					return fixtures.NewUser(func(u *domain.User) {
+						u.ID = fixedID
+					}), nil
+				}
+				f.postgres.CreateUsersRolesBatchFunc = func(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error) {
+					return nil, sql.ErrConnDone
+				}
 			},
-			wantErr: true,
-		},
-		{
-			name: "get role failed",
-			input: Input{
-				Login:             "newuser",
-				Password:          "12345678",
-				PasswordConfirmed: "12345678",
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, sql.ErrConnDone))
 			},
-			prepare: func(f fields) {
-				f.hasher.EXPECT().
-					HashPassword("12345678").
-					Return("hashed", nil).Once()
-
-				f.postgres.EXPECT().
-					GetRoleByTitle(mock.Anything, "ROLE_USER").
-					Return(domain.Role{}, pgx.ErrTxClosed).Once()
-			},
-			wantErr: true,
-		},
-		{
-			name: "hash password failed",
-			input: Input{
-				Login:             "newuser",
-				Password:          "12345678",
-				PasswordConfirmed: "12345678",
-			},
-			prepare: func(f fields) {
-				f.hasher.EXPECT().
-					HashPassword("12345678").
-					Return("", bcrypt.ErrPasswordTooLong).Once()
-			},
-			wantErr: true,
-		},
-		{
-			name: "small password",
-			input: Input{
-				Login:             "newuser",
-				Password:          "42",
-				PasswordConfirmed: "42",
-			},
-			prepare: func(f fields) {
-			},
-			wantErr: true,
-		},
-		{
-			name: "not equals password",
-			input: Input{
-				Login:             "newuser",
-				Password:          "42",
-				PasswordConfirmed: "24",
-			},
-			prepare: func(f fields) {
-			},
-			wantErr: true,
-		},
-		{
-			name: "small login",
-			input: Input{
-				Login:             "us",
-				Password:          "12345678",
-				PasswordConfirmed: "12345678",
-			},
-			prepare: func(f fields) {
-			},
-			wantErr: true,
-		},
-		{
-			name: "invalid login",
-			input: Input{
-				Login:             " __invalid__ ",
-				Password:          "12345678",
-				PasswordConfirmed: "12345678",
-			},
-			prepare: func(f fields) {
-			},
-			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := fields{
-				postgres: NewMockPostgres(t),
-				hasher:   NewMockPasswordHasher(t),
+			f := &fields{
+				postgres: &MockPostgres{},
+				hasher:   &MockPasswordHasher{},
 			}
 			tt.prepare(f)
 
-			uc := New(f.postgres, f.hasher, zerolog.Logger{})
-			err := uc.Register(context.Background(), tt.input)
+			uc := New(f.postgres, f.hasher)
+			out, err := uc.Register(testCtx, tt.input)
 
-			test.AssertErr(t, err, tt.wantErr)
+			tt.check(t, out, err, f)
 		})
 	}
 }

@@ -51,6 +51,10 @@ func (h *Handler) ErrorResponse(err error, msg string) {
 		statusCode = http.StatusUnauthorized
 		log = h.log.Debug()
 
+	case errors.Is(err, errs.ErrSessionIsCompromised):
+		statusCode = http.StatusUnauthorized
+		log = h.log.Warn()
+
 	case errs.OneOf(
 		err,
 		errs.ErrInvalidArgument,

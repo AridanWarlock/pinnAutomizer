@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func IsNotFound(err error) bool {
@@ -12,9 +14,17 @@ func IsNotFound(err error) bool {
 }
 
 func ScanErr(err error) error {
-	return fmt.Errorf("scan: %w", err)
-}
+	if err == nil {
+		return nil
+	}
 
-func ExecErr(err error) error {
-	return fmt.Errorf("exec query: %w", err)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23505", "23503":
+			return errs.ErrConflict
+		}
+	}
+
+	return fmt.Errorf("scan err: %w", err)
 }

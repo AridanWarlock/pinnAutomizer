@@ -22,13 +22,14 @@ func NewUserSession(
 	tokenSha256 []byte,
 	expiresAt time.Time,
 	fingerprint []byte,
+	now time.Time,
 ) (UserSession, error) {
 	us := UserSession{
 		ID:          uuid.New(),
 		UserID:      userID,
 		TokenSha256: tokenSha256,
 		ExpiresAt:   expiresAt,
-		CreatedAt:   time.Now(),
+		CreatedAt:   now,
 		Fingerprint: fingerprint,
 	}
 

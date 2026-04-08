@@ -20,7 +20,7 @@ type Postgres interface {
 }
 
 type AccessTokenGenerator interface {
-	Generate(user domain.User, roles []domain.Role) (domain.AccessToken, error)
+	Generate(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error)
 }
 
 type usecase struct {
@@ -45,7 +45,7 @@ func (u *usecase) Refresh(ctx context.Context, in Input) (Output, error) {
 
 	sessionID, tokenSha256, err := parseRefreshTokenFromString(in.RefreshTokenString)
 	if err != nil {
-		return Output{}, fmt.Errorf("parse refresh token: %w", err)
+		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
 	session, err := u.postgres.GetUserSessionById(ctx, sessionID)
@@ -67,7 +67,7 @@ func (u *usecase) Refresh(ctx context.Context, in Input) (Output, error) {
 		return Output{}, fmt.Errorf("getting user roles from postgres: %w", err)
 	}
 
-	accessToken, err := u.accessTokenGenerator.Generate(user, roles)
+	accessToken, err := u.accessTokenGenerator.Generate(user, roles, in.Fingerprint)
 	if err != nil {
 		return Output{}, fmt.Errorf("generate access token: %w", err)
 	}
@@ -95,11 +95,11 @@ func parseRefreshTokenFromString(token string) (uuid.UUID, []byte, error) {
 
 func validateSession(session domain.UserSession, tokenHash []byte) error {
 	if subtle.ConstantTimeCompare(session.TokenSha256, tokenHash) != 1 {
-		return fmt.Errorf("compare refresh token hashes: %w", domain.ErrSessionCompromised)
+		return fmt.Errorf("compare refresh token hashes: %w", errs.ErrSessionIsCompromised)
 	}
 
 	if session.ExpiresAt.Before(time.Now()) {
-		return domain.ErrRefreshTokenExpired
+		return fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, domain.ErrRefreshTokenExpired)
 	}
 
 	return nil
