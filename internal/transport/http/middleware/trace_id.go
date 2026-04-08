@@ -23,7 +23,7 @@ func TraceID() Middleware {
 
 			log.Debug().
 				Dur("latency", duration).
-				Int("status_code", rw.GetStatusCodeOrPanic()).
+				Int("status_code", rw.GetStatusCode()).
 				Msg("<<< done HTTP request")
 		})
 	}

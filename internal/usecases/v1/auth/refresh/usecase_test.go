@@ -2,139 +2,204 @@ package authRefresh
 
 import (
 	"context"
+	"crypto/sha256"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestUsecase_Refresh(t *testing.T) {
 	type fields struct {
-		postgres *MockPostgres
-		jwt      *MockJwtService
+		postgres        *MockPostgres
+		accessGenerator *MockAccessTokenGenerator
 	}
 
+	var (
+		fixedID          = uuid.New()
+		fixedUserID      = uuid.New()
+		fixedTokenRaw    = "random_string"
+		validTokenStr    = fmt.Sprintf("%s.%s", fixedID.String(), fixedTokenRaw)
+		fixedHash        = sha256.Sum256([]byte(fixedTokenRaw))
+		fixedFingerprint = fixtures.NewFingerprint()
+		fixedAccessToken = fixtures.NewAccessToken()
+		fixedNow         = time.Now()
+		testCtx          = test.ContextBackgroundWithZeroLogger()
+	)
+
 	tests := []struct {
-		name     string
-		input    Input
-		expected Output
-		prepare  func(f fields)
-		wantErr  bool
+		name    string
+		input   Input
+		prepare func(f *fields)
+		check   func(t *testing.T, out Output, err error, f *fields)
 	}{
 		{
-			name: "valid path",
+			name: "success path",
 			input: Input{
-				RefreshTokenString: "valid_refresh",
+				RefreshTokenString: validTokenStr,
+				Fingerprint:        fixedFingerprint,
 			},
-			expected: Output{AccessToken: domain.AccessToken{
-				Value:     "valid_access",
-				ExpiresAt: time.Time{}.Add(time.Hour),
-			}},
-			prepare: func(f fields) {
-				f.jwt.EXPECT().
-					ValidateRefreshToken(mock.Anything, "valid_refresh").
-					Return(uuid.Max, nil).
-					Once()
-
-				f.jwt.EXPECT().
-					GenerateAccessToken(uuid.Max).
-					Return(domain.AccessToken{
-						Value:     "valid_access",
-						ExpiresAt: time.Time{}.Add(time.Hour),
-					}, nil).Once()
-
-				f.postgres.EXPECT().
-					Refresh(mock.Anything, uuid.Max, "valid_access").
-					Return(nil).Once()
+			prepare: func(f *fields) {
+				f.postgres.GetUserSessionByIdFunc = func(ctx context.Context, id uuid.UUID) (domain.UserSession, error) {
+					return fixtures.NewUserSession(func(s *domain.UserSession) {
+						s.ID = fixedID
+						s.UserID = fixedUserID
+						s.TokenSha256 = fixedHash[:]
+						s.CreatedAt = fixedNow
+						s.ExpiresAt = fixedNow.Add(time.Hour)
+					}), nil
+				}
+				f.postgres.GetUserByIDFunc = func(ctx context.Context, id uuid.UUID) (domain.User, error) {
+					return fixtures.NewUser(func(u *domain.User) {
+						u.ID = fixedUserID
+						u.Login = "admin"
+					}), nil
+				}
+				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, id uuid.UUID) ([]domain.Role, error) {
+					return []domain.Role{}, nil
+				}
+				f.accessGenerator.GenerateFunc = func(
+					user domain.User,
+					roles []domain.Role,
+					fingerprint domain.Fingerprint,
+				) (domain.AccessToken, error) {
+					return fixedAccessToken, nil
+				}
 			},
-			wantErr: false,
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.NoError(t, err)
+				assert.Equal(t, fixedAccessToken, out.AccessToken)
+			},
 		},
 		{
-			name: "invalid input",
+			name: "error - invalid format token (no dot)",
 			input: Input{
-				RefreshTokenString: "",
+				RefreshTokenString: "invalid-format-token",
+				Fingerprint:        fixedFingerprint,
 			},
-			prepare: func(f fields) {
+			prepare: func(f *fields) {},
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, errs.ErrInvalidArgument))
 			},
-			wantErr: true,
 		},
 		{
-			name: "postgres refresh error",
+			name: "error - invalid fingerprint",
 			input: Input{
-				RefreshTokenString: "valid_refresh",
+				RefreshTokenString: validTokenStr,
+				Fingerprint:        []byte("bad fingerprint"),
 			},
-			prepare: func(f fields) {
-				f.jwt.EXPECT().
-					ValidateRefreshToken(mock.Anything, "valid_refresh").
-					Return(uuid.Max, nil).
-					Once()
-
-				f.jwt.EXPECT().
-					GenerateAccessToken(uuid.Max).
-					Return(domain.AccessToken{
-						Value:     "valid_access",
-						ExpiresAt: time.Time{}.Add(time.Hour),
-					}, nil).Once()
-
-				f.postgres.EXPECT().
-					Refresh(mock.Anything, uuid.Max, "valid_access").
-					Return(pg_errors.ErrUpdateRowsAffectedCount).Once()
+			prepare: func(f *fields) {},
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, errs.ErrInvalidArgument))
 			},
-			wantErr: true,
 		},
 		{
-			name: "generate token error",
+			name: "error - session not found",
 			input: Input{
-				RefreshTokenString: "valid_refresh",
+				RefreshTokenString: validTokenStr,
+				Fingerprint:        fixedFingerprint,
 			},
-			prepare: func(f fields) {
-				f.jwt.EXPECT().
-					ValidateRefreshToken(mock.Anything, "valid_refresh").
-					Return(uuid.Max, nil).
-					Once()
-
-				f.jwt.EXPECT().
-					GenerateAccessToken(uuid.Max).
-					Return(domain.AccessToken{}, jwt.ErrSignatureInvalid).
-					Once()
+			prepare: func(f *fields) {
+				f.postgres.GetUserSessionByIdFunc = func(ctx context.Context, id uuid.UUID) (domain.UserSession, error) {
+					return domain.UserSession{}, errs.ErrNotFound
+				}
 			},
-			wantErr: true,
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, errs.ErrNotFound))
+			},
 		},
 		{
-			name: "validate token error",
+			name: "error - session compromised (hash mismatch)",
 			input: Input{
-				RefreshTokenString: "valid_refresh",
+				RefreshTokenString: validTokenStr,
+				Fingerprint:        fixedFingerprint,
 			},
-			prepare: func(f fields) {
-				f.jwt.EXPECT().
-					ValidateRefreshToken(mock.Anything, "valid_refresh").
-					Return(uuid.UUID{}, jwt.ErrTokenExpired).
-					Once()
+			prepare: func(f *fields) {
+				f.postgres.GetUserSessionByIdFunc = func(ctx context.Context, id uuid.UUID) (domain.UserSession, error) {
+					return fixtures.NewUserSession(func(s *domain.UserSession) {
+						s.ID = fixedID
+						s.TokenSha256 = []byte("wrong-hash")
+						s.CreatedAt = fixedNow
+						s.ExpiresAt = fixedNow.Add(time.Hour)
+						s.Fingerprint = fixedFingerprint
+					}), nil
+				}
 			},
-			wantErr: true,
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, errs.ErrSessionIsCompromised))
+				assert.Len(t, f.postgres.GetUserByIDCalls(), 0)
+			},
+		},
+		{
+			name: "error - token expired",
+			input: Input{
+				RefreshTokenString: validTokenStr,
+				Fingerprint:        fixedFingerprint,
+			},
+			prepare: func(f *fields) {
+				f.postgres.GetUserSessionByIdFunc = func(ctx context.Context, id uuid.UUID) (domain.UserSession, error) {
+					return fixtures.NewUserSession(func(s *domain.UserSession) {
+						s.ID = fixedID
+						s.TokenSha256 = fixedHash[:]
+						s.CreatedAt = fixedNow
+						s.ExpiresAt = fixedNow.Add(-time.Hour)
+						s.Fingerprint = fixedFingerprint
+					}), nil
+				}
+			},
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, errs.ErrAuthorizationFailed))
+			},
+		},
+		{
+			name: "error - user not found",
+			input: Input{
+				RefreshTokenString: validTokenStr,
+				Fingerprint:        fixedFingerprint,
+			},
+			prepare: func(f *fields) {
+				f.postgres.GetUserSessionByIdFunc = func(ctx context.Context, id uuid.UUID) (domain.UserSession, error) {
+					return fixtures.NewUserSession(func(s *domain.UserSession) {
+						s.TokenSha256 = fixedHash[:]
+					}), nil
+				}
+				f.postgres.GetUserByIDFunc = func(ctx context.Context, id uuid.UUID) (domain.User, error) {
+					return domain.User{}, errs.ErrNotFound
+				}
+			},
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, errs.ErrNotFound))
+				assert.Len(t, f.postgres.GetRolesByUserIDCalls(), 0)
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := fields{
-				postgres: NewMockPostgres(t),
-				jwt:      NewMockJwtService(t),
+			f := &fields{
+				postgres:        &MockPostgres{},
+				accessGenerator: &MockAccessTokenGenerator{},
 			}
 			tt.prepare(f)
 
-			uc := New(f.postgres, f.jwt, zerolog.Logger{})
-			actual, err := uc.Refresh(context.Background(), tt.input)
+			uc := New(f.postgres, f.accessGenerator)
+			out, err := uc.Refresh(testCtx, tt.input)
 
-			test.AssertErr(t, err, tt.wantErr)
-			assert.Equal(t, tt.expected, actual)
+			tt.check(t, out, err, f)
 		})
 	}
 }

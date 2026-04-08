@@ -1,9 +1,8 @@
-all: true
-inpackage: true
-filename: "mocks_test.go"
-
+template: matryer
 packages:
-  pinnAutomizer/internal/usecases/...:
+  github.com/AridanWarlock/pinnAutomizer/internal/usecases:
     config:
-      recursive: true
+      filename: "mocks_test.go"
       all: true
+      recursive: true
+      inpackage: true

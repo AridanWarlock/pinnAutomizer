@@ -8,7 +8,7 @@ import (
 )
 
 type Input struct {
-	Login             string `validate:"required,min=5,alphanum"`
+	Login             string `validate:"required"`
 	Password          string `validate:"required,min=5"`
 	PasswordConfirmed string `validate:"required,eqfield=Password"`
 }

@@ -9,32 +9,45 @@ import (
 )
 
 type UserSession struct {
-	ID          uuid.UUID `validate:"required,uuid" json:"id"`
-	UserID      uuid.UUID `validate:"required,uuid" json:"user_id"`
-	TokenSha256 []byte    `validate:"required,len=32" json:"token_sha256"`
-	CreatedAt   time.Time `validate:"required" json:"created_at"`
-	ExpiresAt   time.Time `validate:"required,gtfield=CreatedAt" json:"expires_at"`
-	Fingerprint []byte    `validate:"required,len=32" json:"fingerprint"`
+	ID          uuid.UUID   `validate:"required,uuid" json:"id"`
+	UserID      uuid.UUID   `validate:"required,uuid" json:"user_id"`
+	TokenSha256 []byte      `validate:"required,len=32" json:"token_sha256"`
+	CreatedAt   time.Time   `validate:"required" json:"created_at"`
+	ExpiresAt   time.Time   `validate:"required,gtfield=CreatedAt" json:"expires_at"`
+	Fingerprint Fingerprint `json:"fingerprint"`
 }
 
 func NewUserSession(
 	userID uuid.UUID,
 	tokenSha256 []byte,
 	expiresAt time.Time,
-	fingerprint []byte,
+	fingerprint Fingerprint,
+	now time.Time,
 ) (UserSession, error) {
 	us := UserSession{
 		ID:          uuid.New(),
 		UserID:      userID,
 		TokenSha256: tokenSha256,
 		ExpiresAt:   expiresAt,
-		CreatedAt:   time.Now(),
+		CreatedAt:   now,
 		Fingerprint: fingerprint,
 	}
 
-	if err := validate.V.Struct(us); err != nil {
+	if err := us.Validate(); err != nil {
 		return UserSession{}, err
 	}
 
 	return us, nil
+}
+
+func (s UserSession) Validate() error {
+	if err := validate.V.Struct(s); err != nil {
+		return err
+	}
+
+	if err := s.Fingerprint.Validate(); err != nil {
+		return err
+	}
+
+	return nil
 }

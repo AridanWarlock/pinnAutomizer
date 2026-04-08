@@ -63,3 +63,10 @@ swagger-gen:
 		--quiet
 swagger-fmt:
 	@docker compose run --rm swagger fmt
+
+mockery:
+	@docker compose run --rm \
+    		-v $(shell go env GOCACHE):/root/.cache/go-build \
+    		-v $(shell go env GOMODCACHE):/go/pkg/mod \
+    		-e GOCACHE=/root/.cache/go-build \
+    		mockery

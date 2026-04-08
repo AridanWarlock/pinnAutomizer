@@ -25,6 +25,7 @@ import (
 	tasksGet "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/get"
 	tasksOnTrain "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/onTrain"
 	tasksSolve "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/solve"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/clock"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/passwordHasher"
 	"github.com/rs/zerolog"
@@ -114,7 +115,7 @@ func AppRun(
 
 	// usecases
 	// auth
-	authLoginUsecase := authLogin.New(postgresAdapter, accessTokenGenerator, refreshTokenGenerator, hasher)
+	authLoginUsecase := authLogin.New(postgresAdapter, accessTokenGenerator, refreshTokenGenerator, hasher, clock.New())
 	authLogoutUsecase := authLogout.New(postgresAdapter)
 	authMeUsecase := authMe.New(postgresAdapter)
 	authRegisterUsecase := authRegister.New(postgresAdapter, hasher)

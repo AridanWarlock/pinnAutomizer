@@ -166,6 +166,7 @@ func (c *Consumer) fetchAndHandle(ctx context.Context,
 		c.log.Error().Err(err).Msg("kafka_consumer: reader.CommitMessages")
 		return err
 	}
+	return nil
 }
 
 func (c *Consumer) handleError(ctx context.Context, msg kafka.Message, handleErr error) error {
