@@ -5,6 +5,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/auth/refreshToken"
 	jwtToken "github.com/AridanWarlock/pinnAutomizer/internal/adapter/jwt/token"
+	kafkaAtLeastOnceConsumer "github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaConsumer/atLeastOnce"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaProducer"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis"
@@ -19,15 +20,14 @@ type App struct {
 
 type Config struct {
 	App                   App
-	HTTP                  httpServer.Config    `envPrefix:"HTTP_"`
-	Log                   logger.Config        `envPrefix:"LOGGER_"`
-	Postgres              postgres.Config      `envPrefix:"POSTGRES_"`
-	Redis                 redis.Config         `envPrefix:"REDIS_"`
-	AccessTokenGenerator  jwtToken.Config      `envPrefix:"JWT_"`
-	RefreshTokenGenerator refreshToken.Config  `envPrefix:"REFRESH_"`
-	KafkaProducer         kafkaProducer.Config `envPrefix:"KAFKA_PRODUCER_"`
-	// KafkaConsumerOnTrain    update_task_status_on_train.Config
-	// KafkaConsumerAfterTrain update_task_status_after_train.Config
+	HTTP                  httpServer.Config               `envPrefix:"HTTP_"`
+	Log                   logger.Config                   `envPrefix:"LOGGER_"`
+	Postgres              postgres.Config                 `envPrefix:"POSTGRES_"`
+	Redis                 redis.Config                    `envPrefix:"REDIS_"`
+	AccessTokenGenerator  jwtToken.Config                 `envPrefix:"JWT_"`
+	RefreshTokenGenerator refreshToken.Config             `envPrefix:"REFRESH_"`
+	KafkaProducer         kafkaProducer.Config            `envPrefix:"KAFKA_PRODUCER_"`
+	KafkaConsumer         kafkaAtLeastOnceConsumer.Config `envPrefix:"KAFKA_CONSUMER_"`
 }
 
 func InitConfig() (Config, error) {

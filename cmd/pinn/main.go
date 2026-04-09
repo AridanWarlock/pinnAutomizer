@@ -9,6 +9,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/config"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/auth/refreshToken"
 	jwtToken "github.com/AridanWarlock/pinnAutomizer/internal/adapter/jwt/token"
+	kafkaAtLeastOnceConsumer "github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaConsumer/atLeastOnce"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaProducer"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis"
@@ -124,8 +125,8 @@ func AppRun(
 	tasksCreateUsecase := tasksCreate.New(postgresAdapter, redisAdapter)
 	tasksGetUsecase := tasksGet.New(postgresAdapter)
 	tasksSolveUsecase := tasksSolve.New(postgresAdapter, redisAdapter)
-	_ = tasksAfterTrain.New(postgresAdapter, redisAdapter)
-	_ = tasksOnTrain.New(postgresAdapter, redisAdapter)
+	tasksAfterTrainUsecase := tasksAfterTrain.New(postgresAdapter, redisAdapter)
+	tasksOnTrainUsecase := tasksOnTrain.New(postgresAdapter, redisAdapter)
 
 	// http handlers
 	// auth
@@ -138,7 +139,7 @@ func AppRun(
 	tasksCreateHandler := tasksCreate.NewHttpHandler(tasksCreateUsecase)
 	tasksGetHandler := tasksGet.NewHttpHandler(tasksGetUsecase)
 	tasksSolveHandler := tasksSolve.NewHttpHandler(tasksSolveUsecase)
-
+	// routers
 	apiV1Router := httpServer.NewApiVersionRouter(httpServer.ApiVersion1)
 	apiV1Router.RegisterHandlers(
 		// auth
@@ -152,6 +153,7 @@ func AppRun(
 		tasksGetHandler,
 		tasksSolveHandler,
 	)
+	// http server
 	server := httpServer.New(
 		cfg.HTTP,
 		log,
@@ -164,6 +166,31 @@ func AppRun(
 	)
 	server.RegisterApiRouters(apiV1Router)
 	server.RegisterSwagger()
+
+	// kafka consumers
+	// tasks
+	tasksOnTrainConsumer := tasksOnTrain.NewConsumer(tasksOnTrainUsecase, log)
+	tasksAfterTrainConsumer := tasksAfterTrain.NewConsumer(tasksAfterTrainUsecase, log)
+	// tasks-on-train
+	go func() {
+		tasksOnTrainConsumeAdapter := kafkaAtLeastOnceConsumer.New(
+			cfg.KafkaConsumer,
+			"tasks.on.train",
+			producer,
+			log,
+		)
+		tasksOnTrainConsumeAdapter.Run(ctx, tasksOnTrainConsumer.HandleMessage)
+	}()
+	// tasks-after-train
+	go func() {
+		tasksAfterTrainConsumeAdapter := kafkaAtLeastOnceConsumer.New(
+			cfg.KafkaConsumer,
+			"tasks.after.train",
+			producer,
+			log,
+		)
+		tasksAfterTrainConsumeAdapter.Run(ctx, tasksAfterTrainConsumer.HandleMessage)
+	}()
 
 	return server.Run(ctx)
 }

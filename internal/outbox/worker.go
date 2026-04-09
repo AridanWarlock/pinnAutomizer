@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/tx"
 	"github.com/rs/zerolog"
 
@@ -14,9 +15,8 @@ import (
 )
 
 const (
-	BatchSize = 20
-
-	HeaderIdempotencyKey = "x-idempotency-key"
+	HeaderIdempotencyKey = "X-Idempotency-Key"
+	BatchSize            = 100
 )
 
 type Postgres interface {
@@ -40,6 +40,7 @@ type Worker struct {
 
 func NewWorker(postgres Postgres, writer Writer, log zerolog.Logger) *Worker {
 	ctx, stop := context.WithCancel(context.Background())
+	ctx = logger.WithContext(ctx, log)
 
 	w := &Worker{
 		writer:   writer,
@@ -49,13 +50,16 @@ func NewWorker(postgres Postgres, writer Writer, log zerolog.Logger) *Worker {
 	}
 
 	go func() {
+		defer w.Close()
 		ticker := time.NewTicker(5 * time.Second)
 
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			w.ProcessEvents(ctx)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				w.ProcessEvents(ctx)
+			}
 		}
 	}()
 
@@ -75,6 +79,9 @@ func (w *Worker) getAndPublishEvents(ctx context.Context) error {
 	events, err := w.postgres.GetAvailableEvents(ctx, BatchSize)
 	if err != nil {
 		return fmt.Errorf("getting available events from postgres: %w", err)
+	}
+	if len(events) == 0 {
+		return nil
 	}
 
 	msgs := make([]kafka.Message, 0, len(events))

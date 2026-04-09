@@ -1,5 +1,5 @@
 package kafkaProducer
 
 type Config struct {
-	Addr []string `env:"WRITER_ADDR"`
+	Addr string `env:"ADDR,required"`
 }

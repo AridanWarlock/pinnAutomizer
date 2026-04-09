@@ -7,10 +7,10 @@ ps:
 	@docker ps
 
 env-up:
-	@docker compose up -d pinn-postgres redis
+	@docker compose up -d pinn-postgres redis kafka
 
 env-down:
-	@docker compose down pinn-postgres redis
+	@docker compose down pinn-postgres redis kafka
 
 env-cleanup:
 	@read -p "Очистить все volume файлы окружения? Опасность утери данных. [y/n]: " ans; \
@@ -18,15 +18,15 @@ env-cleanup:
   	  echo "Очистка окружения отменена"; \
   	  exit 0; \
   	fi; \
-	docker compose down pinn-postgres port-forwarder redis && \
-	rm -rf ${PROJECT_ROOT}/out/pgdata ${PROJECT_ROOT}/out/redis_data && \
+	docker compose down pinn-postgres postgres-port-forwarder redis && \
+	rm -rf ${PROJECT_ROOT}/out/pgdata ${PROJECT_ROOT}/out/redis_data ${PROJECT_ROOT}/out/kafka && \
 	echo "Файлы окружения очищены"
 
-env-port-forward:
-	@docker compose up -d port-forwarder
+postgres-port-forward:
+	@docker compose up -d postgres-port-forwarder
 
-env-port-close:
-	@docker compose down port-forwarder
+postgres-port-close:
+	docker compose down postgres-port-forwarder
 
 goose-create:
 	@if [ -z "$(name)" ]; then \
@@ -70,3 +70,9 @@ mockery:
     		-v $(shell go env GOMODCACHE):/go/pkg/mod \
     		-e GOCACHE=/root/.cache/go-build \
     		mockery
+
+kafka-ui-up:
+	@docker compose up -d kafka-ui
+
+kafka-ui-down:
+	@docker compose down kafka-ui

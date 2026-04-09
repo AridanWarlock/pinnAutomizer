@@ -3,6 +3,7 @@ package kafkaAtLeastOnceConsumer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -12,24 +13,26 @@ import (
 )
 
 var (
-	ErrAtoiConvertRetryCount = errors.New("atoi convert publishInRetryTopic count")
-	ErrRetryAtHeaderNotFound = errors.New("retry at header not found")
+	ErrHeaderNotFound        = errors.New("header not found")
+	ErrMaxRetryReached       = errors.New("max retry reached")
+	ErrInvalidRetryNumber    = errors.New("invalid retry number")
+	ErrInvalidIdempotencyKey = errors.New("invalid idempotency key")
 )
 
 const (
-	HeaderError          = "x-last-error"
-	HeaderSource         = "x-original-topic"
-	HeaderReason         = "x-dead-letter-reason"
-	HeaderRetryCount     = "x-retry-count"
-	HeaderRetryAt        = "x-retry-at"
-	HeaderIdempotencyKey = "x-idempotency-key"
+	HeaderLastError      = "X-Last-Error"
+	HeaderSource         = "X-Original-Topic"
+	HeaderReason         = "X-Dead-Letter-Reason"
+	HeaderRetryNumber    = "X-Retry-Number"
+	HeaderRetryAt        = "X-Retry-At"
+	HeaderIdempotencyKey = "X-Idempotency-Key"
 	RetryAtFormat        = time.RFC3339
 
 	MaxRetries             = 3
 	RetrySleepDurationBase = time.Second
 )
 
-type UsecaseFunc func(ctx context.Context, msg kafka.Message, idempotencyKey string) error
+type HandlerFunc func(ctx context.Context, msg kafka.Message, idempotencyKey string) error
 
 type Reader interface {
 	FetchMessage(ctx context.Context) (kafka.Message, error)
@@ -40,90 +43,99 @@ type Writer interface {
 	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
 }
 
-type Consumer struct {
-	writer Writer
+type Headers map[string]string
 
-	log zerolog.Logger
+type Consumer struct {
+	broker string
+
+	topic      string
+	retryTopic string
+	dlqTopic   string
+
+	groupID      string
+	retryGroupID string
+
+	maxBytes int
+
+	writer Writer
+	log    zerolog.Logger
 }
 
 func New(
+	cfg Config,
+	topic string,
 	writer Writer,
 
 	log zerolog.Logger,
 ) *Consumer {
-
 	return &Consumer{
+		broker: cfg.Broker,
+
+		topic:      topic,
+		retryTopic: topic + ".retry",
+		dlqTopic:   topic + ".dlq",
+
+		groupID:      cfg.GroupID,
+		retryGroupID: cfg.GroupID + "-retry",
+
+		maxBytes: 1e6, // 1Mb
+
 		writer: writer,
 
-		log: log.With().Str("component", "kafka_consumer").Logger(),
+		log: log,
 	}
 }
 
-func (c *Consumer) Run(ctx context.Context, topic string, handler UsecaseFunc) {
-	cfg := kafka.ReaderConfig{
-		Brokers:                nil,
-		GroupID:                "",
-		GroupTopics:            nil,
-		Topic:                  topic,
-		Partition:              0,
-		Dialer:                 nil,
-		QueueCapacity:          0,
-		MinBytes:               0,
-		MaxBytes:               0,
-		MaxWait:                0,
-		ReadBatchTimeout:       0,
-		ReadLagInterval:        0,
-		GroupBalancers:         nil,
-		HeartbeatInterval:      0,
-		CommitInterval:         0,
-		PartitionWatchInterval: 0,
-		WatchPartitionChanges:  false,
-		SessionTimeout:         0,
-		RebalanceTimeout:       0,
-		JoinGroupBackoff:       0,
-		RetentionTime:          0,
-		StartOffset:            0,
-		ReadBackoffMin:         0,
-		ReadBackoffMax:         0,
-		Logger:                 nil,
-		ErrorLogger:            nil,
-		IsolationLevel:         0,
-		MaxAttempts:            0,
-		OffsetOutOfRangeError:  false,
-	}
+func (c *Consumer) Run(ctx context.Context, handler HandlerFunc) {
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:  []string{c.broker},
+		GroupID:  c.groupID,
+		Topic:    c.topic,
+		MaxBytes: c.maxBytes,
+	})
 
-	reader := kafka.NewReader(cfg)
-	cfg.Topic = topic + ".retry"
-	retryReader := kafka.NewReader(cfg)
+	retryReader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:  []string{c.broker},
+		GroupID:  c.retryGroupID,
+		Topic:    c.retryTopic,
+		MaxBytes: c.maxBytes,
+	})
 
 	eg, ctx := errgroup.WithContext(ctx)
 
 	eg.Go(func() error {
+		defer func() {
+			_ = reader.Close()
+		}()
+
 		return c.consumeTopic(ctx, reader, handler)
 	})
+
 	eg.Go(func() error {
-		return c.consumeTopic(ctx, retryReader, func(
-			ctx context.Context,
-			msg kafka.Message,
-			idempotencyKey string,
-		) error {
+		defer func() {
+			_ = retryReader.Close()
+		}()
+
+		handler := func(ctx context.Context, msg kafka.Message, idempotencyKey string) error {
 			if err := waitRetryAt(ctx, msg.Headers); err != nil {
 				return err
 			}
 
 			return handler(ctx, msg, idempotencyKey)
-		})
+		}
+
+		return c.consumeTopic(ctx, retryReader, handler)
 	})
 
-	go func() {
-		_ = eg.Wait()
-	}()
+	if err := eg.Wait(); err != nil {
+		c.log.Error().Err(err).Msg("consumers stopped with error")
+	}
 }
 
 func (c *Consumer) consumeTopic(
 	ctx context.Context,
 	reader Reader,
-	handler UsecaseFunc,
+	handler HandlerFunc,
 ) error {
 	for {
 		err := c.fetchAndHandle(ctx, reader, handler)
@@ -135,7 +147,7 @@ func (c *Consumer) consumeTopic(
 
 func (c *Consumer) fetchAndHandle(ctx context.Context,
 	reader Reader,
-	handler UsecaseFunc,
+	handler HandlerFunc,
 ) error {
 	msg, err := reader.FetchMessage(ctx)
 	if err != nil {
@@ -147,14 +159,18 @@ func (c *Consumer) fetchAndHandle(ctx context.Context,
 		return err
 	}
 
-	err = handler(ctx, msg, getIdempotencyKey(msg.Headers))
+	idKey, err := idempotencyKeyFromHeaders(msg.Headers)
 	if err != nil {
+		return fmt.Errorf("getting idempotency key from headers: %w", err)
+	}
+
+	err = handler(ctx, msg, idKey)
+	if err != nil {
+		c.log.Debug().Msg(fmt.Sprintf("ошибка упала в логике: %v", err))
 		if err = c.handleError(ctx, msg, err); err != nil {
 			c.log.Error().Err(err).Msg("kafka_consumer: handleError")
 			return err
 		}
-
-		return nil
 	}
 
 	err = reader.CommitMessages(ctx, msg)
@@ -170,67 +186,145 @@ func (c *Consumer) fetchAndHandle(ctx context.Context,
 }
 
 func (c *Consumer) handleError(ctx context.Context, msg kafka.Message, handleErr error) error {
-	var retries int
-	var err error
+	err := c.publishInRetryTopic(ctx, msg, handleErr)
 
-	retriesHeader, ok := getHeader(msg.Headers, HeaderRetryCount)
-	if ok {
-		retries, err = strconv.Atoi(string(retriesHeader.Value))
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, ErrMaxRetryReached):
+		err = c.publishInDlqTopic(ctx, msg, handleErr, "Max retries reached")
 		if err != nil {
-			return ErrAtoiConvertRetryCount
+			return fmt.Errorf("unexpected publish in dlq error: %w", err)
 		}
-	}
 
-	if retries < MaxRetries {
-		return c.publishInRetryTopic(ctx, msg, handleErr, retries)
+		return nil
+	default:
+		return fmt.Errorf("unexpected publish in retry error: %w", err)
 	}
-	return c.publishInDlqTopic(ctx, msg, handleErr, "Max retries reached")
 }
 
-func getHeader(headers []kafka.Header, key string) (kafka.Header, bool) {
+func getHeader(headers []kafka.Header, key string) (kafka.Header, error) {
 	for _, header := range headers {
 		if header.Key == key {
-			return header, true
+			return header, nil
 		}
 	}
 
-	return kafka.Header{}, false
+	return kafka.Header{}, ErrHeaderNotFound
 }
 
-func getIdempotencyKey(headers []kafka.Header) string {
-	header, _ := getHeader(headers, HeaderIdempotencyKey)
-	return string(header.Value)
+func idempotencyKeyFromHeaders(headers []kafka.Header) (string, error) {
+	header, err := getHeader(headers, HeaderIdempotencyKey)
+	if err != nil {
+		return "", fmt.Errorf("getting header: %w", err)
+	}
+
+	idKey := string(header.Value)
+	if idKey == "" {
+		return "", ErrInvalidIdempotencyKey
+	}
+
+	return string(header.Value), nil
 }
 
 func (c *Consumer) publishInRetryTopic(
 	ctx context.Context,
 	msg kafka.Message,
 	handleErr error,
-	retries int,
 ) error {
+	retries, err := retriesNumFromHeaders(msg.Headers)
+	if err != nil {
+		return fmt.Errorf("get retries number from headers: %w", err)
+	}
 	retries++
-	retryAt := time.Now().Add(time.Duration(retries) * RetrySleepDurationBase)
 
-	msg.Topic += ".retry"
-	msg.Headers = updateHeader(msg.Headers, HeaderError, handleErr.Error())
-	msg.Headers = updateHeader(msg.Headers, HeaderRetryCount, strconv.Itoa(retries+1))
-	msg.Headers = updateHeader(msg.Headers, HeaderRetryAt, retryAt.Format(RetryAtFormat))
+	if retries > MaxRetries {
+		return ErrMaxRetryReached
+	}
 
-	return c.writer.WriteMessages(ctx, msg)
+	retryAt, err := calculateRetryAt(retries)
+	if err != nil {
+		return fmt.Errorf("calculate retry at: %w", err)
+	}
+
+	msg = kafka.Message{
+		Topic:   c.retryTopic,
+		Key:     msg.Key,
+		Value:   msg.Value,
+		Headers: msg.Headers,
+	}
+
+	msg = updateMessageHeaders(msg, map[string]string{
+		HeaderLastError:   handleErr.Error(),
+		HeaderRetryNumber: strconv.Itoa(retries),
+		HeaderRetryAt:     retryAt.Format(RetryAtFormat),
+	})
+
+	if err := c.writer.WriteMessages(ctx, msg); err != nil {
+		return fmt.Errorf("write messages: %w", err)
+	}
+	return nil
 }
 
-func updateHeader(headers []kafka.Header, key, value string) []kafka.Header {
-	newHeader := kafka.Header{
-		Key:   key,
-		Value: []byte(value),
+func retriesNumFromHeaders(headers []kafka.Header) (int, error) {
+	retriesHeader, err := getHeader(headers, HeaderRetryNumber)
+	if err != nil {
+		return 0, nil
 	}
-	for i, h := range headers {
-		if h.Key == key {
-			headers[i] = newHeader
-			return headers
+
+	retries, err := strconv.Atoi(string(retriesHeader.Value))
+	if err != nil {
+		return 0, fmt.Errorf("convert retries number from header: %w", err)
+	}
+
+	return retries, nil
+}
+
+func calculateRetryAt(retryNumber int) (time.Time, error) {
+	if retryNumber < 1 || retryNumber > MaxRetries {
+		return time.Time{}, fmt.Errorf(
+			"%w: retry number expected from 1 to %d, actual=%d",
+			ErrInvalidRetryNumber,
+			MaxRetries,
+			retryNumber,
+		)
+	}
+
+	retrySleepDuration := RetrySleepDurationBase * time.Duration(retryNumber*retryNumber)
+	return time.Now().Add(retrySleepDuration), nil
+}
+
+func updateMessageHeaders(msg kafka.Message, toUpdate Headers) kafka.Message {
+	headers := make([]kafka.Header, len(msg.Headers))
+	copy(headers, msg.Headers)
+
+	updated := make(map[string]struct{}, len(toUpdate))
+
+	for i, header := range headers {
+		key := header.Key
+
+		val, ok := toUpdate[key]
+		if !ok {
+			continue
 		}
+
+		headers[i].Value = []byte(val)
+		updated[key] = struct{}{}
 	}
-	return append(headers, newHeader)
+
+	for key, val := range toUpdate {
+		if _, ok := updated[key]; ok {
+			continue
+		}
+
+		headers = append(headers, kafka.Header{
+			Key:   key,
+			Value: []byte(val),
+		})
+	}
+
+	msg.Headers = headers
+	return msg
 }
 
 func (c *Consumer) publishInDlqTopic(
@@ -239,24 +333,36 @@ func (c *Consumer) publishInDlqTopic(
 	handleErr error,
 	reason string,
 ) error {
-	msg.Headers = updateHeader(msg.Headers, HeaderSource, msg.Topic)
-	msg.Headers = updateHeader(msg.Headers, HeaderError, handleErr.Error())
-	msg.Headers = updateHeader(msg.Headers, HeaderReason, reason)
+	oldTopic := msg.Topic
 
-	msg.Topic += ".dlq"
+	msg = kafka.Message{
+		Topic:   c.dlqTopic,
+		Key:     msg.Key,
+		Value:   msg.Value,
+		Headers: msg.Headers,
+	}
 
-	return c.writer.WriteMessages(ctx, msg)
+	msg = updateMessageHeaders(msg, map[string]string{
+		HeaderSource:    oldTopic,
+		HeaderLastError: handleErr.Error(),
+		HeaderReason:    reason,
+	})
+
+	if err := c.writer.WriteMessages(ctx, msg); err != nil {
+		return fmt.Errorf("write messages: %w", err)
+	}
+	return nil
 }
 
 func waitRetryAt(ctx context.Context, headers []kafka.Header) error {
-	retryAtHeader, ok := getHeader(headers, HeaderRetryAt)
-	if !ok {
-		return ErrRetryAtHeaderNotFound
+	retryAtHeader, err := getHeader(headers, HeaderRetryAt)
+	if err != nil {
+		return fmt.Errorf("getting retry at header: %w", err)
 	}
 
 	retryAt, err := time.Parse(RetryAtFormat, string(retryAtHeader.Value))
 	if err != nil {
-		return err
+		return fmt.Errorf("parse time from retry header: %w", err)
 	}
 
 	duration := time.Until(retryAt)

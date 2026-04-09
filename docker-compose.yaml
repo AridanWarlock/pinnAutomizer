@@ -6,28 +6,31 @@ services:
     container_name: pinn-backend
     environment:
       - ENVIRONMENT=${ENVIRONMENT}
+      # HTTP server
       - HTTP_ADDR=${HTTP_ADDR}
       - HTTP_TIMEOUT=${HTTP_TIMEOUT}
       - HTTP_IDLE_TIMEOUT=${HTTP_IDLE_TIMEOUT}
       - HTTP_SHUTDOWN_TIMEOUT=${HTTP_SHUTDOWN_TIMEOUT}
+      # Logger
       - LOGGER_ENVIRONMENT=${LOGGER_ENVIRONMENT}
       - LOGGER_LEVEL=${LOGGER_LEVEL}
       - LOGGER_FOLDER=/app/out/logs
+      # Postgres
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_HOST=pinn-postgres
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_TIMEOUT=${POSTGRES_TIMEOUT}
+      # Tokens
       - JWT_SECRET=${JWT_SECRET}
       - JWT_TOKEN_TTL=${JWT_TOKEN_TTL}
       - REFRESH_TOKEN_TTL=${REFRESH_TOKEN_TTL}
-      - KAFKA_WRITER_ADDR=${KAFKA_WRITER_ADDR}
-      - KAFKA_CONSUMER_ADDR=${KAFKA_CONSUMER_ADDR}
-      - KAFKA_CONSUMER_ON_TRAIN_TOPIC=${KAFKA_CONSUMER_ON_TRAIN_TOPIC}
-      - KAFKA_CONSUMER_AFTER_TRAIN_TOPIC=${KAFKA_CONSUMER_AFTER_TRAIN_TOPIC}
-      - KAFKA_CONSUMER_ON_TRAIN_GROUP=${KAFKA_CONSUMER_ON_TRAIN_GROUP}
-      - KAFKA_CONSUMER_AFTER_TRAIN_GROUP=${KAFKA_CONSUMER_AFTER_TRAIN_GROUP}
+      # Kafka
+      - KAFKA_PRODUCER_ADDR=kafka:${KAFKA_PORT}
+      - KAFKA_CONSUMER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_CONSUMER_GROUP_ID=pinn-automizer
+      # Redis
       - REDIS_ADDR=redis:${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - REDIS_DB=${REDIS_DB}
@@ -63,16 +66,16 @@ services:
     image: kukymbr/goose-docker:3.27.0
     environment:
       - GOOSE_DRIVER=postgres
-      - GOOSE_DBSTRING=host=pinn-postgres port=5432 user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB}
+      - GOOSE_DBSTRING=host=pinn-postgres port=${POSTGRES_PORT} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB}
     volumes:
       - ${PROJECT_ROOT}/migrations:/migrations
 
-  port-forwarder:
+  postgres-port-forwarder:
     image: alpine/socat:1.8.0.3
     container_name: pinn-postgres-port-forwarder
-    command: tcp-listen:5432,fork,reuseaddr tcp-connect:pinn-postgres:5432
+    command: tcp-listen:${POSTGRES_PORT},fork,reuseaddr tcp-connect:pinn-postgres:${POSTGRES_PORT}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT}:${POSTGRES_PORT}"
 
   swagger:
     build:
@@ -101,3 +104,35 @@ services:
     volumes:
       - ${PROJECT_ROOT}/out/redis_data:/redis/data
     command: [ "redis-server", "--appendonly", "yes" ]
+
+  kafka:
+    image: apache/kafka:4.1.2
+    container_name: pinn-env-kafka
+    ports:
+      - "${KAFKA_PORT}:${KAFKA_PORT}"
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      # Listeners
+      - KAFKA_LISTENERS=PLAINTEXT://:9092,INTERNAL://:9094,CONTROLLER://:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,INTERNAL://kafka:9094
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+      - CLUSTER_ID="qt8ne_I6S6u_Tlh8p6x0og"
+      # Logs
+      - KAFKA_LOG_DIRS=/var/lib/kafka/data
+    volumes:
+      - ${PROJECT_ROOT}/out/kafka:/var/lib/kafka/data
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: kafka-ui
+    ports:
+      - "8888:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9094
