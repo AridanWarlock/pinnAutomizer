@@ -4,10 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	http_request "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
-	http_response "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
-	http_server "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
-	http_utils "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/utils"
+	httpRequest "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
+	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/google/uuid"
 )
@@ -42,8 +41,8 @@ func NewHttpHandler(usecase Usecase) *HttpHandler {
 	}
 }
 
-func (h *HttpHandler) Route() http_server.Route {
-	return http_server.Route{
+func (h *HttpHandler) Route() httpServer.Route {
+	return httpServer.Route{
 		Method:  http.MethodPost,
 		Path:    "/tasks",
 		Handler: h.CreateTask,
@@ -65,11 +64,11 @@ func (h *HttpHandler) Route() http_server.Route {
 func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	userClaims := http_utils.ClaimsFromContext(ctx)
-	rh := http_response.NewHandler(w, log)
+	userClaims := httpRequest.ClaimsFromContext(ctx)
+	rh := httpResponse.NewHandler(w, log)
 
 	var req Request
-	if err := http_request.DecodeAndValidateRequest(w, r, &req); err != nil {
+	if err := httpRequest.DecodeAndValidateRequest(w, r, &req); err != nil {
 		rh.ErrorResponse(err, "failed to decode and validate HTTP request")
 		return
 	}

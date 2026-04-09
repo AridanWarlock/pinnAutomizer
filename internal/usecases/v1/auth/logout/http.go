@@ -3,9 +3,9 @@ package authLogout
 import (
 	"net/http"
 
+	httpRequest "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
 	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
-	httpUtils "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/utils"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
@@ -30,7 +30,7 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	userClaims := httpUtils.ClaimsFromContext(ctx)
+	userClaims := httpRequest.ClaimsFromContext(ctx)
 	rh := httpResponse.NewHandler(w, log)
 
 	err := h.usecase.Logout(ctx, Input{

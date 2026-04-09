@@ -6,7 +6,6 @@ import (
 	httpRequest "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
 	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
-	httpUtils "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/utils"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/google/uuid"
 )
@@ -37,7 +36,7 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) SolveTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	userClaims := httpUtils.ClaimsFromContext(ctx)
+	userClaims := httpRequest.ClaimsFromContext(ctx)
 	rh := httpResponse.NewHandler(w, log)
 
 	var req Request

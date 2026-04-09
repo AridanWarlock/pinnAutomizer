@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	httpRequest "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
 	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
-	httpUtils "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/utils"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
@@ -36,7 +36,7 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	claims := httpUtils.ClaimsFromContext(ctx)
+	claims := httpRequest.ClaimsFromContext(ctx)
 	rh := httpResponse.NewHandler(w, log)
 
 	refreshToken, err := r.Cookie("refreshToken")
