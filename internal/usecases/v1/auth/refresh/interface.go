@@ -9,7 +9,7 @@ import (
 )
 
 type Input struct {
-	RefreshTokenString string `validate:"required"`
+	RefreshTokenString string `validate:"required,base64rawurl,len=43"`
 }
 
 func (i Input) Validate() error {

@@ -11,7 +11,7 @@ func GenerateSecureToken() string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b)
 
-	return base64.URLEncoding.EncodeToString(b)
+	return base64.RawURLEncoding.EncodeToString(b)
 }
 
 func Sha256(token string) string {

@@ -2,6 +2,8 @@ package authMe
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"testing"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
@@ -18,26 +20,16 @@ func TestUsecase_Me(t *testing.T) {
 		postgres *MockPostgres
 	}
 
-	var (
-		fixedID = uuid.New()
-		testCtx = test.ContextBackgroundWithZeroLogger()
-	)
-
 	tests := []struct {
 		name    string
-		input   Input
 		prepare func(f *fields)
 		check   func(t *testing.T, out Output, err error, f *fields)
 	}{
 		{
 			name: "successful path",
-			input: Input{
-				UserID: fixedID,
-			},
 			prepare: func(f *fields) {
 				f.postgres.GetUserByIDFunc = func(ctx context.Context, id uuid.UUID) (domain.User, error) {
 					return fixtures.NewUser(func(user *domain.User) {
-						user.ID = fixedID
 						user.Login = "Ivan Ivanov"
 					}), nil
 				}
@@ -48,23 +40,7 @@ func TestUsecase_Me(t *testing.T) {
 			},
 		},
 		{
-			name: "error - invalid id",
-			input: Input{
-				UserID: uuid.Nil,
-			},
-			prepare: func(f *fields) {
-			},
-			check: func(t *testing.T, out Output, err error, f *fields) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), errs.ErrInvalidArgument.Error())
-				assert.Len(t, f.postgres.GetUserByIDCalls(), 0)
-			},
-		},
-		{
 			name: "error - user not found",
-			input: Input{
-				UserID: fixedID,
-			},
 			prepare: func(f *fields) {
 				f.postgres.GetUserByIDFunc = func(ctx context.Context, id uuid.UUID) (domain.User, error) {
 					return domain.User{}, errs.ErrNotFound
@@ -72,7 +48,19 @@ func TestUsecase_Me(t *testing.T) {
 			},
 			check: func(t *testing.T, out Output, err error, f *fields) {
 				assert.Error(t, err)
-				assert.Contains(t, err.Error(), errs.ErrNotFound.Error())
+				assert.True(t, errors.Is(err, errs.ErrNotFound))
+			},
+		},
+		{
+			name: "error - db failure on get user",
+			prepare: func(f *fields) {
+				f.postgres.GetUserByIDFunc = func(ctx context.Context, id uuid.UUID) (domain.User, error) {
+					return domain.User{}, sql.ErrConnDone
+				}
+			},
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, sql.ErrConnDone))
 			},
 		},
 	}
@@ -85,8 +73,11 @@ func TestUsecase_Me(t *testing.T) {
 
 			tt.prepare(f)
 
+			ctx := test.ContextWithZeroLogger()
+			ctx = fixtures.NewAuthInfo().WithContext(ctx)
+
 			uc := New(f.postgres)
-			actual, err := uc.Me(testCtx, tt.input)
+			actual, err := uc.Me(ctx)
 
 			tt.check(t, actual, err, f)
 		})

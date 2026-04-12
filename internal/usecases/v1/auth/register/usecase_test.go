@@ -10,7 +10,6 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,8 +20,8 @@ func TestUsecase_Register(t *testing.T) {
 	}
 
 	var (
-		fixedID = uuid.New()
-		testCtx = test.ContextBackgroundWithZeroLogger()
+		fixedUser = fixtures.NewUser()
+		testCtx   = test.ContextWithZeroLogger()
 	)
 
 	tests := []struct {
@@ -50,9 +49,7 @@ func TestUsecase_Register(t *testing.T) {
 					return fn(ctx)
 				}
 				f.postgres.CreateUserFunc = func(ctx context.Context, user domain.User) (domain.User, error) {
-					return fixtures.NewUser(func(u *domain.User) {
-						u.ID = fixedID
-					}), nil
+					return fixedUser, nil
 				}
 				f.postgres.CreateUsersRolesBatchFunc = func(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error) {
 					return usersRoles, nil
@@ -60,7 +57,7 @@ func TestUsecase_Register(t *testing.T) {
 			},
 			check: func(t *testing.T, out Output, err error, f *fields) {
 				assert.NoError(t, err)
-				assert.Equal(t, fixedID, out.User.ID)
+				assert.Equal(t, fixedUser, out.User)
 
 				assert.Len(t, f.hasher.HashPasswordCalls(), 1)
 
@@ -77,12 +74,12 @@ func TestUsecase_Register(t *testing.T) {
 			},
 			prepare: func(f *fields) {
 				f.hasher.HashPasswordFunc = func(password string) (string, error) {
-					return "", errors.New("internal hashing error")
+					return "", errs.ErrInvalidCredentials
 				}
 			},
 			check: func(t *testing.T, out Output, err error, f *fields) {
 				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "internal hashing error")
+				assert.True(t, errors.Is(err, errs.ErrInvalidCredentials))
 				assert.Len(t, f.postgres.CreateUserCalls(), 0)
 			},
 		},
@@ -146,9 +143,7 @@ func TestUsecase_Register(t *testing.T) {
 					return fn(ctx)
 				}
 				f.postgres.CreateUserFunc = func(ctx context.Context, user domain.User) (domain.User, error) {
-					return fixtures.NewUser(func(u *domain.User) {
-						u.ID = fixedID
-					}), nil
+					return fixedUser, nil
 				}
 				f.postgres.CreateUsersRolesBatchFunc = func(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error) {
 					return nil, sql.ErrConnDone

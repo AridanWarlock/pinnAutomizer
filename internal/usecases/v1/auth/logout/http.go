@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
@@ -32,9 +31,6 @@ func (h *HttpHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 	rh := httpResponse.NewHandler(w, log)
-
-	_ = domain.AuditInfoFromContext(ctx)
-	log.Debug().Msg("in http")
 
 	err := h.usecase.Logout(ctx)
 	if err != nil {

@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,17 +23,14 @@ func TestHttpHandler_Login(t *testing.T) {
 	}
 
 	var (
-		fixedFingerprintRaw = "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
-		fixedAccessToken    = fixtures.NewAccessToken()
-		fixedFingerprint, _ = domain.NewFingerprintFromHex(fixedFingerprintRaw)
-		fixedRefreshToken   = "session_id.refresh_token"
-		fixedExpiry         = time.Now().Add(time.Hour).Truncate(time.Second)
+		fixedAccessToken  = fixtures.NewAccessToken()
+		fixedRefreshToken = uuid.NewString()
+		fixedExpiry       = time.Now().Truncate(time.Second).UTC()
 	)
 
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		headers        map[string]string
 		prepare        func(f *fields)
 		expectedStatus int
 		checkResponse  func(t *testing.T, resp *httptest.ResponseRecorder)
@@ -44,11 +41,9 @@ func TestHttpHandler_Login(t *testing.T) {
 				Login:    "admin",
 				Password: "password123",
 			},
-			headers: map[string]string{"X-Fingerprint": fixedFingerprintRaw},
 			prepare: func(f *fields) {
 				f.usecase.LoginFunc = func(ctx context.Context, in Input) (Output, error) {
 					assert.Equal(t, "admin", in.Login)
-					assert.Equal(t, fixedFingerprint, in.Fingerprint)
 
 					return Output{
 						AccessToken:           fixedAccessToken,
@@ -66,21 +61,12 @@ func TestHttpHandler_Login(t *testing.T) {
 
 				cookies := resp.Result().Cookies()
 				require.Len(t, cookies, 1)
-				assert.Equal(t, "refreshToken", cookies[0].Name)
+				assert.Equal(t, "refresh_token", cookies[0].Name)
 				assert.Equal(t, fixedRefreshToken, cookies[0].Value)
 				assert.True(t, cookies[0].HttpOnly)
-				assert.Equal(t, http.SameSiteStrictMode, cookies[0].SameSite)
+				assert.Equal(t, http.SameSiteLaxMode, cookies[0].SameSite)
+				assert.Equal(t, fixedExpiry, cookies[0].Expires)
 			},
-		},
-		{
-			name: "error - invalid fingerprint hex",
-			requestBody: Request{
-				Login:    "admin",
-				Password: "password",
-			},
-			headers:        map[string]string{"X-Fingerprint": "not-hex-value"},
-			prepare:        func(f *fields) {},
-			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name: "error - usecase credentials error",
@@ -88,7 +74,6 @@ func TestHttpHandler_Login(t *testing.T) {
 				Login:    "bad-user",
 				Password: "bad-password",
 			},
-			headers: map[string]string{"X-Fingerprint": fixedFingerprintRaw},
 			prepare: func(f *fields) {
 				f.usecase.LoginFunc = func(ctx context.Context, in Input) (Output, error) {
 					return Output{}, errs.ErrInvalidCredentials
@@ -99,7 +84,6 @@ func TestHttpHandler_Login(t *testing.T) {
 		{
 			name:           "error - empty body",
 			requestBody:    nil,
-			headers:        map[string]string{"X-Fingerprint": fixedFingerprintRaw},
 			prepare:        func(f *fields) {},
 			expectedStatus: http.StatusBadRequest,
 		},
@@ -117,12 +101,8 @@ func TestHttpHandler_Login(t *testing.T) {
 			}
 			req := httptest.NewRequest(http.MethodPost, "/auth/login", &buf)
 
-			for k, v := range tt.headers {
-				req.Header.Set(k, v)
-			}
-
 			w := httptest.NewRecorder()
-			handler.Login(w, req.WithContext(test.ContextBackgroundWithZeroLogger()))
+			handler.Login(w, req.WithContext(test.ContextWithZeroLogger()))
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.checkResponse != nil {

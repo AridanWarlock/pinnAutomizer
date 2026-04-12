@@ -2,9 +2,11 @@ package authLogout
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/google/uuid"
 )
 
@@ -35,12 +37,20 @@ func (u *usecase) Logout(ctx context.Context) error {
 	audit := domain.AuditInfoFromContext(ctx)
 	auth := domain.AuthInfoFromContext(ctx)
 
-	if err := u.redis.Delete(ctx, auth.Jti.ToRedisKey()); err != nil {
-		return fmt.Errorf("delete session from redis: %w", err)
+	err := u.redis.Delete(ctx, auth.Jti.ToRedisKey())
+
+	if err != nil {
+		if !errors.Is(err, errs.ErrKeyNotFound) {
+			return fmt.Errorf("delete session from redis: %w", err)
+		}
 	}
 
-	if err := u.postgres.Logout(ctx, auth.UserID, audit.Fingerprint); err != nil {
-		return fmt.Errorf("delete session from postgres: %w", err)
+	err = u.postgres.Logout(ctx, auth.UserID, audit.Fingerprint)
+
+	if err != nil {
+		if !errors.Is(err, errs.ErrNotFound) {
+			return fmt.Errorf("delete session from postgres: %w", err)
+		}
 	}
 	return nil
 }

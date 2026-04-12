@@ -2,7 +2,6 @@ package authLogin
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -18,83 +17,183 @@ import (
 
 func TestUsecase_Login(t *testing.T) {
 	type fields struct {
-		postgres         *MockPostgres
-		accessGenerator  *MockAccessTokenGenerator
-		refreshGenerator *MockRefreshTokenGenerator
-		hasher           *MockPasswordHasher
-		clock            *MockClock
+		postgres       *MockPostgres
+		redis          *MockRedis
+		tokenGenerator *MockTokenGenerator
+		hasher         *MockPasswordHasher
 	}
 
 	var (
-		fixedID          = uuid.MustParse("00000000-0000-0000-0000-000000000001")
-		fixedNow         = time.Date(2026, 4, 7, 12, 0, 0, 0, time.UTC)
+		fixedID          = uuid.New()
+		fixedNow         = time.Now()
 		fixedToken       = fixtures.NewAccessToken()
 		fixedFingerprint = fixtures.NewFingerprint()
-		testCtx          = test.ContextBackgroundWithZeroLogger()
+		testCtx          = test.ContextWithZeroLogger()
+		fixedJwtClaims   = fixtures.NewJwtClaims(func(claims *domain.JwtClaims) {
+			claims.UserID = fixedID
+			claims.IssuedAt = fixedNow.Add(-time.Minute)
+			claims.Jti = fixtures.NewJti()
+		})
 	)
 
 	tests := []struct {
 		name    string
 		input   Input
+		audit   domain.AuditInfo
 		prepare func(f *fields)
 		check   func(t *testing.T, out Output, err error, f *fields)
 	}{
 		{
-			name: "success path",
+			name: "success path with existing old refresh",
 			input: Input{
-				Login:       "admin",
-				Password:    "12345678",
-				Fingerprint: fixedFingerprint,
+				Login:    "admin",
+				Password: "12345678",
 			},
+			audit: fixtures.NewAuditInfo(func(audit *domain.AuditInfo) {
+				audit.Fingerprint = fixedFingerprint
+			}),
 			prepare: func(f *fields) {
-				user := fixtures.NewUser(func(user *domain.User) {
-					user.ID = fixedID
-					user.Login = "admin"
-				})
-				roles := []domain.Role{fixtures.NewRole()}
-				refreshToken := fixtures.NewRefreshToken(func(refreshToken *domain.RefreshToken) {
-					refreshToken.CreatedAt = fixedNow
-					refreshToken.ExpiresAt = fixedNow.Add(time.Hour)
-				})
-				session := fixtures.NewUserSession(func(session *domain.UserSession) {
-					session.Fingerprint = fixedFingerprint
-				})
-
 				f.postgres.GetUserByLoginFunc = func(ctx context.Context, login string) (domain.User, error) {
-					return user, nil
+					return fixtures.NewUser(func(user *domain.User) {
+						user.ID = fixedID
+						user.Login = "admin"
+					}), nil
 				}
 				f.hasher.CompareHashAndPasswordFunc = func(h, p string) error {
 					return nil
 				}
 				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, uID uuid.UUID) ([]domain.Role, error) {
-					return roles, nil
+					return []domain.Role{fixtures.NewRole()}, nil
 				}
-				f.accessGenerator.GenerateFunc = func(u domain.User, r []domain.Role, f domain.Fingerprint) (domain.AccessToken, error) {
-					return fixedToken, nil
+				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) (domain.Jti, error) {
+					return fixtures.NewJti(), nil
 				}
-				f.refreshGenerator.GenerateFunc = func() (domain.RefreshToken, error) {
-					return refreshToken, nil
+				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
+					return nil
 				}
-				f.clock.NowFunc = func() time.Time {
-					return fixedNow
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+					return fixedToken, fixedJwtClaims, nil
 				}
-				f.postgres.LoginFunc = func(ctx context.Context, s domain.UserSession) (domain.UserSession, error) {
-					return session, nil
+				f.postgres.LoginFunc = func(ctx context.Context, refresh domain.RefreshToken) (domain.RefreshToken, error) {
+					return refresh, nil
+				}
+				f.redis.SetFunc = func(ctx context.Context, key string, value any, ttl time.Duration) error {
+					return nil
 				}
 			},
 			check: func(t *testing.T, out Output, err error, f *fields) {
 				assert.NoError(t, err)
 				assert.Equal(t, fixedToken, out.AccessToken)
-				assert.Equal(t, fixedNow.Add(time.Hour), out.RefreshTokenExpiresAt)
+				assert.Less(t, fixedNow, out.RefreshTokenExpiresAt)
+			},
+		},
+		{
+			name: "success path without old refresh",
+			input: Input{
+				Login:    "admin",
+				Password: "12345678",
+			},
+			audit: fixtures.NewAuditInfo(func(audit *domain.AuditInfo) {
+				audit.Fingerprint = fixedFingerprint
+			}),
+			prepare: func(f *fields) {
+				f.postgres.GetUserByLoginFunc = func(ctx context.Context, login string) (domain.User, error) {
+					return fixtures.NewUser(func(user *domain.User) {
+						user.ID = fixedID
+						user.Login = "admin"
+					}), nil
+				}
+				f.hasher.CompareHashAndPasswordFunc = func(h, p string) error {
+					return nil
+				}
+				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, uID uuid.UUID) ([]domain.Role, error) {
+					return []domain.Role{fixtures.NewRole()}, nil
+				}
+				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) (domain.Jti, error) {
+					return domain.Jti{}, errs.ErrNotFound
+				}
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+					return fixedToken, fixedJwtClaims, nil
+				}
+				f.postgres.LoginFunc = func(ctx context.Context, refresh domain.RefreshToken) (domain.RefreshToken, error) {
+					return refresh, nil
+				}
+				f.redis.SetFunc = func(ctx context.Context, key string, value any, ttl time.Duration) error {
+					return nil
+				}
+			},
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.NoError(t, err)
+				assert.Equal(t, fixedToken, out.AccessToken)
+				assert.Less(t, fixedNow, out.RefreshTokenExpiresAt)
+			},
+		},
+		{
+			name: "success path with old refresh and without old access",
+			input: Input{
+				Login:    "admin",
+				Password: "12345678",
+			},
+			audit: fixtures.NewAuditInfo(func(audit *domain.AuditInfo) {
+				audit.Fingerprint = fixedFingerprint
+			}),
+			prepare: func(f *fields) {
+				f.postgres.GetUserByLoginFunc = func(ctx context.Context, login string) (domain.User, error) {
+					return fixtures.NewUser(func(user *domain.User) {
+						user.ID = fixedID
+						user.Login = "admin"
+					}), nil
+				}
+				f.hasher.CompareHashAndPasswordFunc = func(h, p string) error {
+					return nil
+				}
+				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, uID uuid.UUID) ([]domain.Role, error) {
+					return []domain.Role{fixtures.NewRole()}, nil
+				}
+				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) (domain.Jti, error) {
+					return fixtures.NewJti(), nil
+				}
+				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
+					return errs.ErrKeyNotFound
+				}
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+					return fixedToken, fixedJwtClaims, nil
+				}
+				f.postgres.LoginFunc = func(ctx context.Context, refresh domain.RefreshToken) (domain.RefreshToken, error) {
+					return refresh, nil
+				}
+				f.redis.SetFunc = func(ctx context.Context, key string, value any, ttl time.Duration) error {
+					return nil
+				}
+			},
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.NoError(t, err)
+				assert.Equal(t, fixedToken, out.AccessToken)
+				assert.Less(t, fixedNow, out.RefreshTokenExpiresAt)
 			},
 		},
 		{
 			name: "error - invalid argument (empty login)",
 			input: Input{
-				Login:       "",
-				Password:    "12345678",
-				Fingerprint: fixedFingerprint,
+				Login:    "",
+				Password: "12345678",
 			},
+			audit: fixtures.NewAuditInfo(),
+			prepare: func(f *fields) {
+			},
+			check: func(t *testing.T, out Output, err error, f *fields) {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, errs.ErrInvalidArgument))
+				assert.Len(t, f.postgres.GetUserByLoginCalls(), 0)
+			},
+		},
+		{
+			name: "error - invalid argument (small password)",
+			input: Input{
+				Login:    "Ivan Ivanov",
+				Password: "root",
+			},
+			audit: fixtures.NewAuditInfo(),
 			prepare: func(f *fields) {
 			},
 			check: func(t *testing.T, out Output, err error, f *fields) {
@@ -106,10 +205,12 @@ func TestUsecase_Login(t *testing.T) {
 		{
 			name: "error - invalid credentials (user not found)",
 			input: Input{
-				Login:       "unknown",
-				Password:    "12345678",
-				Fingerprint: fixedFingerprint,
+				Login:    "unknown",
+				Password: "12345678",
 			},
+			audit: fixtures.NewAuditInfo(func(audit *domain.AuditInfo) {
+				audit.Fingerprint = fixedFingerprint
+			}),
 			prepare: func(f *fields) {
 				f.postgres.GetUserByLoginFunc = func(ctx context.Context, l string) (domain.User, error) {
 					return domain.User{}, errs.ErrNotFound
@@ -125,17 +226,17 @@ func TestUsecase_Login(t *testing.T) {
 		{
 			name: "error - invalid credentials (invalid password)",
 			input: Input{
-				Login:       "admin",
-				Password:    "12345678",
-				Fingerprint: fixedFingerprint,
+				Login:    "admin",
+				Password: "12345678",
 			},
+			audit: fixtures.NewAuditInfo(func(audit *domain.AuditInfo) {
+				audit.Fingerprint = fixedFingerprint
+			}),
 			prepare: func(f *fields) {
-				user := fixtures.NewUser(func(user *domain.User) {
-					user.Login = "user"
-				})
-
 				f.postgres.GetUserByLoginFunc = func(ctx context.Context, l string) (domain.User, error) {
-					return user, nil
+					return fixtures.NewUser(func(user *domain.User) {
+						user.Login = "admin"
+					}), nil
 				}
 				f.hasher.CompareHashAndPasswordFunc = func(hash string, password string) error {
 					return errors.New("invalid password")
@@ -145,16 +246,18 @@ func TestUsecase_Login(t *testing.T) {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "invalid credentials")
 
-				assert.Len(t, f.accessGenerator.GenerateCalls(), 0)
+				assert.Len(t, f.postgres.GetRolesByUserIDCalls(), 0)
 			},
 		},
 		{
 			name: "error - access token generation failed",
 			input: Input{
-				Login:       "admin",
-				Password:    "12345678",
-				Fingerprint: fixedFingerprint,
+				Login:    "admin",
+				Password: "12345678",
 			},
+			audit: fixtures.NewAuditInfo(func(audit *domain.AuditInfo) {
+				audit.Fingerprint = fixedFingerprint
+			}),
 			prepare: func(f *fields) {
 				f.postgres.GetUserByLoginFunc = func(ctx context.Context, l string) (domain.User, error) {
 					return fixtures.NewUser(), nil
@@ -163,95 +266,20 @@ func TestUsecase_Login(t *testing.T) {
 				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, id uuid.UUID) ([]domain.Role, error) {
 					return []domain.Role{fixtures.NewRole()}, nil
 				}
-				f.accessGenerator.GenerateFunc = func(u domain.User, r []domain.Role, f domain.Fingerprint) (domain.AccessToken, error) {
-					return "", errors.New("crypto: not available")
+				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) (domain.Jti, error) {
+					return fixtures.NewJti(), nil
+				}
+				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
+					return nil
+				}
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+					return "", domain.JwtClaims{}, errors.New("crypto: not available")
 				}
 			},
 			check: func(t *testing.T, out Output, err error, f *fields) {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "crypto: not available")
-				assert.Len(t, f.refreshGenerator.GenerateCalls(), 0)
-			},
-		},
-		{
-			name: "error - refresh token generation failed",
-			input: Input{
-				Login:       "admin",
-				Password:    "12345678",
-				Fingerprint: fixedFingerprint,
-			},
-			prepare: func(f *fields) {
-				f.postgres.GetUserByLoginFunc = func(ctx context.Context, l string) (domain.User, error) {
-					return fixtures.NewUser(), nil
-				}
-				f.hasher.CompareHashAndPasswordFunc = func(h, p string) error { return nil }
-				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, id uuid.UUID) ([]domain.Role, error) {
-					return []domain.Role{fixtures.NewRole()}, nil
-				}
-				f.accessGenerator.GenerateFunc = func(u domain.User, r []domain.Role, f domain.Fingerprint) (domain.AccessToken, error) {
-					return fixedToken, nil
-				}
-				f.refreshGenerator.GenerateFunc = func() (domain.RefreshToken, error) {
-					return domain.RefreshToken{}, errors.New("refresh generator failed")
-				}
-			},
-			check: func(t *testing.T, out Output, err error, f *fields) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "refresh generator failed")
 				assert.Len(t, f.postgres.LoginCalls(), 0)
-			},
-		},
-		{
-			name: "error - database failure on GetRoles",
-			input: Input{
-				Login:       "admin",
-				Password:    "12345678",
-				Fingerprint: fixedFingerprint,
-			},
-			prepare: func(f *fields) {
-				f.postgres.GetUserByLoginFunc = func(ctx context.Context, l string) (domain.User, error) {
-					return fixtures.NewUser(), nil
-				}
-				f.hasher.CompareHashAndPasswordFunc = func(h, p string) error { return nil }
-				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, id uuid.UUID) ([]domain.Role, error) {
-					return nil, sql.ErrConnDone
-				}
-			},
-			check: func(t *testing.T, out Output, err error, f *fields) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), sql.ErrConnDone.Error())
-				assert.Len(t, f.accessGenerator.GenerateCalls(), 0)
-			},
-		},
-		{
-			name: "error - database failure on saving session (Login)",
-			input: Input{
-				Login:       "admin",
-				Password:    "12345678",
-				Fingerprint: fixedFingerprint,
-			},
-			prepare: func(f *fields) {
-				f.postgres.GetUserByLoginFunc = func(ctx context.Context, l string) (domain.User, error) {
-					return fixtures.NewUser(), nil
-				}
-				f.hasher.CompareHashAndPasswordFunc = func(h, p string) error { return nil }
-				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, id uuid.UUID) ([]domain.Role, error) {
-					return []domain.Role{fixtures.NewRole()}, nil
-				}
-				f.accessGenerator.GenerateFunc = func(u domain.User, r []domain.Role, f domain.Fingerprint) (domain.AccessToken, error) {
-					return fixedToken, nil
-				}
-				f.refreshGenerator.GenerateFunc = func() (domain.RefreshToken, error) {
-					return fixtures.NewRefreshToken(), nil
-				}
-				f.clock.NowFunc = func() time.Time { return fixedNow }
-				f.postgres.LoginFunc = func(ctx context.Context, s domain.UserSession) (domain.UserSession, error) {
-					return domain.UserSession{}, errors.New("unique constraint violation or deadlock")
-				}
-			},
-			check: func(t *testing.T, out Output, err error, f *fields) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "unique constraint violation or deadlock")
 			},
 		},
 	}
@@ -259,17 +287,18 @@ func TestUsecase_Login(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := &fields{
-				postgres:         &MockPostgres{},
-				accessGenerator:  &MockAccessTokenGenerator{},
-				refreshGenerator: &MockRefreshTokenGenerator{},
-				hasher:           &MockPasswordHasher{},
-				clock:            &MockClock{},
+				postgres:       &MockPostgres{},
+				redis:          &MockRedis{},
+				tokenGenerator: &MockTokenGenerator{},
+				hasher:         &MockPasswordHasher{},
 			}
+
+			ctx := tt.audit.WithContext(testCtx)
 
 			tt.prepare(f)
 
-			uc := New(f.postgres, f.accessGenerator, f.refreshGenerator, f.hasher, f.clock)
-			out, err := uc.Login(testCtx, tt.input)
+			uc := New(f.postgres, f.redis, f.tokenGenerator, f.hasher)
+			out, err := uc.Login(ctx, tt.input)
 
 			tt.check(t, out, err, f)
 		})

@@ -2,16 +2,15 @@ package authMe
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,32 +21,21 @@ func TestHttpHandler_Me(t *testing.T) {
 	}
 
 	var (
-		fixedUserID = uuid.New()
-		fixedLogin  = "admin_user"
-		testCtx     = test.ContextBackgroundWithZeroLogger()
+		fixedUser = fixtures.NewUser()
 	)
 
 	tests := []struct {
 		name           string
-		prepareContext func(ctx context.Context) context.Context
 		prepare        func(f *fields)
 		expectedStatus int
-		shouldPanic    bool
 		checkResponse  func(t *testing.T, resp *httptest.ResponseRecorder)
 	}{
 		{
 			name: "success path",
-			prepareContext: func(ctx context.Context) context.Context {
-				return test.ContextWithUserClaims(ctx, fixtures.NewUserClaims(func(uc *domain.UserClaims) {
-					uc.UserID = fixedUserID
-				}))
-			},
 			prepare: func(f *fields) {
-				f.usecase.MeFunc = func(ctx context.Context, in Input) (Output, error) {
-					assert.Equal(t, fixedUserID, in.UserID)
+				f.usecase.MeFunc = func(ctx context.Context) (Output, error) {
 					return Output{
-						UserID: fixedUserID,
-						Login:  fixedLogin,
+						fixedUser,
 					}, nil
 				}
 			},
@@ -57,31 +45,27 @@ func TestHttpHandler_Me(t *testing.T) {
 				err := json.Unmarshal(resp.Body.Bytes(), &body)
 				require.NoError(t, err)
 
-				assert.Equal(t, fixedUserID, body.ID)
-				assert.Equal(t, fixedLogin, body.Login)
+				assert.Equal(t, fixedUser.ID, body.ID)
+				assert.Equal(t, fixedUser.Login, body.Login)
 			},
+		},
+		{
+			name: "error - me not found",
+			prepare: func(f *fields) {
+				f.usecase.MeFunc = func(ctx context.Context) (Output, error) {
+					return Output{}, errs.ErrNotFound
+				}
+			},
+			expectedStatus: http.StatusNotFound,
 		},
 		{
 			name: "error - usecase fail",
-			prepareContext: func(ctx context.Context) context.Context {
-				return test.ContextWithUserClaims(ctx, fixtures.NewUserClaims(func(uc *domain.UserClaims) {
-					uc.UserID = fixedUserID
-				}))
-			},
 			prepare: func(f *fields) {
-				f.usecase.MeFunc = func(ctx context.Context, in Input) (Output, error) {
-					return Output{}, errors.New("me failed")
+				f.usecase.MeFunc = func(ctx context.Context) (Output, error) {
+					return Output{}, sql.ErrConnDone
 				}
 			},
 			expectedStatus: http.StatusInternalServerError,
-		},
-		{
-			name: "critical - panic when claims are missing",
-			prepareContext: func(ctx context.Context) context.Context {
-				return ctx
-			},
-			prepare:     func(f *fields) {},
-			shouldPanic: true,
 		},
 	}
 
@@ -91,17 +75,11 @@ func TestHttpHandler_Me(t *testing.T) {
 			tt.prepare(f)
 			handler := NewHttpHandler(f.usecase)
 
-			req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
-			req = req.WithContext(tt.prepareContext(testCtx))
+			ctx := test.ContextWithZeroLogger()
 
+			req := httptest.NewRequest(http.MethodGet, "/auth/me", nil).
+				WithContext(ctx)
 			w := httptest.NewRecorder()
-
-			if tt.shouldPanic {
-				assert.Panics(t, func() {
-					handler.Me(w, req)
-				}, "Ожидалась паника из-за отсутствия Claims в контексте")
-				return
-			}
 
 			handler.Me(w, req)
 

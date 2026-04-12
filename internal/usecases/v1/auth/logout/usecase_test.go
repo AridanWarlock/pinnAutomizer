@@ -3,6 +3,7 @@ package authLogout
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
@@ -17,27 +18,20 @@ import (
 func TestUsecase_Logout(t *testing.T) {
 	type fields struct {
 		postgres *MockPostgres
+		redis    *MockRedis
 	}
-
-	var (
-		fixedID          = uuid.New()
-		fixedFingerprint = fixtures.NewFingerprint()
-		testCtx          = test.ContextBackgroundWithZeroLogger()
-	)
 
 	tests := []struct {
 		name    string
-		input   Input
 		prepare func(f *fields)
 		check   func(t *testing.T, err error, f *fields)
 	}{
 		{
-			name: "successful path",
-			input: Input{
-				UserID:      fixedID,
-				Fingerprint: fixedFingerprint,
-			},
+			name: "successful path with existing access and refresh",
 			prepare: func(f *fields) {
+				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
+					return nil
+				}
 				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
 					return nil
 				}
@@ -47,40 +41,11 @@ func TestUsecase_Logout(t *testing.T) {
 			},
 		},
 		{
-			name: "error - invalid id",
-			input: Input{
-				UserID:      uuid.Nil,
-				Fingerprint: fixedFingerprint,
-			},
+			name: "successful path with existing access and no existing refresh",
 			prepare: func(f *fields) {
-			},
-			check: func(t *testing.T, err error, f *fields) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), errs.ErrInvalidArgument.Error())
-				assert.Len(t, f.postgres.LogoutCalls(), 0)
-			},
-		},
-		{
-			name: "error - invalid fingerprint",
-			input: Input{
-				UserID:      fixedID,
-				Fingerprint: fixedFingerprint[:31],
-			},
-			prepare: func(f *fields) {
-			},
-			check: func(t *testing.T, err error, f *fields) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), errs.ErrInvalidArgument.Error())
-				assert.Len(t, f.postgres.LogoutCalls(), 0)
-			},
-		},
-		{
-			name: "session already deleted",
-			input: Input{
-				UserID:      fixedID,
-				Fingerprint: fixedFingerprint,
-			},
-			prepare: func(f *fields) {
+				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
+					return nil
+				}
 				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
 					return errs.ErrNotFound
 				}
@@ -90,19 +55,58 @@ func TestUsecase_Logout(t *testing.T) {
 			},
 		},
 		{
-			name: "error - database failure on deleting session",
-			input: Input{
-				UserID:      fixedID,
-				Fingerprint: fixedFingerprint,
-			},
+			name: "successful path with no existing access and existing refresh",
 			prepare: func(f *fields) {
+				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
+					return errs.ErrKeyNotFound
+				}
+				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
+					return nil
+				}
+			},
+			check: func(t *testing.T, err error, f *fields) {
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "successful path without existing access and refresh",
+			prepare: func(f *fields) {
+				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
+					return errs.ErrKeyNotFound
+				}
+				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
+					return errs.ErrNotFound
+				}
+			},
+			check: func(t *testing.T, err error, f *fields) {
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "error - redis failure on deleting session",
+			prepare: func(f *fields) {
+				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
+					return errs.ErrClosed
+				}
+			},
+			check: func(t *testing.T, err error, f *fields) {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, errs.ErrClosed))
+			},
+		},
+		{
+			name: "error - db failure on deleting session",
+			prepare: func(f *fields) {
+				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
+					return nil
+				}
 				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
 					return sql.ErrConnDone
 				}
 			},
 			check: func(t *testing.T, err error, f *fields) {
 				assert.Error(t, err)
-				assert.Contains(t, err.Error(), sql.ErrConnDone.Error())
+				assert.True(t, errors.Is(err, sql.ErrConnDone))
 			},
 		},
 	}
@@ -111,11 +115,14 @@ func TestUsecase_Logout(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			f := &fields{
 				postgres: &MockPostgres{},
+				redis:    &MockRedis{},
 			}
 			tt.prepare(f)
 
-			uc := New(f.postgres)
-			err := uc.Logout(testCtx, tt.input)
+			ctx := test.SetUpContext(fixtures.NewAuditInfo(), fixtures.NewAuthInfo())
+
+			uc := New(f.postgres, f.redis)
+			err := uc.Logout(ctx)
 
 			tt.check(t, err, f)
 		})

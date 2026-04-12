@@ -100,6 +100,10 @@ func (u *usecase) getValidRefreshToken(
 
 	refresh, err := u.postgres.GetRefreshTokenByHash(ctx, hash)
 	if err != nil {
+		if errors.Is(err, errs.ErrNotFound) {
+			return domain.RefreshToken{}, fmt.Errorf("%w: token is expired", errs.ErrAuthorizationFailed)
+		}
+
 		return domain.RefreshToken{}, fmt.Errorf("get refresh token from postgres: %w", err)
 	}
 
@@ -108,7 +112,7 @@ func (u *usecase) getValidRefreshToken(
 	}
 
 	if refresh.ExpiresAt.Before(time.Now()) {
-		return domain.RefreshToken{}, fmt.Errorf("%w: token expired", errs.ErrAuthorizationFailed)
+		return domain.RefreshToken{}, fmt.Errorf("%w: token is expired", errs.ErrAuthorizationFailed)
 	}
 
 	return refresh, nil
