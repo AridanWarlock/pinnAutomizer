@@ -3,7 +3,6 @@ package domain
 import (
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 	"github.com/google/uuid"
 )
@@ -35,5 +34,5 @@ func NewRedisSession(
 }
 
 func (s RedisSession) Validate() error {
-	return errs.First(validate.Caller(s), s.Fingerprint.Validate)
+	return validate.V.Struct(s)
 }

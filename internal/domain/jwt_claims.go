@@ -3,7 +3,6 @@ package domain
 import (
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 	"github.com/google/uuid"
 )
@@ -33,5 +32,5 @@ func NewJwtClaims(
 }
 
 func (c JwtClaims) Validate() error {
-	return errs.First(validate.Caller(c), c.Jti.Validate)
+	return validate.V.Struct(c)
 }

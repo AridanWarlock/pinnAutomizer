@@ -14,6 +14,7 @@ var (
 	ErrSigningToken          = errors.New("signing token error")
 	ErrInvalidToken          = errors.New("invalid token")
 	ErrTokenUsedBeforeIssued = errors.New("token used before issued")
+	ErrGenerateTokenID       = errors.New("generate token id")
 )
 
 var signingMethod = jwt.SigningMethodHS256
@@ -53,8 +54,13 @@ func (g *Generator) GenerateAndGetClaims(userID uuid.UUID) (domain.AccessToken, 
 func (g *Generator) generateAndGetClaims(userID uuid.UUID) (domain.AccessToken, Claims, error) {
 	issuedAt := time.Now()
 
+	jti, err := domain.NewJti(uuid.New())
+	if err != nil {
+		return "", Claims{}, ErrGenerateTokenID
+	}
+
 	claims := Claims{
-		Jti:      domain.Jti(uuid.New()),
+		Jti:      jti,
 		UserID:   userID,
 		IssuedAt: issuedAt,
 	}

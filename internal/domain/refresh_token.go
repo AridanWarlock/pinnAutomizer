@@ -3,7 +3,6 @@ package domain
 import (
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 	"github.com/google/uuid"
 )
@@ -52,11 +51,5 @@ func NewRefreshToken(
 }
 
 func (t *RefreshToken) Validate() error {
-	return errs.First(
-		validate.Caller(t),
-		t.Jti.Validate,
-		t.Fingerprint.Validate,
-		t.UserAgent.Validate,
-		t.IP.Validate,
-	)
+	return validate.V.Struct(t)
 }
