@@ -2,39 +2,47 @@ package authRefresh
 
 import (
 	"context"
-	"crypto/sha256"
-	"crypto/subtle"
+	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	authLogin "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/login"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
 	"github.com/google/uuid"
 )
 
 type Postgres interface {
-	GetUserSessionById(ctx context.Context, id uuid.UUID) (domain.UserSession, error)
-	GetUserByID(ctx context.Context, id uuid.UUID) (domain.User, error)
+	GetRefreshTokenByHash(ctx context.Context, hash string) (domain.RefreshToken, error)
 	GetRolesByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Role, error)
+	RotateRefreshToken(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error
 }
 
-type AccessTokenGenerator interface {
-	Generate(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error)
+type Redis interface {
+	Set(ctx context.Context, key string, value any, ttl time.Duration) error
+	Delete(ctx context.Context, key string) error
+}
+
+type TokenGenerator interface {
+	GenerateAndGetClaims(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error)
 }
 
 type usecase struct {
-	postgres             Postgres
-	accessTokenGenerator AccessTokenGenerator
+	postgres       Postgres
+	redis          Redis
+	tokenGenerator TokenGenerator
 }
 
 func New(
 	postgres Postgres,
-	accessTokenGenerator AccessTokenGenerator,
+	redis Redis,
+	tokenGenerator TokenGenerator,
 ) Usecase {
 	return &usecase{
-		postgres:             postgres,
-		accessTokenGenerator: accessTokenGenerator,
+		postgres:       postgres,
+		redis:          redis,
+		tokenGenerator: tokenGenerator,
 	}
 }
 
@@ -43,64 +51,122 @@ func (u *usecase) Refresh(ctx context.Context, in Input) (Output, error) {
 		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
-	sessionID, tokenSha256, err := parseRefreshTokenFromString(in.RefreshTokenString)
+	audit := domain.AuditInfoFromContext(ctx)
+
+	oldRefresh, err := u.getValidRefreshToken(ctx, in.RefreshTokenString, audit.Fingerprint)
 	if err != nil {
-		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
+		return Output{}, fmt.Errorf("get valid refresh token: %w", err)
 	}
+	userID := oldRefresh.UserID
 
-	session, err := u.postgres.GetUserSessionById(ctx, sessionID)
+	roles, err := u.postgres.GetRolesByUserID(ctx, userID)
 	if err != nil {
-		return Output{}, fmt.Errorf("getting session from postgres: %w", err)
+		return Output{}, fmt.Errorf("get roles by user from postgres: %w", err)
 	}
 
-	if err := validateSession(session, tokenSha256); err != nil {
-		return Output{}, fmt.Errorf("validate session: %w", err)
+	if err := u.deleteOldSession(ctx, oldRefresh.Jti); err != nil {
+		return Output{}, fmt.Errorf("delete old session: %w", err)
 	}
 
-	user, err := u.postgres.GetUserByID(ctx, session.UserID)
-	if err != nil {
-		return Output{}, fmt.Errorf("getting user by id from postgres: %w", err)
-	}
-
-	roles, err := u.postgres.GetRolesByUserID(ctx, user.ID)
-	if err != nil {
-		return Output{}, fmt.Errorf("getting user roles from postgres: %w", err)
-	}
-
-	accessToken, err := u.accessTokenGenerator.Generate(user, roles, in.Fingerprint)
+	accessToken, claims, err := u.tokenGenerator.GenerateAndGetClaims(userID)
 	if err != nil {
 		return Output{}, fmt.Errorf("generate access token: %w", err)
 	}
+	jti := claims.Jti
 
-	return Output{AccessToken: accessToken}, nil
-}
-
-func parseRefreshTokenFromString(token string) (uuid.UUID, []byte, error) {
-	tokenSplit := strings.Split(token, ".")
-	if len(tokenSplit) != 2 {
-		return uuid.UUID{}, nil, domain.ErrParseRefreshTokenFailed
-	}
-
-	sessionIDString := tokenSplit[0]
-	sessionID, err := uuid.Parse(sessionIDString)
+	rotatedToken, err := u.rotateRefreshToken(ctx, oldRefresh.Hash, jti)
 	if err != nil {
-		return uuid.UUID{}, nil, domain.ErrParseRefreshTokenFailed
+		return Output{}, fmt.Errorf("rotate token: %w", err)
 	}
 
-	randomBytesString := tokenSplit[1]
-	sha256Bytes := sha256.Sum256([]byte(randomBytesString))
+	err = u.setNewRedisSession(ctx, jti, userID, roles, audit.Fingerprint, claims.IssuedAt)
+	if err != nil {
+		return Output{}, fmt.Errorf("set session in redis: %w", err)
+	}
 
-	return sessionID, sha256Bytes[:], nil
+	return Output{
+		AccessToken:           accessToken,
+		RefreshTokenString:    rotatedToken,
+		RefreshTokenExpiresAt: oldRefresh.ExpiresAt,
+	}, nil
 }
 
-func validateSession(session domain.UserSession, tokenHash []byte) error {
-	if subtle.ConstantTimeCompare(session.TokenSha256, tokenHash) != 1 {
-		return fmt.Errorf("compare refresh token hashes: %w", errs.ErrSessionIsCompromised)
+func (u *usecase) getValidRefreshToken(
+	ctx context.Context,
+	token string,
+	fingerprint domain.Fingerprint,
+) (domain.RefreshToken, error) {
+	hash := crypt.Sha256(token)
+
+	refresh, err := u.postgres.GetRefreshTokenByHash(ctx, hash)
+	if err != nil {
+		if errors.Is(err, errs.ErrNotFound) {
+			return domain.RefreshToken{}, fmt.Errorf("%w: token is expired", errs.ErrAuthorizationFailed)
+		}
+
+		return domain.RefreshToken{}, fmt.Errorf("get refresh token from postgres: %w", err)
 	}
 
-	if session.ExpiresAt.Before(time.Now()) {
-		return fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, domain.ErrRefreshTokenExpired)
+	if refresh.Fingerprint != fingerprint {
+		return domain.RefreshToken{}, errs.ErrSessionIsCompromised
 	}
 
+	if refresh.ExpiresAt.Before(time.Now()) {
+		return domain.RefreshToken{}, fmt.Errorf("%w: token is expired", errs.ErrAuthorizationFailed)
+	}
+
+	return refresh, nil
+}
+
+func (u *usecase) deleteOldSession(ctx context.Context, jti domain.Jti) error {
+	err := u.redis.Delete(ctx, jti.ToRedisKey())
+
+	if err != nil {
+		if errors.Is(err, errs.ErrKeyNotFound) {
+			return nil
+		}
+
+		return fmt.Errorf("redis delete: %w", err)
+	}
+	return nil
+}
+
+func (u *usecase) rotateRefreshToken(
+	ctx context.Context,
+	oldHash string,
+	newJti domain.Jti,
+) (string, error) {
+	token := crypt.GenerateSecureToken()
+	hash := crypt.Sha256(token)
+
+	if err := u.postgres.RotateRefreshToken(ctx, oldHash, hash, newJti); err != nil {
+		return "", fmt.Errorf("rotate in postgres: %w", err)
+	}
+
+	return token, nil
+}
+
+func (u *usecase) setNewRedisSession(
+	ctx context.Context,
+	jti domain.Jti,
+	userID uuid.UUID,
+	roles []domain.Role,
+	fingerprint domain.Fingerprint,
+	issuedAt time.Time,
+) error {
+	session, err := domain.NewRedisSession(
+		userID,
+		roles,
+		fingerprint,
+		issuedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("create redis session: %w", err)
+	}
+
+	err = u.redis.Set(ctx, jti.ToRedisKey(), session, authLogin.AccessTokenTtl)
+	if err != nil {
+		return fmt.Errorf("redis set: %w", err)
+	}
 	return nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
@@ -22,8 +21,8 @@ type Postgres interface {
 
 type Redis interface {
 	Get(ctx context.Context, key string, target any) (domain.IdempotencyStatus, error)
-	Set(ctx context.Context, key string, status domain.IdempotencyStatus, value any, ttl time.Duration) error
-	TryLock(ctx context.Context, key string, ttl time.Duration) (bool, error)
+	Set(ctx context.Context, key string, status domain.IdempotencyStatus, value any) error
+	TryLock(ctx context.Context, key string) (bool, error)
 	Delete(ctx context.Context, key string) error
 }
 
@@ -49,7 +48,7 @@ func (u *usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
-	ok, err := u.redis.TryLock(ctx, in.IdempotencyKey, 3*time.Minute)
+	ok, err := u.redis.TryLock(ctx, in.IdempotencyKey)
 	if err != nil {
 		return Output{}, fmt.Errorf("redis try lock: %w", err)
 	}
@@ -62,7 +61,7 @@ func (u *usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 		if status == domain.IdempotencyStatusCompleted {
 			return result, nil
 		}
-		return Output{}, domain.ErrOperationInProgress
+		return Output{}, errs.ErrOperationInProgress
 	}
 
 	var success bool
@@ -99,7 +98,7 @@ func (u *usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 	}
 	success = true
 
-	if err := u.redis.Set(ctx, in.IdempotencyKey, domain.IdempotencyStatusCompleted, out, time.Hour); err != nil {
+	if err := u.redis.Set(ctx, in.IdempotencyKey, domain.IdempotencyStatusCompleted, out); err != nil {
 		log.Warn().Err(err).Msg("redis: set ")
 	}
 

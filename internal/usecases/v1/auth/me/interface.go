@@ -3,24 +3,13 @@ package authMe
 import (
 	"context"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
-
-	"github.com/google/uuid"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 )
 
-type Input struct {
-	UserID uuid.UUID `validate:"required,uuid"`
-}
-
-func (i Input) Validate() error {
-	return validate.V.Struct(i)
-}
-
 type Output struct {
-	UserID uuid.UUID
-	Login  string
+	domain.User
 }
 
 type Usecase interface {
-	Me(ctx context.Context, in Input) (Output, error)
+	Me(ctx context.Context) (Output, error)
 }

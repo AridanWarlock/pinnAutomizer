@@ -1,4 +1,4 @@
-package user_sessions
+package refresh_tokens
 
 import (
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pool"

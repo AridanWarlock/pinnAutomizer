@@ -59,6 +59,7 @@ func (h *Handler) ErrorResponse(err error, msg string) {
 		err,
 		errs.ErrInvalidArgument,
 		errs.ErrEntityToLarge,
+		errs.ErrInvalidIP,
 	):
 		statusCode = http.StatusBadRequest
 		log = h.log.Warn()

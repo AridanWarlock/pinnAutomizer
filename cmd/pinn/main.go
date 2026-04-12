@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/config"
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/auth/refreshToken"
 	jwtToken "github.com/AridanWarlock/pinnAutomizer/internal/adapter/jwt/token"
 	kafkaAtLeastOnceConsumer "github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaConsumer/atLeastOnce"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaProducer"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis/goRedis"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis/indempotency"
 	"github.com/AridanWarlock/pinnAutomizer/internal/outbox"
 	httpMiddleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
 	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
@@ -26,7 +28,6 @@ import (
 	tasksGet "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/get"
 	tasksOnTrain "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/onTrain"
 	tasksSolve "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/solve"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/clock"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/passwordHasher"
 	"github.com/rs/zerolog"
@@ -79,17 +80,19 @@ func AppRun(
 	}()
 	log.Info().Msg("postgres connected")
 	// redis
-	redisAdapter, err := redis.New(cfg.Redis)
+	redisClient, err := goRedis.New(cfg.Redis)
 	if err != nil {
 		return fmt.Errorf("redis connect: %w", err)
 	}
 	defer func() {
-		if err := redisAdapter.Close(); err != nil {
+		if err := redisClient.Close(); err != nil {
 			log.Error().Err(err).Msg("shutdown redis error")
 			return
 		}
 		log.Info().Msg("redis shutdown gracefully")
 	}()
+	redisAdapter := redis.NewRedis(redisClient)
+	redisIdempotencyStore := indempotency.NewStore(redisAdapter, time.Hour, 3*time.Minute)
 	// kafka producer
 	producer := kafkaProducer.New(cfg.KafkaProducer)
 	defer func() {
@@ -109,24 +112,27 @@ func AppRun(
 	log.Info().Msg("outbox worker started")
 	// access token generator
 	accessTokenGenerator := jwtToken.NewGenerator(cfg.AccessTokenGenerator)
-	// refresh token generator
-	refreshTokenGenerator := refreshToken.NewGenerator(cfg.RefreshTokenGenerator)
 	// password hasher
 	hasher := passwordHasher.New()
 
 	// usecases
 	// auth
-	authLoginUsecase := authLogin.New(postgresAdapter, accessTokenGenerator, refreshTokenGenerator, hasher, clock.New())
-	authLogoutUsecase := authLogout.New(postgresAdapter)
+	authLoginUsecase := authLogin.New(
+		postgresAdapter,
+		redisAdapter,
+		accessTokenGenerator,
+		hasher,
+	)
+	authLogoutUsecase := authLogout.New(postgresAdapter, redisAdapter)
 	authMeUsecase := authMe.New(postgresAdapter)
 	authRegisterUsecase := authRegister.New(postgresAdapter, hasher)
-	authRefreshUsecase := authRefresh.New(postgresAdapter, accessTokenGenerator)
+	authRefreshUsecase := authRefresh.New(postgresAdapter, redisAdapter, accessTokenGenerator)
 	// tasks
-	tasksCreateUsecase := tasksCreate.New(postgresAdapter, redisAdapter)
+	tasksCreateUsecase := tasksCreate.New(postgresAdapter, redisIdempotencyStore)
 	tasksGetUsecase := tasksGet.New(postgresAdapter)
-	tasksSolveUsecase := tasksSolve.New(postgresAdapter, redisAdapter)
-	tasksAfterTrainUsecase := tasksAfterTrain.New(postgresAdapter, redisAdapter)
-	tasksOnTrainUsecase := tasksOnTrain.New(postgresAdapter, redisAdapter)
+	tasksSolveUsecase := tasksSolve.New(postgresAdapter, redisIdempotencyStore)
+	tasksAfterTrainUsecase := tasksAfterTrain.New(postgresAdapter, redisIdempotencyStore)
+	tasksOnTrainUsecase := tasksOnTrain.New(postgresAdapter, redisIdempotencyStore)
 
 	// http handlers
 	// auth
@@ -161,8 +167,9 @@ func AppRun(
 		httpMiddleware.RequestID(),
 		httpMiddleware.Logger(log),
 		httpMiddleware.TraceID(),
+		httpMiddleware.AuditInfo(),
+		httpMiddleware.New(redisAdapter, accessTokenGenerator).Middleware(),
 		httpMiddleware.Recover(),
-		httpMiddleware.Authentication(accessTokenGenerator),
 	)
 	server.RegisterApiRouters(apiV1Router)
 	server.RegisterSwagger()

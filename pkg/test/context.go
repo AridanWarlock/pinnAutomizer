@@ -4,15 +4,22 @@ import (
 	"context"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	httpMiddleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/rs/zerolog"
 )
 
-func ContextBackgroundWithZeroLogger() context.Context {
+func ContextWithZeroLogger() context.Context {
 	return logger.WithContext(context.Background(), zerolog.Nop())
 }
 
-func ContextWithUserClaims(ctx context.Context, c domain.UserClaims) context.Context {
-	return context.WithValue(ctx, httpMiddleware.UserClaimsKey, c)
+func ContextWithAuditInfo(ctx context.Context, info domain.AuditInfo) context.Context {
+	return info.WithContext(ctx)
+}
+
+func SetUpContext(audit domain.AuditInfo, auth domain.AuthInfo) context.Context {
+	ctx := ContextWithZeroLogger()
+	ctx = audit.WithContext(ctx)
+	ctx = auth.WithContext(ctx)
+
+	return ctx
 }

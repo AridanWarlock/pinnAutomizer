@@ -2,128 +2,79 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-
-	"github.com/redis/go-redis/v9"
+	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis/goRedis"
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 )
 
-type Client struct {
-	client *redis.Client
+type Redis struct {
+	client *goRedis.Client
 }
 
-func New(cfg Config) (*Client, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     cfg.Addr,
-		Password: cfg.Password,
-		DB:       cfg.DB,
-
-		DialTimeout:  cfg.DialTimeout,
-		ReadTimeout:  cfg.ReadTimeout,
-		WriteTimeout: cfg.WriteTimeout,
-
-		PoolSize:     cfg.PoolSize,
-		MinIdleConns: cfg.MinIdleConnections,
-		PoolTimeout:  cfg.PoolTimeout,
-	})
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	_, err := client.Ping(ctx).Result()
-	if err != nil {
-		_ = client.Close()
-		return nil, fmt.Errorf("ping redis: %w", err)
-	}
-
-	return &Client{
+func NewRedis(client *goRedis.Client) *Redis {
+	return &Redis{
 		client: client,
-	}, nil
-}
-
-func (c *Client) Close() error {
-	return c.client.Close()
-}
-
-type envelope struct {
-	Status domain.IdempotencyStatus `json:"status"`
-	Data   json.RawMessage          `json:"data,omitempty"`
-}
-
-func fullKey(key string) string {
-	return "idemp:" + key
-}
-
-func (c *Client) Get(ctx context.Context, key string, target any) (domain.IdempotencyStatus, error) {
-	val, err := c.client.Get(ctx, fullKey(key)).Bytes()
-	if err == redis.Nil {
-		return "", domain.ErrIdempotencyKeyNotFound
 	}
+}
+
+func (r *Redis) Get(ctx context.Context, key string, target any) error {
+	err := r.client.Get(ctx, key, target)
+
 	if err != nil {
-		return "", fmt.Errorf("idempotency get error: %w", err)
+		return r.handleCommonErr(err)
 	}
-
-	var env envelope
-	if err := json.Unmarshal(val, &env); err != nil {
-		return "", fmt.Errorf("failed to unmarshal envelope: %w", err)
-	}
-
-	if len(env.Data) > 0 && target != nil {
-		if err := json.Unmarshal(env.Data, &target); err != nil {
-			return "", fmt.Errorf("failed to unmarshal data: %w", err)
-		}
-	}
-
-	return env.Status, nil
+	return nil
 }
 
-func (c *Client) TryLock(
+func (r *Redis) Set(
 	ctx context.Context,
 	key string,
-	ttl time.Duration,
-) (bool, error) {
-	success, err := c.client.SetNX(ctx, fullKey(key), domain.IdempotencyStatusPending, ttl).Result()
-	if err != nil {
-		return false, fmt.Errorf("idempotency storage fail: %w", err)
-	}
-
-	return success, nil
-}
-
-func (c *Client) Set(
-	ctx context.Context,
-	key string,
-	status domain.IdempotencyStatus,
 	data any,
 	ttl time.Duration,
 ) error {
-	dataRaw, err := json.Marshal(data)
-	if err != nil {
-		return fmt.Errorf("failed to marshal data: %w", err)
-	}
-	payload, err := json.Marshal(envelope{
-		Status: status,
-		Data:   dataRaw,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to marshal data: %w", err)
-	}
+	err := r.client.Set(ctx, key, data, ttl)
 
-	err = c.client.Set(ctx, "idemp:"+key, payload, ttl).Err()
 	if err != nil {
-		return fmt.Errorf("idempotency storage fail: %w", err)
+		return r.handleCommonErr(err)
 	}
 	return nil
 }
 
-func (c *Client) Delete(ctx context.Context, key string) error {
-	err := c.client.Del(ctx, fullKey(key)).Err()
+func (r *Redis) TryLock(
+	ctx context.Context,
+	key string,
+	value any,
+	ttl time.Duration,
+) (bool, error) {
+	success, err := r.client.TryLock(ctx, key, value, ttl)
+
 	if err != nil {
-		return fmt.Errorf("idempotency delete fail: %w", err)
+		return false, r.handleCommonErr(err)
+	}
+	return success, nil
+}
+
+func (r *Redis) Delete(ctx context.Context, key string) error {
+	err := r.client.Delete(ctx, key)
+	if err != nil {
+		return r.handleCommonErr(err)
 	}
 
 	return nil
+}
+
+func (r *Redis) handleCommonErr(err error) error {
+	switch {
+	case errors.Is(err, goRedis.ErrKeyNotFound):
+		return errs.ErrKeyNotFound
+	case errors.Is(err, goRedis.ErrClosed):
+		return errs.ErrClosed
+	case errors.Is(err, goRedis.ErrPoolExhausted):
+		return errs.ErrPoolExhausted
+	default:
+		return fmt.Errorf("unexpected error: %w", err)
+	}
 }

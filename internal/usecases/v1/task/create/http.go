@@ -64,7 +64,6 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	userClaims := httpRequest.ClaimsFromContext(ctx)
 	rh := httpResponse.NewHandler(w, log)
 
 	var req Request
@@ -80,7 +79,6 @@ func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		Constants:   req.Constants,
 
 		EquationType: req.EquationType,
-		UserID:       userClaims.UserID,
 	}
 
 	out, err := h.usecase.CreateTask(ctx, in)

@@ -1,24 +1,20 @@
 package domain
 
 import (
-	"fmt"
-
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 
 	"github.com/google/uuid"
 )
 
 type User struct {
-	ID           uuid.UUID `json:"id"`
-	Login        string    `json:"login"`
-	PasswordHash string    `json:"password_hash"`
+	ID           uuid.UUID `json:"id" validate:"required,uuid"`
+	Login        string    `json:"login" validate:"required"`
+	PasswordHash string    `json:"password_hash" validate:"required"`
 }
 
 func NewUser(login string, passwordHash string) (User, error) {
-	id := uuid.New()
-
 	u := User{
-		ID:           id,
+		ID:           uuid.New(),
 		Login:        login,
 		PasswordHash: passwordHash,
 	}
@@ -31,10 +27,5 @@ func NewUser(login string, passwordHash string) (User, error) {
 }
 
 func (s *User) Validate() error {
-	err := validate.V.Struct(s)
-	if err != nil {
-		return fmt.Errorf("user.Validate: %w", err)
-	}
-
-	return nil
+	return validate.V.Struct(s)
 }

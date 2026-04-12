@@ -25,7 +25,7 @@ func TestHttpHandler_Register(t *testing.T) {
 	var (
 		fixedID    = uuid.New()
 		fixedLogin = "new_user"
-		testCtx    = test.ContextBackgroundWithZeroLogger()
+		testCtx    = test.ContextWithZeroLogger()
 	)
 
 	tests := []struct {

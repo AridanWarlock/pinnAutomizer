@@ -6,65 +6,76 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
-const Issuer = "API-Gateway"
-
 var (
-	ErrInvalidToken = errors.New("invalid token")
+	ErrSigningToken          = errors.New("signing token error")
+	ErrInvalidToken          = errors.New("invalid token")
+	ErrTokenUsedBeforeIssued = errors.New("token used before issued")
+	ErrGenerateTokenID       = errors.New("generate token id")
 )
 
 var signingMethod = jwt.SigningMethodHS256
 
-type Claims struct {
-	UserID      uuid.UUID          `json:"user_id"`
-	Roles       []domain.Role      `json:"roles"`
-	Fingerprint domain.Fingerprint `json:"fingerprint"`
-
-	jwt.RegisteredClaims
-}
-
 type Generator struct {
 	secret []byte
-	ttl    time.Duration
 }
 
-func NewGenerator(c Config) *Generator {
+func NewGenerator(cfg Config) *Generator {
 	return &Generator{
-		secret: []byte(c.Secret),
-		ttl:    c.TokenTTL,
+		secret: []byte(cfg.Secret),
 	}
 }
 
-func (g *Generator) Generate(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error) {
+func (g *Generator) Generate(userID uuid.UUID) (domain.AccessToken, error) {
+	token, _, err := g.generateAndGetClaims(userID)
+	return token, err
+}
+
+func (g *Generator) GenerateAndGetClaims(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+	token, claims, err := g.generateAndGetClaims(userID)
+	if err != nil {
+		return "", domain.JwtClaims{}, err
+	}
+
+	jwtClaims, err := domain.NewJwtClaims(
+		claims.Jti,
+		userID,
+		claims.IssuedAt,
+	)
+
+	if err != nil {
+		return "", domain.JwtClaims{}, err
+	}
+	return token, jwtClaims, nil
+}
+func (g *Generator) generateAndGetClaims(userID uuid.UUID) (domain.AccessToken, Claims, error) {
 	issuedAt := time.Now()
-	expiresAt := issuedAt.Add(g.ttl)
+
+	jti, err := domain.NewJti(uuid.New())
+	if err != nil {
+		return "", Claims{}, ErrGenerateTokenID
+	}
 
 	claims := Claims{
-		UserID:      user.ID,
-		Roles:       roles,
-		Fingerprint: fingerprint,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ID:        uuid.NewString(),
-			ExpiresAt: jwt.NewNumericDate(expiresAt),
-			IssuedAt:  jwt.NewNumericDate(issuedAt),
-			Issuer:    Issuer,
-		},
+		Jti:      jti,
+		UserID:   userID,
+		IssuedAt: issuedAt,
 	}
 
 	token := jwt.NewWithClaims(signingMethod, claims)
 	signedString, err := token.SignedString(g.secret)
 	if err != nil {
-		return "", err
+		return "", Claims{}, ErrSigningToken
 	}
 
-	return domain.AccessToken(signedString), nil
+	accessToken, err := domain.NewAccessToken(signedString)
+	return accessToken, claims, err
 }
 
-func (g *Generator) GetClaims(token domain.AccessToken) (domain.UserClaims, error) {
+func (g *Generator) GetClaims(token domain.AccessToken) (domain.JwtClaims, error) {
 	parsedToken, err := jwt.ParseWithClaims(string(token), &Claims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -74,47 +85,36 @@ func (g *Generator) GetClaims(token domain.AccessToken) (domain.UserClaims, erro
 	})
 
 	if err != nil {
-		return domain.UserClaims{}, err
+		return domain.JwtClaims{}, fmt.Errorf("parse claims: %w", err)
 	}
 
-	return validateToken(parsedToken)
+	return newClaimsFromToken(parsedToken)
 }
 
-func validateToken(token *jwt.Token) (domain.UserClaims, error) {
+func newClaimsFromToken(token *jwt.Token) (domain.JwtClaims, error) {
+	if !token.Valid {
+		return domain.JwtClaims{}, ErrInvalidToken
+	}
+
 	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
-		return domain.UserClaims{}, ErrInvalidToken
+	if !ok {
+		return domain.JwtClaims{}, ErrInvalidToken
 	}
 
-	expiresAt, err := claims.GetExpirationTime()
-	if err != nil {
-		return domain.UserClaims{}, jwt.ErrInvalidType
-	}
-	if expiresAt.Before(time.Now()) {
-		return domain.UserClaims{}, jwt.ErrTokenExpired
+	jti := claims.Jti
+	if err := jti.Validate(); err != nil {
+		return domain.JwtClaims{}, ErrInvalidToken
 	}
 
-	issuedAt, err := claims.GetIssuedAt()
-	if err != nil {
-		return domain.UserClaims{}, jwt.ErrInvalidType
+	userID := claims.UserID
+	if userID == uuid.Nil {
+		return domain.JwtClaims{}, ErrInvalidToken
 	}
+
+	issuedAt := claims.IssuedAt
 	if issuedAt.After(time.Now()) {
-		return domain.UserClaims{}, jwt.ErrTokenUsedBeforeIssued
+		return domain.JwtClaims{}, ErrTokenUsedBeforeIssued
 	}
 
-	issuer, err := claims.GetIssuer()
-	if err != nil {
-		return domain.UserClaims{}, jwt.ErrInvalidType
-	}
-	if issuer != Issuer {
-		return domain.UserClaims{}, jwt.ErrTokenInvalidIssuer
-	}
-
-	return domain.NewUserClaims(
-		claims.UserID,
-		claims.Roles,
-		claims.Fingerprint,
-		issuedAt.Time,
-		expiresAt.Time,
-	)
+	return domain.NewJwtClaims(jti, userID, issuedAt)
 }

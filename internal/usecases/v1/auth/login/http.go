@@ -1,11 +1,8 @@
 package authLogin
 
 import (
-	"fmt"
 	"net/http"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	httpRequest "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
 	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
@@ -50,19 +47,9 @@ func (h *HttpHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fingerprint, err := domain.NewFingerprintFromHex(r.Header.Get("X-Fingerprint"))
-	if err != nil {
-		rh.ErrorResponse(
-			fmt.Errorf("%w: decode fingerprint header", errs.ErrInvalidArgument),
-			"failed to decode and fingerprint",
-		)
-		return
-	}
-
 	in := Input{
-		Login:       req.Login,
-		Password:    req.Password,
-		Fingerprint: fingerprint,
+		Login:    req.Login,
+		Password: req.Password,
 	}
 
 	out, err := h.usecase.Login(ctx, in)
@@ -72,11 +59,11 @@ func (h *HttpHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     "refreshToken",
+		Name:     "refresh_token",
 		Path:     "/api/v1/auth/refresh",
 		Value:    out.RefreshTokenString,
 		Expires:  out.RefreshTokenExpiresAt,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		HttpOnly: true,
 	})
 

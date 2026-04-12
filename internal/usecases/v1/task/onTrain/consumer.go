@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/google/uuid"
@@ -31,7 +32,7 @@ func NewConsumer(usecase Usecase, log zerolog.Logger) *Consumer {
 func (c *Consumer) HandleMessage(ctx context.Context, msg kafka.Message, idempotencyKey string) error {
 	var message Message
 	if err := json.Unmarshal(msg.Value, &message); err != nil {
-		return domain.ErrUnmarshalFailed
+		return fmt.Errorf("unmarshal message: %w", err)
 	}
 
 	input := Input{

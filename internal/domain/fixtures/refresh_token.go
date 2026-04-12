@@ -1,25 +1,25 @@
 package fixtures
 
 import (
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
+	"github.com/google/uuid"
 )
 
 func NewRefreshToken(mods ...mod[domain.RefreshToken]) domain.RefreshToken {
-	b := make([]byte, 32)
-	_, _ = rand.Read(b)
-	sum256 := sha256.Sum256([]byte("refresh.token"))
 	now := time.Now()
 
 	us := domain.RefreshToken{
-		RandomBase64String: base64.RawURLEncoding.EncodeToString(b),
-		Sha256:             sum256[:],
-		CreatedAt:          now,
-		ExpiresAt:          now.Add(time.Hour),
+		Hash:        crypt.Sha256(crypt.GenerateSecureToken()),
+		UserID:      uuid.New(),
+		Jti:         NewJti(),
+		Fingerprint: NewFingerprint(),
+		UserAgent:   NewUserAgent(),
+		IP:          NewUserIP(),
+		CreatedAt:   now,
+		ExpiresAt:   now.Add(time.Hour),
 	}
 
 	return fixture(us, mods)

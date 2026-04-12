@@ -65,7 +65,6 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	userClaims := httpRequest.ClaimsFromContext(ctx)
 	rh := httpResponse.NewHandler(w, log)
 
 	var req Request
@@ -75,8 +74,7 @@ func (h *HttpHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	in := Input{
-		IDs:    req.IDs,
-		UserID: userClaims.UserID,
+		IDs: req.IDs,
 	}
 
 	out, err := h.usecase.GetTasks(ctx, in)

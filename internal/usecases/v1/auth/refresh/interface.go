@@ -2,26 +2,24 @@ package authRefresh
 
 import (
 	"context"
+	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
 
 type Input struct {
-	RefreshTokenString string `validate:"required"`
-	Fingerprint        domain.Fingerprint
+	RefreshTokenString string `validate:"required,base64rawurl,len=43"`
 }
 
 func (i Input) Validate() error {
-	if err := validate.V.Struct(i); err != nil {
-		return err
-	}
-
-	return i.Fingerprint.Validate()
+	return validate.V.Struct(i)
 }
 
 type Output struct {
-	AccessToken domain.AccessToken
+	AccessToken           domain.AccessToken
+	RefreshTokenString    string
+	RefreshTokenExpiresAt time.Time
 }
 
 type Usecase interface {

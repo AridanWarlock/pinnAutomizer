@@ -22,7 +22,7 @@ var _ Usecase = &MockUsecase{}
 //
 //		// make and configure a mocked Usecase
 //		mockedUsecase := &MockUsecase{
-//			MeFunc: func(ctx context.Context, in Input) (Output, error) {
+//			MeFunc: func(ctx context.Context) (Output, error) {
 //				panic("mock out the Me method")
 //			},
 //		}
@@ -33,7 +33,7 @@ var _ Usecase = &MockUsecase{}
 //	}
 type MockUsecase struct {
 	// MeFunc mocks the Me method.
-	MeFunc func(ctx context.Context, in Input) (Output, error)
+	MeFunc func(ctx context.Context) (Output, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -41,29 +41,25 @@ type MockUsecase struct {
 		Me []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// In is the in argument value.
-			In Input
 		}
 	}
 	lockMe sync.RWMutex
 }
 
 // Me calls MeFunc.
-func (mock *MockUsecase) Me(ctx context.Context, in Input) (Output, error) {
+func (mock *MockUsecase) Me(ctx context.Context) (Output, error) {
 	if mock.MeFunc == nil {
 		panic("MockUsecase.MeFunc: method is nil but Usecase.Me was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		In  Input
 	}{
 		Ctx: ctx,
-		In:  in,
 	}
 	mock.lockMe.Lock()
 	mock.calls.Me = append(mock.calls.Me, callInfo)
 	mock.lockMe.Unlock()
-	return mock.MeFunc(ctx, in)
+	return mock.MeFunc(ctx)
 }
 
 // MeCalls gets all the calls that were made to Me.
@@ -72,11 +68,9 @@ func (mock *MockUsecase) Me(ctx context.Context, in Input) (Output, error) {
 //	len(mockedUsecase.MeCalls())
 func (mock *MockUsecase) MeCalls() []struct {
 	Ctx context.Context
-	In  Input
 } {
 	var calls []struct {
 		Ctx context.Context
-		In  Input
 	}
 	mock.lockMe.RLock()
 	calls = mock.calls.Me

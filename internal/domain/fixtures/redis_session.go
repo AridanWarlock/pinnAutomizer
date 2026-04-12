@@ -7,16 +7,13 @@ import (
 	"github.com/google/uuid"
 )
 
-func NewUserClaims(mods ...mod[domain.UserClaims]) domain.UserClaims {
-	now := time.Now()
-
-	userClaims := domain.UserClaims{
+func NewRedisSession(mods ...mod[domain.RedisSession]) domain.RedisSession {
+	s := domain.RedisSession{
 		UserID:      uuid.New(),
 		Roles:       []domain.Role{NewRole()},
 		Fingerprint: NewFingerprint(),
-		IssuedAt:    now,
-		ExpiresAt:   now.Add(time.Hour),
+		IssuedAt:    time.Now(),
 	}
 
-	return fixture(userClaims, mods)
+	return fixture(s, mods)
 }

@@ -7,6 +7,7 @@ package authRefresh
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/google/uuid"
@@ -94,14 +95,14 @@ var _ Postgres = &MockPostgres{}
 //
 //		// make and configure a mocked Postgres
 //		mockedPostgres := &MockPostgres{
+//			GetRefreshTokenByHashFunc: func(ctx context.Context, hash string) (domain.RefreshToken, error) {
+//				panic("mock out the GetRefreshTokenByHash method")
+//			},
 //			GetRolesByUserIDFunc: func(ctx context.Context, userID uuid.UUID) ([]domain.Role, error) {
 //				panic("mock out the GetRolesByUserID method")
 //			},
-//			GetUserByIDFunc: func(ctx context.Context, id uuid.UUID) (domain.User, error) {
-//				panic("mock out the GetUserByID method")
-//			},
-//			GetUserSessionByIdFunc: func(ctx context.Context, id uuid.UUID) (domain.UserSession, error) {
-//				panic("mock out the GetUserSessionById method")
+//			RotateRefreshTokenFunc: func(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error {
+//				panic("mock out the RotateRefreshToken method")
 //			},
 //		}
 //
@@ -110,17 +111,24 @@ var _ Postgres = &MockPostgres{}
 //
 //	}
 type MockPostgres struct {
+	// GetRefreshTokenByHashFunc mocks the GetRefreshTokenByHash method.
+	GetRefreshTokenByHashFunc func(ctx context.Context, hash string) (domain.RefreshToken, error)
+
 	// GetRolesByUserIDFunc mocks the GetRolesByUserID method.
 	GetRolesByUserIDFunc func(ctx context.Context, userID uuid.UUID) ([]domain.Role, error)
 
-	// GetUserByIDFunc mocks the GetUserByID method.
-	GetUserByIDFunc func(ctx context.Context, id uuid.UUID) (domain.User, error)
-
-	// GetUserSessionByIdFunc mocks the GetUserSessionById method.
-	GetUserSessionByIdFunc func(ctx context.Context, id uuid.UUID) (domain.UserSession, error)
+	// RotateRefreshTokenFunc mocks the RotateRefreshToken method.
+	RotateRefreshTokenFunc func(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetRefreshTokenByHash holds details about calls to the GetRefreshTokenByHash method.
+		GetRefreshTokenByHash []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Hash is the hash argument value.
+			Hash string
+		}
 		// GetRolesByUserID holds details about calls to the GetRolesByUserID method.
 		GetRolesByUserID []struct {
 			// Ctx is the ctx argument value.
@@ -128,24 +136,57 @@ type MockPostgres struct {
 			// UserID is the userID argument value.
 			UserID uuid.UUID
 		}
-		// GetUserByID holds details about calls to the GetUserByID method.
-		GetUserByID []struct {
+		// RotateRefreshToken holds details about calls to the RotateRefreshToken method.
+		RotateRefreshToken []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ID is the id argument value.
-			ID uuid.UUID
-		}
-		// GetUserSessionById holds details about calls to the GetUserSessionById method.
-		GetUserSessionById []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ID is the id argument value.
-			ID uuid.UUID
+			// OldHash is the oldHash argument value.
+			OldHash string
+			// NewHash is the newHash argument value.
+			NewHash string
+			// NewJti is the newJti argument value.
+			NewJti domain.Jti
 		}
 	}
-	lockGetRolesByUserID   sync.RWMutex
-	lockGetUserByID        sync.RWMutex
-	lockGetUserSessionById sync.RWMutex
+	lockGetRefreshTokenByHash sync.RWMutex
+	lockGetRolesByUserID      sync.RWMutex
+	lockRotateRefreshToken    sync.RWMutex
+}
+
+// GetRefreshTokenByHash calls GetRefreshTokenByHashFunc.
+func (mock *MockPostgres) GetRefreshTokenByHash(ctx context.Context, hash string) (domain.RefreshToken, error) {
+	if mock.GetRefreshTokenByHashFunc == nil {
+		panic("MockPostgres.GetRefreshTokenByHashFunc: method is nil but Postgres.GetRefreshTokenByHash was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Hash string
+	}{
+		Ctx:  ctx,
+		Hash: hash,
+	}
+	mock.lockGetRefreshTokenByHash.Lock()
+	mock.calls.GetRefreshTokenByHash = append(mock.calls.GetRefreshTokenByHash, callInfo)
+	mock.lockGetRefreshTokenByHash.Unlock()
+	return mock.GetRefreshTokenByHashFunc(ctx, hash)
+}
+
+// GetRefreshTokenByHashCalls gets all the calls that were made to GetRefreshTokenByHash.
+// Check the length with:
+//
+//	len(mockedPostgres.GetRefreshTokenByHashCalls())
+func (mock *MockPostgres) GetRefreshTokenByHashCalls() []struct {
+	Ctx  context.Context
+	Hash string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Hash string
+	}
+	mock.lockGetRefreshTokenByHash.RLock()
+	calls = mock.calls.GetRefreshTokenByHash
+	mock.lockGetRefreshTokenByHash.RUnlock()
+	return calls
 }
 
 // GetRolesByUserID calls GetRolesByUserIDFunc.
@@ -184,152 +225,246 @@ func (mock *MockPostgres) GetRolesByUserIDCalls() []struct {
 	return calls
 }
 
-// GetUserByID calls GetUserByIDFunc.
-func (mock *MockPostgres) GetUserByID(ctx context.Context, id uuid.UUID) (domain.User, error) {
-	if mock.GetUserByIDFunc == nil {
-		panic("MockPostgres.GetUserByIDFunc: method is nil but Postgres.GetUserByID was just called")
+// RotateRefreshToken calls RotateRefreshTokenFunc.
+func (mock *MockPostgres) RotateRefreshToken(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error {
+	if mock.RotateRefreshTokenFunc == nil {
+		panic("MockPostgres.RotateRefreshTokenFunc: method is nil but Postgres.RotateRefreshToken was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
-		ID  uuid.UUID
+		Ctx     context.Context
+		OldHash string
+		NewHash string
+		NewJti  domain.Jti
 	}{
-		Ctx: ctx,
-		ID:  id,
+		Ctx:     ctx,
+		OldHash: oldHash,
+		NewHash: newHash,
+		NewJti:  newJti,
 	}
-	mock.lockGetUserByID.Lock()
-	mock.calls.GetUserByID = append(mock.calls.GetUserByID, callInfo)
-	mock.lockGetUserByID.Unlock()
-	return mock.GetUserByIDFunc(ctx, id)
+	mock.lockRotateRefreshToken.Lock()
+	mock.calls.RotateRefreshToken = append(mock.calls.RotateRefreshToken, callInfo)
+	mock.lockRotateRefreshToken.Unlock()
+	return mock.RotateRefreshTokenFunc(ctx, oldHash, newHash, newJti)
 }
 
-// GetUserByIDCalls gets all the calls that were made to GetUserByID.
+// RotateRefreshTokenCalls gets all the calls that were made to RotateRefreshToken.
 // Check the length with:
 //
-//	len(mockedPostgres.GetUserByIDCalls())
-func (mock *MockPostgres) GetUserByIDCalls() []struct {
-	Ctx context.Context
-	ID  uuid.UUID
+//	len(mockedPostgres.RotateRefreshTokenCalls())
+func (mock *MockPostgres) RotateRefreshTokenCalls() []struct {
+	Ctx     context.Context
+	OldHash string
+	NewHash string
+	NewJti  domain.Jti
 } {
 	var calls []struct {
-		Ctx context.Context
-		ID  uuid.UUID
+		Ctx     context.Context
+		OldHash string
+		NewHash string
+		NewJti  domain.Jti
 	}
-	mock.lockGetUserByID.RLock()
-	calls = mock.calls.GetUserByID
-	mock.lockGetUserByID.RUnlock()
+	mock.lockRotateRefreshToken.RLock()
+	calls = mock.calls.RotateRefreshToken
+	mock.lockRotateRefreshToken.RUnlock()
 	return calls
 }
 
-// GetUserSessionById calls GetUserSessionByIdFunc.
-func (mock *MockPostgres) GetUserSessionById(ctx context.Context, id uuid.UUID) (domain.UserSession, error) {
-	if mock.GetUserSessionByIdFunc == nil {
-		panic("MockPostgres.GetUserSessionByIdFunc: method is nil but Postgres.GetUserSessionById was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-		ID  uuid.UUID
-	}{
-		Ctx: ctx,
-		ID:  id,
-	}
-	mock.lockGetUserSessionById.Lock()
-	mock.calls.GetUserSessionById = append(mock.calls.GetUserSessionById, callInfo)
-	mock.lockGetUserSessionById.Unlock()
-	return mock.GetUserSessionByIdFunc(ctx, id)
-}
-
-// GetUserSessionByIdCalls gets all the calls that were made to GetUserSessionById.
-// Check the length with:
-//
-//	len(mockedPostgres.GetUserSessionByIdCalls())
-func (mock *MockPostgres) GetUserSessionByIdCalls() []struct {
-	Ctx context.Context
-	ID  uuid.UUID
-} {
-	var calls []struct {
-		Ctx context.Context
-		ID  uuid.UUID
-	}
-	mock.lockGetUserSessionById.RLock()
-	calls = mock.calls.GetUserSessionById
-	mock.lockGetUserSessionById.RUnlock()
-	return calls
-}
-
-// Ensure that MockAccessTokenGenerator does implement AccessTokenGenerator.
+// Ensure that MockRedis does implement Redis.
 // If this is not the case, regenerate this file with mockery.
-var _ AccessTokenGenerator = &MockAccessTokenGenerator{}
+var _ Redis = &MockRedis{}
 
-// MockAccessTokenGenerator is a mock implementation of AccessTokenGenerator.
+// MockRedis is a mock implementation of Redis.
 //
-//	func TestSomethingThatUsesAccessTokenGenerator(t *testing.T) {
+//	func TestSomethingThatUsesRedis(t *testing.T) {
 //
-//		// make and configure a mocked AccessTokenGenerator
-//		mockedAccessTokenGenerator := &MockAccessTokenGenerator{
-//			GenerateFunc: func(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error) {
-//				panic("mock out the Generate method")
+//		// make and configure a mocked Redis
+//		mockedRedis := &MockRedis{
+//			DeleteFunc: func(ctx context.Context, key string) error {
+//				panic("mock out the Delete method")
+//			},
+//			SetFunc: func(ctx context.Context, key string, value any, ttl time.Duration) error {
+//				panic("mock out the Set method")
 //			},
 //		}
 //
-//		// use mockedAccessTokenGenerator in code that requires AccessTokenGenerator
+//		// use mockedRedis in code that requires Redis
 //		// and then make assertions.
 //
 //	}
-type MockAccessTokenGenerator struct {
-	// GenerateFunc mocks the Generate method.
-	GenerateFunc func(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error)
+type MockRedis struct {
+	// DeleteFunc mocks the Delete method.
+	DeleteFunc func(ctx context.Context, key string) error
+
+	// SetFunc mocks the Set method.
+	SetFunc func(ctx context.Context, key string, value any, ttl time.Duration) error
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// Generate holds details about calls to the Generate method.
-		Generate []struct {
-			// User is the user argument value.
-			User domain.User
-			// Roles is the roles argument value.
-			Roles []domain.Role
-			// Fingerprint is the fingerprint argument value.
-			Fingerprint domain.Fingerprint
+		// Delete holds details about calls to the Delete method.
+		Delete []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Key is the key argument value.
+			Key string
+		}
+		// Set holds details about calls to the Set method.
+		Set []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Key is the key argument value.
+			Key string
+			// Value is the value argument value.
+			Value any
+			// TTL is the ttl argument value.
+			TTL time.Duration
 		}
 	}
-	lockGenerate sync.RWMutex
+	lockDelete sync.RWMutex
+	lockSet    sync.RWMutex
 }
 
-// Generate calls GenerateFunc.
-func (mock *MockAccessTokenGenerator) Generate(user domain.User, roles []domain.Role, fingerprint domain.Fingerprint) (domain.AccessToken, error) {
-	if mock.GenerateFunc == nil {
-		panic("MockAccessTokenGenerator.GenerateFunc: method is nil but AccessTokenGenerator.Generate was just called")
+// Delete calls DeleteFunc.
+func (mock *MockRedis) Delete(ctx context.Context, key string) error {
+	if mock.DeleteFunc == nil {
+		panic("MockRedis.DeleteFunc: method is nil but Redis.Delete was just called")
 	}
 	callInfo := struct {
-		User        domain.User
-		Roles       []domain.Role
-		Fingerprint domain.Fingerprint
+		Ctx context.Context
+		Key string
 	}{
-		User:        user,
-		Roles:       roles,
-		Fingerprint: fingerprint,
+		Ctx: ctx,
+		Key: key,
 	}
-	mock.lockGenerate.Lock()
-	mock.calls.Generate = append(mock.calls.Generate, callInfo)
-	mock.lockGenerate.Unlock()
-	return mock.GenerateFunc(user, roles, fingerprint)
+	mock.lockDelete.Lock()
+	mock.calls.Delete = append(mock.calls.Delete, callInfo)
+	mock.lockDelete.Unlock()
+	return mock.DeleteFunc(ctx, key)
 }
 
-// GenerateCalls gets all the calls that were made to Generate.
+// DeleteCalls gets all the calls that were made to Delete.
 // Check the length with:
 //
-//	len(mockedAccessTokenGenerator.GenerateCalls())
-func (mock *MockAccessTokenGenerator) GenerateCalls() []struct {
-	User        domain.User
-	Roles       []domain.Role
-	Fingerprint domain.Fingerprint
+//	len(mockedRedis.DeleteCalls())
+func (mock *MockRedis) DeleteCalls() []struct {
+	Ctx context.Context
+	Key string
 } {
 	var calls []struct {
-		User        domain.User
-		Roles       []domain.Role
-		Fingerprint domain.Fingerprint
+		Ctx context.Context
+		Key string
 	}
-	mock.lockGenerate.RLock()
-	calls = mock.calls.Generate
-	mock.lockGenerate.RUnlock()
+	mock.lockDelete.RLock()
+	calls = mock.calls.Delete
+	mock.lockDelete.RUnlock()
+	return calls
+}
+
+// Set calls SetFunc.
+func (mock *MockRedis) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
+	if mock.SetFunc == nil {
+		panic("MockRedis.SetFunc: method is nil but Redis.Set was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Key   string
+		Value any
+		TTL   time.Duration
+	}{
+		Ctx:   ctx,
+		Key:   key,
+		Value: value,
+		TTL:   ttl,
+	}
+	mock.lockSet.Lock()
+	mock.calls.Set = append(mock.calls.Set, callInfo)
+	mock.lockSet.Unlock()
+	return mock.SetFunc(ctx, key, value, ttl)
+}
+
+// SetCalls gets all the calls that were made to Set.
+// Check the length with:
+//
+//	len(mockedRedis.SetCalls())
+func (mock *MockRedis) SetCalls() []struct {
+	Ctx   context.Context
+	Key   string
+	Value any
+	TTL   time.Duration
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Key   string
+		Value any
+		TTL   time.Duration
+	}
+	mock.lockSet.RLock()
+	calls = mock.calls.Set
+	mock.lockSet.RUnlock()
+	return calls
+}
+
+// Ensure that MockTokenGenerator does implement TokenGenerator.
+// If this is not the case, regenerate this file with mockery.
+var _ TokenGenerator = &MockTokenGenerator{}
+
+// MockTokenGenerator is a mock implementation of TokenGenerator.
+//
+//	func TestSomethingThatUsesTokenGenerator(t *testing.T) {
+//
+//		// make and configure a mocked TokenGenerator
+//		mockedTokenGenerator := &MockTokenGenerator{
+//			GenerateAndGetClaimsFunc: func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+//				panic("mock out the GenerateAndGetClaims method")
+//			},
+//		}
+//
+//		// use mockedTokenGenerator in code that requires TokenGenerator
+//		// and then make assertions.
+//
+//	}
+type MockTokenGenerator struct {
+	// GenerateAndGetClaimsFunc mocks the GenerateAndGetClaims method.
+	GenerateAndGetClaimsFunc func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// GenerateAndGetClaims holds details about calls to the GenerateAndGetClaims method.
+		GenerateAndGetClaims []struct {
+			// UserID is the userID argument value.
+			UserID uuid.UUID
+		}
+	}
+	lockGenerateAndGetClaims sync.RWMutex
+}
+
+// GenerateAndGetClaims calls GenerateAndGetClaimsFunc.
+func (mock *MockTokenGenerator) GenerateAndGetClaims(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+	if mock.GenerateAndGetClaimsFunc == nil {
+		panic("MockTokenGenerator.GenerateAndGetClaimsFunc: method is nil but TokenGenerator.GenerateAndGetClaims was just called")
+	}
+	callInfo := struct {
+		UserID uuid.UUID
+	}{
+		UserID: userID,
+	}
+	mock.lockGenerateAndGetClaims.Lock()
+	mock.calls.GenerateAndGetClaims = append(mock.calls.GenerateAndGetClaims, callInfo)
+	mock.lockGenerateAndGetClaims.Unlock()
+	return mock.GenerateAndGetClaimsFunc(userID)
+}
+
+// GenerateAndGetClaimsCalls gets all the calls that were made to GenerateAndGetClaims.
+// Check the length with:
+//
+//	len(mockedTokenGenerator.GenerateAndGetClaimsCalls())
+func (mock *MockTokenGenerator) GenerateAndGetClaimsCalls() []struct {
+	UserID uuid.UUID
+} {
+	var calls []struct {
+		UserID uuid.UUID
+	}
+	mock.lockGenerateAndGetClaims.RLock()
+	calls = mock.calls.GenerateAndGetClaims
+	mock.lockGenerateAndGetClaims.RUnlock()
 	return calls
 }

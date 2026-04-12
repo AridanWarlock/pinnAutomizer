@@ -1,4 +1,4 @@
-package user_sessions
+package refresh_tokens
 
 import (
 	"context"
@@ -9,23 +9,25 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 )
 
-func (r *Repository) Login(ctx context.Context, session domain.UserSession) (domain.UserSession, error) {
+func (r *Repository) Login(ctx context.Context, session domain.RefreshToken) (domain.RefreshToken, error) {
 	raw := FromModel(session)
 
-	q := r.sb.Insert(UserSessionsTable).
+	q := r.sb.Insert(RefreshTokensTable).
 		Values(raw.Values()...).
 		Suffix(`
 			ON CONFLICT (user_id, fingerprint)
 			DO UPDATE SET
-				token_sha256 = EXCLUDED.token_sha256,
+				hash = EXCLUDED.hash,
+				jti = EXCLUDED.jti,
+				agent = EXCLUDED.agent,
+				ip = EXCLUDED.ip,
 				created_at = EXCLUDED.created_at,
-				expires_at = EXCLUDED.expires_at,
-				id = EXCLUDED.id
-			RETURNING ` + strings.Join(UserSessionsTableColumns, ","))
+				expires_at = EXCLUDED.expires_at
+			RETURNING ` + strings.Join(RefreshTokensTableColumns, ","))
 
-	var outRow UserSessionRaw
+	var outRow RefreshTokenRaw
 	if err := r.pool.Getx(ctx, &outRow, q); err != nil {
-		return domain.UserSession{}, pgerr.ScanErr(err)
+		return domain.RefreshToken{}, pgerr.ScanErr(err)
 	}
 	return ToModel(outRow), nil
 }
