@@ -3,17 +3,14 @@ package domain
 import "errors"
 
 var (
-	ErrIdempotencyKeyNotFound = errors.New("idempotency key not found")
-	ErrOperationInProgress    = errors.New("operation in progress")
-)
+	ErrIDNotExist     = errors.New("id not exist")
+	ErrTaskNotTrained = errors.New("task not trained")
+	ErrAlreadyExists  = errors.New("already exists")
 
-var (
-	ErrIDNotExist              = errors.New("id not exist")
-	ErrTaskNotTrained          = errors.New("task not trained")
-	ErrUnmarshalFailed         = errors.New("unmarshal failed")
-	ErrAlreadyExists           = errors.New("already exists")
-	ErrParseRefreshTokenFailed = errors.New("parse refresh token failed")
-	ErrRefreshTokenExpired     = errors.New("refresh token expired")
-	ErrInvalidFingerprint      = errors.New("invalid fingerprint")
-	ErrInvalidAccessToken      = errors.New("invalid access token")
+	ErrInvalidFingerprint = errors.New("invalid fingerprint")
+	ErrInvalidAccessToken = errors.New("invalid access token")
+	ErrInvalidJti         = errors.New("invalid jti")
+	ErrInvalidUserAgent   = errors.New("invalid user agent")
+	ErrInvalidIP          = errors.New("invalid ip")
+	ErrInvalidAuthInfo    = errors.New("invalid auth info")
 )

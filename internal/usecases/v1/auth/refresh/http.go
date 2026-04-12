@@ -5,14 +5,13 @@ import (
 	"net/http"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
-	httpRequest "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
 	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
 type Response struct {
-	AccessToken string `json:"accessToken"`
+	AccessToken string `json:"access_token"`
 }
 
 type HttpHandler struct {
@@ -36,10 +35,9 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	claims := httpRequest.ClaimsFromContext(ctx)
 	rh := httpResponse.NewHandler(w, log)
 
-	refreshToken, err := r.Cookie("refreshToken")
+	refreshToken, err := r.Cookie("refresh_token")
 	if err != nil {
 		rh.ErrorResponse(
 			fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, err),
@@ -50,7 +48,6 @@ func (h *HttpHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	in := Input{
 		RefreshTokenString: refreshToken.Value,
-		Fingerprint:        claims.Fingerprint,
 	}
 
 	out, err := h.usecase.Refresh(ctx, in)
@@ -58,6 +55,15 @@ func (h *HttpHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		rh.ErrorResponse(err, "failed to refresh access token")
 		return
 	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Path:     "/api/v1/auth/refresh",
+		Value:    out.RefreshTokenString,
+		Expires:  out.RefreshTokenExpiresAt,
+		SameSite: http.SameSiteLaxMode,
+		HttpOnly: true,
+	})
 
 	res := Response{
 		AccessToken: string(out.AccessToken),

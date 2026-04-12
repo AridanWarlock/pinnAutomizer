@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/google/uuid"
 )
 
@@ -25,18 +24,15 @@ func New(
 	}
 }
 
-func (u *usecase) Me(ctx context.Context, in Input) (Output, error) {
-	if err := in.Validate(); err != nil {
-		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
-	}
+func (u *usecase) Me(ctx context.Context) (Output, error) {
+	auth := domain.AuthInfoFromContext(ctx)
 
-	user, err := u.postgres.GetUserByID(ctx, in.UserID)
+	user, err := u.postgres.GetUserByID(ctx, auth.UserID)
 	if err != nil {
 		return Output{}, fmt.Errorf("get user by id from postgres: %w", err)
 	}
 
 	return Output{
-		UserID: user.ID,
-		Login:  user.Login,
+		User: user,
 	}, nil
 }

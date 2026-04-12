@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type UsecaseHandler = func(ctx context.Context, data []byte)
+type Handler = func(ctx context.Context, data []byte)
 
 type Reader interface {
 	ReadMessage(ctx context.Context) (kafka.Message, error)
@@ -27,11 +27,11 @@ func New(topic string, reader Reader, log zerolog.Logger) *Consumer {
 	return &Consumer{
 		reader: reader,
 		topic:  topic,
-		log:    log.With().Str("component", "kafka_consumer").Logger(),
+		log:    log,
 	}
 }
 
-func (c *Consumer) Run(ctx context.Context, handler UsecaseHandler) error {
+func (c *Consumer) Run(ctx context.Context, handler Handler) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
 	eg.Go(func() error {
@@ -41,7 +41,7 @@ func (c *Consumer) Run(ctx context.Context, handler UsecaseHandler) error {
 	return eg.Wait()
 }
 
-func (c *Consumer) consume(ctx context.Context, handler UsecaseHandler) error {
+func (c *Consumer) consume(ctx context.Context, handler Handler) error {
 	for {
 		msg, err := c.reader.ReadMessage(ctx)
 		if err != nil {

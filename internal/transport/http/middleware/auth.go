@@ -13,94 +13,86 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
-const UserClaimsKey = "userClaimsKey"
-const FingerprintHeader = "X-Fingerprint"
-
 var (
+	ErrTokenIsExpired      = errors.New("token is expired")
 	ErrBearerTokenIsNotSet = errors.New("bearer token is not set")
-	ErrUnsupportedAuthType = errors.New("unsupported auth type")
-	ErrFingerprintIsNotSet = errors.New("fingerprint is not set")
 )
 
-var publicPaths = map[string]struct{}{
-	"/api/v1/auth/login":    {},
-	"/api/v1/auth/register": {},
-	"/api/v1/auth/refresh":  {},
-	"/health":               {},
-	"/metrics":              {},
-	"/docs":                 {},
-}
-
-var publicPrefixes = []string{
-	"/swagger/",
-	"/api/v1/scripts/from-translate/",
-}
-
 type TokenParser interface {
-	GetClaims(token domain.AccessToken) (domain.UserClaims, error)
+	GetClaims(token domain.AccessToken) (domain.JwtClaims, error)
 }
 
-func Authentication(tokenParser TokenParser) Middleware {
+type Redis interface {
+	Get(ctx context.Context, key string, target any) error
+}
+
+type Auth struct {
+	redis  Redis
+	parser TokenParser
+
+	publicPaths    map[string]struct{}
+	publicPrefixes []string
+}
+
+func New(
+	redis Redis,
+	parser TokenParser,
+) *Auth {
+	publicPaths := map[string]struct{}{
+		"/api/v1/auth/login":    {},
+		"/api/v1/auth/register": {},
+		"/api/v1/auth/refresh":  {},
+		"/health":               {},
+		"/metrics":              {},
+		"/docs":                 {},
+	}
+
+	publicPrefixes := []string{
+		"/swagger/",
+		"/api/v1/scripts/from-translate/",
+	}
+
+	return &Auth{
+		redis:  redis,
+		parser: parser,
+
+		publicPaths:    publicPaths,
+		publicPrefixes: publicPrefixes,
+	}
+}
+
+func (a *Auth) Middleware() Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := r.Context()
-			log := logger.FromContext(ctx)
-
-			if isPublicURL(r.URL.Path) {
+			if a.isPublicURL(r.URL.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			rh := httpResponse.NewHandler(w, log)
+			log := logger.FromContext(r.Context())
 
-			fingerprint, err := extractFingerprintFromHeaders(r)
+			r, err := a.authenticate(r)
+
 			if err != nil {
+				rh := httpResponse.NewHandler(w, log)
 				rh.ErrorResponse(
-					fmt.Errorf("%w: extract fingerprint from headers: %v", errs.ErrAuthorizationFailed, err),
-					"failed to extract fingerprint from headers",
+					fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, err),
+					"failed to authenticate",
 				)
 				return
 			}
 
-			accessToken, err := extractAccessTokenFromHeaders(r)
-			if err != nil {
-				rh.ErrorResponse(
-					fmt.Errorf("%w: extract access token from headers: %v", errs.ErrAuthorizationFailed, err),
-					"failed to extract access token from headers",
-				)
-				return
-			}
-
-			claims, err := tokenParser.GetClaims(accessToken)
-			if err != nil {
-				rh.ErrorResponse(
-					fmt.Errorf("%w: parse user claims from access token: %v", errs.ErrAuthorizationFailed, err),
-					"failed to parse valid claims from access token",
-				)
-				return
-			}
-
-			if !fingerprint.Equal(claims.Fingerprint) {
-				rh.ErrorResponse(
-					fmt.Errorf("%w: fingerprint from header and token not equals", errs.ErrSessionIsCompromised),
-					"fingerprint from header and token not equals",
-				)
-				return
-			}
-
-			ctx = context.WithValue(ctx, UserClaimsKey, claims)
-			log.Info().Msg("successful auth")
-			next.ServeHTTP(w, r.WithContext(ctx))
+			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-func isPublicURL(url string) bool {
-	if _, ok := publicPaths[url]; ok {
+func (a *Auth) isPublicURL(url string) bool {
+	if _, ok := a.publicPaths[url]; ok {
 		return true
 	}
 
-	for _, prefix := range publicPrefixes {
+	for _, prefix := range a.publicPrefixes {
 		if strings.HasPrefix(url, prefix) {
 			return true
 		}
@@ -109,25 +101,67 @@ func isPublicURL(url string) bool {
 	return false
 }
 
-func extractFingerprintFromHeaders(r *http.Request) (domain.Fingerprint, error) {
-	fingerprintHex := r.Header.Get(FingerprintHeader)
-	if fingerprintHex == "" {
-		return nil, ErrFingerprintIsNotSet
+func (a *Auth) authenticate(r *http.Request) (*http.Request, error) {
+	ctx := r.Context()
+
+	accessToken, err := a.extractAccessToken(r.Header)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
-	return domain.NewFingerprintFromHex(fingerprintHex)
+
+	claims, err := a.parser.GetClaims(accessToken)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
+	}
+	jti := claims.Jti
+
+	session, err := a.getSessionFromRedis(ctx, jti)
+	if err != nil {
+		return nil, fmt.Errorf("get session from redis: %w", err)
+	}
+
+	auditInfo := domain.AuditInfoFromContext(ctx)
+	if auditInfo.Fingerprint != session.Fingerprint {
+		return nil, fmt.Errorf(
+			"%w: fingerprint from headers and token not equals",
+			errs.ErrSessionIsCompromised,
+		)
+	}
+
+	authInfo, err := domain.NewAuthInfo(
+		jti,
+		session.UserID,
+		session.Roles,
+		session.IssuedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create auth info: %w", err)
+	}
+
+	ctx = authInfo.WithContext(ctx)
+	return r.WithContext(ctx), nil
 }
 
-func extractAccessTokenFromHeaders(r *http.Request) (domain.AccessToken, error) {
-	authHeader := r.Header.Get("Authorization")
+func (a *Auth) extractAccessToken(headers http.Header) (domain.AccessToken, error) {
+	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
 		return "", ErrBearerTokenIsNotSet
 	}
 
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		return "", ErrUnsupportedAuthType
-	}
+	token := strings.TrimPrefix(authHeader, "Bearer ")
 
-	token := parts[1]
 	return domain.NewAccessToken(token)
+}
+
+func (a *Auth) getSessionFromRedis(ctx context.Context, jti domain.Jti) (domain.RedisSession, error) {
+	var session domain.RedisSession
+	err := a.redis.Get(ctx, jti.ToRedisKey(), &session)
+
+	if err != nil {
+		if errors.Is(err, errs.ErrKeyNotFound) {
+			return domain.RedisSession{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, ErrTokenIsExpired)
+		}
+		return domain.RedisSession{}, fmt.Errorf("redis error: %w", err)
+	}
+	return session, nil
 }

@@ -1,4 +1,4 @@
-package user_sessions
+package refresh_tokens
 
 import (
 	"context"
@@ -7,15 +7,19 @@ import (
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
-
 	sq "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 )
 
-func (r *Repository) Logout(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
-	q := r.sb.
-		Delete(UserSessionsTable).
-		Where(sq.Eq{UserSessionsTableColumnUserID: userID, UserSessionsTableColumnFingerprint: fingerprint})
+func (r *Repository) RotateRefreshToken(
+	ctx context.Context,
+	oldHash string,
+	newHash string,
+	newJti domain.Jti,
+) error {
+	q := r.sb.Update(RefreshTokensTable).
+		Set(RefreshTokensTableColumnHash, newHash).
+		Set(RefreshTokensTableColumnJti, newJti).
+		Where(sq.Eq{RefreshTokensTableColumnHash: oldHash})
 
 	tag, err := r.pool.Execx(ctx, q)
 	if err != nil {

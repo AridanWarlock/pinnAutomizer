@@ -7,7 +7,6 @@ package tasksAfterTrain
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/google/uuid"
@@ -101,10 +100,10 @@ var _ Redis = &MockRedis{}
 //			GetFunc: func(ctx context.Context, key string, target any) (domain.IdempotencyStatus, error) {
 //				panic("mock out the Get method")
 //			},
-//			SetFunc: func(ctx context.Context, key string, status domain.IdempotencyStatus, value any, ttl time.Duration) error {
+//			SetFunc: func(ctx context.Context, key string, status domain.IdempotencyStatus, value any) error {
 //				panic("mock out the Set method")
 //			},
-//			TryLockFunc: func(ctx context.Context, key string, ttl time.Duration) (bool, error) {
+//			TryLockFunc: func(ctx context.Context, key string) (bool, error) {
 //				panic("mock out the TryLock method")
 //			},
 //		}
@@ -121,10 +120,10 @@ type MockRedis struct {
 	GetFunc func(ctx context.Context, key string, target any) (domain.IdempotencyStatus, error)
 
 	// SetFunc mocks the Set method.
-	SetFunc func(ctx context.Context, key string, status domain.IdempotencyStatus, value any, ttl time.Duration) error
+	SetFunc func(ctx context.Context, key string, status domain.IdempotencyStatus, value any) error
 
 	// TryLockFunc mocks the TryLock method.
-	TryLockFunc func(ctx context.Context, key string, ttl time.Duration) (bool, error)
+	TryLockFunc func(ctx context.Context, key string) (bool, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -154,8 +153,6 @@ type MockRedis struct {
 			Status domain.IdempotencyStatus
 			// Value is the value argument value.
 			Value any
-			// TTL is the ttl argument value.
-			TTL time.Duration
 		}
 		// TryLock holds details about calls to the TryLock method.
 		TryLock []struct {
@@ -163,8 +160,6 @@ type MockRedis struct {
 			Ctx context.Context
 			// Key is the key argument value.
 			Key string
-			// TTL is the ttl argument value.
-			TTL time.Duration
 		}
 	}
 	lockDelete  sync.RWMutex
@@ -250,7 +245,7 @@ func (mock *MockRedis) GetCalls() []struct {
 }
 
 // Set calls SetFunc.
-func (mock *MockRedis) Set(ctx context.Context, key string, status domain.IdempotencyStatus, value any, ttl time.Duration) error {
+func (mock *MockRedis) Set(ctx context.Context, key string, status domain.IdempotencyStatus, value any) error {
 	if mock.SetFunc == nil {
 		panic("MockRedis.SetFunc: method is nil but Redis.Set was just called")
 	}
@@ -259,18 +254,16 @@ func (mock *MockRedis) Set(ctx context.Context, key string, status domain.Idempo
 		Key    string
 		Status domain.IdempotencyStatus
 		Value  any
-		TTL    time.Duration
 	}{
 		Ctx:    ctx,
 		Key:    key,
 		Status: status,
 		Value:  value,
-		TTL:    ttl,
 	}
 	mock.lockSet.Lock()
 	mock.calls.Set = append(mock.calls.Set, callInfo)
 	mock.lockSet.Unlock()
-	return mock.SetFunc(ctx, key, status, value, ttl)
+	return mock.SetFunc(ctx, key, status, value)
 }
 
 // SetCalls gets all the calls that were made to Set.
@@ -282,14 +275,12 @@ func (mock *MockRedis) SetCalls() []struct {
 	Key    string
 	Status domain.IdempotencyStatus
 	Value  any
-	TTL    time.Duration
 } {
 	var calls []struct {
 		Ctx    context.Context
 		Key    string
 		Status domain.IdempotencyStatus
 		Value  any
-		TTL    time.Duration
 	}
 	mock.lockSet.RLock()
 	calls = mock.calls.Set
@@ -298,23 +289,21 @@ func (mock *MockRedis) SetCalls() []struct {
 }
 
 // TryLock calls TryLockFunc.
-func (mock *MockRedis) TryLock(ctx context.Context, key string, ttl time.Duration) (bool, error) {
+func (mock *MockRedis) TryLock(ctx context.Context, key string) (bool, error) {
 	if mock.TryLockFunc == nil {
 		panic("MockRedis.TryLockFunc: method is nil but Redis.TryLock was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
 		Key string
-		TTL time.Duration
 	}{
 		Ctx: ctx,
 		Key: key,
-		TTL: ttl,
 	}
 	mock.lockTryLock.Lock()
 	mock.calls.TryLock = append(mock.calls.TryLock, callInfo)
 	mock.lockTryLock.Unlock()
-	return mock.TryLockFunc(ctx, key, ttl)
+	return mock.TryLockFunc(ctx, key)
 }
 
 // TryLockCalls gets all the calls that were made to TryLock.
@@ -324,12 +313,10 @@ func (mock *MockRedis) TryLock(ctx context.Context, key string, ttl time.Duratio
 func (mock *MockRedis) TryLockCalls() []struct {
 	Ctx context.Context
 	Key string
-	TTL time.Duration
 } {
 	var calls []struct {
 		Ctx context.Context
 		Key string
-		TTL time.Duration
 	}
 	mock.lockTryLock.RLock()
 	calls = mock.calls.TryLock

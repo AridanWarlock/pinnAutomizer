@@ -3,7 +3,6 @@ package tasksOnTrain
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
@@ -13,8 +12,8 @@ import (
 
 type Redis interface {
 	Get(ctx context.Context, key string, target any) (domain.IdempotencyStatus, error)
-	Set(ctx context.Context, key string, status domain.IdempotencyStatus, value any, ttl time.Duration) error
-	TryLock(ctx context.Context, key string, ttl time.Duration) (bool, error)
+	Set(ctx context.Context, key string, status domain.IdempotencyStatus, value any) error
+	TryLock(ctx context.Context, key string) (bool, error)
 	Delete(ctx context.Context, key string) error
 }
 
@@ -44,7 +43,7 @@ func (u *usecase) UpdateTaskOnTrain(ctx context.Context, in Input) error {
 		return fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
-	ok, err := u.redis.TryLock(ctx, in.IdempotencyKey, 3*time.Minute)
+	ok, err := u.redis.TryLock(ctx, in.IdempotencyKey)
 	if err != nil {
 		return fmt.Errorf("redis try lock: %w", err)
 	}
@@ -56,7 +55,7 @@ func (u *usecase) UpdateTaskOnTrain(ctx context.Context, in Input) error {
 		if status == domain.IdempotencyStatusCompleted {
 			return nil
 		}
-		return domain.ErrOperationInProgress
+		return errs.ErrOperationInProgress
 	}
 
 	var success bool
@@ -81,7 +80,7 @@ func (u *usecase) UpdateTaskOnTrain(ctx context.Context, in Input) error {
 
 	success = true
 
-	err = u.redis.Set(ctx, in.IdempotencyKey, domain.IdempotencyStatusCompleted, nil, 24*time.Hour)
+	err = u.redis.Set(ctx, in.IdempotencyKey, domain.IdempotencyStatusCompleted, nil)
 	if err != nil {
 		log.Warn().Err(err).Msg("redis: set key error")
 	}

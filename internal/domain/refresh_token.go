@@ -3,31 +3,60 @@ package domain
 import (
 	"time"
 
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
+	"github.com/google/uuid"
 )
 
 type RefreshToken struct {
-	RandomBase64String string    `validate:"required,len=43" json:"random_base64_string"`
-	Sha256             []byte    `validate:"required,len=32" json:"token_hash"`
-	CreatedAt          time.Time `validate:"required" json:"created_at"`
-	ExpiresAt          time.Time `validate:"required,gtfield=CreatedAt" json:"expires_at"`
+	Hash string `json:"hash" validate:"required,len=64"`
+
+	UserID uuid.UUID `json:"user_id" validate:"required"`
+	Jti    Jti       `json:"jti"`
+
+	Fingerprint Fingerprint `json:"fingerprint"`
+	UserAgent   UserAgent   `json:"user_agent"`
+	IP          UserIP      `json:"ip"`
+
+	ExpiresAt time.Time `json:"expires_at" validate:"required,gtfield=CreatedAt"`
+	CreatedAt time.Time `json:"created_at" validate:"required,lte"`
 }
 
 func NewRefreshToken(
-	randomBase64String string,
-	sha256 []byte,
-	expiresAt time.Time,
+	hash string,
+	userID uuid.UUID,
+	jti Jti,
+	fingerprint Fingerprint,
+	userAgent UserAgent,
+	ip UserIP,
+	ttl time.Duration,
 ) (RefreshToken, error) {
-	token := RefreshToken{
-		RandomBase64String: randomBase64String,
-		Sha256:             sha256,
-		ExpiresAt:          expiresAt,
-		CreatedAt:          time.Now(),
+	now := time.Now()
+
+	t := RefreshToken{
+		Hash:        hash,
+		UserID:      userID,
+		Jti:         jti,
+		Fingerprint: fingerprint,
+		UserAgent:   userAgent,
+		IP:          ip,
+		ExpiresAt:   now.Add(ttl),
+		CreatedAt:   now,
 	}
 
-	if err := validate.V.Struct(token); err != nil {
+	if err := t.Validate(); err != nil {
 		return RefreshToken{}, err
 	}
 
-	return token, nil
+	return t, nil
+}
+
+func (t *RefreshToken) Validate() error {
+	return errs.First(
+		validate.Caller(t),
+		t.Jti.Validate,
+		t.Fingerprint.Validate,
+		t.UserAgent.Validate,
+		t.IP.Validate,
+	)
 }

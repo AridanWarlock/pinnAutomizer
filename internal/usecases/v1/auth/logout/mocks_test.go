@@ -22,7 +22,7 @@ var _ Usecase = &MockUsecase{}
 //
 //		// make and configure a mocked Usecase
 //		mockedUsecase := &MockUsecase{
-//			LogoutFunc: func(ctx context.Context, in Input) error {
+//			LogoutFunc: func(ctx context.Context) error {
 //				panic("mock out the Logout method")
 //			},
 //		}
@@ -33,7 +33,7 @@ var _ Usecase = &MockUsecase{}
 //	}
 type MockUsecase struct {
 	// LogoutFunc mocks the Logout method.
-	LogoutFunc func(ctx context.Context, in Input) error
+	LogoutFunc func(ctx context.Context) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -41,29 +41,25 @@ type MockUsecase struct {
 		Logout []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// In is the in argument value.
-			In Input
 		}
 	}
 	lockLogout sync.RWMutex
 }
 
 // Logout calls LogoutFunc.
-func (mock *MockUsecase) Logout(ctx context.Context, in Input) error {
+func (mock *MockUsecase) Logout(ctx context.Context) error {
 	if mock.LogoutFunc == nil {
 		panic("MockUsecase.LogoutFunc: method is nil but Usecase.Logout was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		In  Input
 	}{
 		Ctx: ctx,
-		In:  in,
 	}
 	mock.lockLogout.Lock()
 	mock.calls.Logout = append(mock.calls.Logout, callInfo)
 	mock.lockLogout.Unlock()
-	return mock.LogoutFunc(ctx, in)
+	return mock.LogoutFunc(ctx)
 }
 
 // LogoutCalls gets all the calls that were made to Logout.
@@ -72,11 +68,9 @@ func (mock *MockUsecase) Logout(ctx context.Context, in Input) error {
 //	len(mockedUsecase.LogoutCalls())
 func (mock *MockUsecase) LogoutCalls() []struct {
 	Ctx context.Context
-	In  Input
 } {
 	var calls []struct {
 		Ctx context.Context
-		In  Input
 	}
 	mock.lockLogout.RLock()
 	calls = mock.calls.Logout
@@ -159,5 +153,77 @@ func (mock *MockPostgres) LogoutCalls() []struct {
 	mock.lockLogout.RLock()
 	calls = mock.calls.Logout
 	mock.lockLogout.RUnlock()
+	return calls
+}
+
+// Ensure that MockRedis does implement Redis.
+// If this is not the case, regenerate this file with mockery.
+var _ Redis = &MockRedis{}
+
+// MockRedis is a mock implementation of Redis.
+//
+//	func TestSomethingThatUsesRedis(t *testing.T) {
+//
+//		// make and configure a mocked Redis
+//		mockedRedis := &MockRedis{
+//			DeleteFunc: func(ctx context.Context, key string) error {
+//				panic("mock out the Delete method")
+//			},
+//		}
+//
+//		// use mockedRedis in code that requires Redis
+//		// and then make assertions.
+//
+//	}
+type MockRedis struct {
+	// DeleteFunc mocks the Delete method.
+	DeleteFunc func(ctx context.Context, key string) error
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Delete holds details about calls to the Delete method.
+		Delete []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Key is the key argument value.
+			Key string
+		}
+	}
+	lockDelete sync.RWMutex
+}
+
+// Delete calls DeleteFunc.
+func (mock *MockRedis) Delete(ctx context.Context, key string) error {
+	if mock.DeleteFunc == nil {
+		panic("MockRedis.DeleteFunc: method is nil but Redis.Delete was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Key string
+	}{
+		Ctx: ctx,
+		Key: key,
+	}
+	mock.lockDelete.Lock()
+	mock.calls.Delete = append(mock.calls.Delete, callInfo)
+	mock.lockDelete.Unlock()
+	return mock.DeleteFunc(ctx, key)
+}
+
+// DeleteCalls gets all the calls that were made to Delete.
+// Check the length with:
+//
+//	len(mockedRedis.DeleteCalls())
+func (mock *MockRedis) DeleteCalls() []struct {
+	Ctx context.Context
+	Key string
+} {
+	var calls []struct {
+		Ctx context.Context
+		Key string
+	}
+	mock.lockDelete.RLock()
+	calls = mock.calls.Delete
+	mock.lockDelete.RUnlock()
 	return calls
 }

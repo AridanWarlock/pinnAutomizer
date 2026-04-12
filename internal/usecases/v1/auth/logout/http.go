@@ -2,8 +2,9 @@ package authLogout
 
 import (
 	"net/http"
+	"time"
 
-	httpRequest "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
+	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
 	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
@@ -30,23 +31,24 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	userClaims := httpRequest.ClaimsFromContext(ctx)
 	rh := httpResponse.NewHandler(w, log)
 
-	err := h.usecase.Logout(ctx, Input{
-		UserID:      userClaims.UserID,
-		Fingerprint: userClaims.Fingerprint,
-	})
+	_ = domain.AuditInfoFromContext(ctx)
+	log.Debug().Msg("in http")
+
+	err := h.usecase.Logout(ctx)
 	if err != nil {
 		rh.ErrorResponse(err, "failed to logout")
 		return
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     "refreshToken",
+		Name:     "refresh_token",
 		Path:     "/api/v1/auth/refresh",
 		MaxAge:   -1,
+		Expires:  time.Unix(0, 0),
 		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
 	})
 
 	rh.EmptyResponse(http.StatusNoContent)

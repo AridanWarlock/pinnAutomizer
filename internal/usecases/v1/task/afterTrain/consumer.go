@@ -3,9 +3,8 @@ package tasksAfterTrain
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/kafka-go"
@@ -31,7 +30,7 @@ func NewConsumer(usecase Usecase, log zerolog.Logger) *Consumer {
 func (c *Consumer) HandleMessage(ctx context.Context, msg kafka.Message, idempotencyKey string) error {
 	var message Message
 	if err := json.Unmarshal(msg.Value, &message); err != nil {
-		return domain.ErrUnmarshalFailed
+		return fmt.Errorf("unmarshal message: %w", err)
 	}
 
 	input := Input{
@@ -41,10 +40,7 @@ func (c *Consumer) HandleMessage(ctx context.Context, msg kafka.Message, idempot
 
 	err := c.usecase.UpdateTaskAfterTrain(ctx, input)
 	if err != nil {
-		if errors.Is(err, domain.ErrAlreadyExists) {
-			return nil
-		}
-		return err
+		return fmt.Errorf("usecase execute: %w", err)
 	}
 	return nil
 }

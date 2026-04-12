@@ -36,7 +36,6 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) SolveTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	userClaims := httpRequest.ClaimsFromContext(ctx)
 	rh := httpResponse.NewHandler(w, log)
 
 	var req Request
@@ -48,7 +47,6 @@ func (h *HttpHandler) SolveTask(w http.ResponseWriter, r *http.Request) {
 	in := Input{
 		TaskID:    req.TaskID,
 		Constants: req.Constants,
-		UserID:    userClaims.UserID,
 	}
 
 	err := h.usecase.SolveTask(ctx, in)

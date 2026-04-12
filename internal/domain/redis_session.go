@@ -3,45 +3,37 @@ package domain
 import (
 	"time"
 
+	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
-
 	"github.com/google/uuid"
 )
 
-type UserClaims struct {
+type RedisSession struct {
 	UserID      uuid.UUID   `validate:"required,uuid" json:"user_id"`
 	Roles       []Role      `validate:"required" json:"roles"`
 	Fingerprint Fingerprint `json:"fingerprint"`
 	IssuedAt    time.Time   `validate:"required" json:"issued_at"`
-	ExpiresAt   time.Time   `validate:"required" json:"expires_at"`
 }
 
-func NewUserClaims(
+func NewRedisSession(
 	userID uuid.UUID,
 	roles []Role,
 	fingerprint Fingerprint,
 	issuedAt time.Time,
-	expiresAt time.Time,
-) (UserClaims, error) {
-	uc := UserClaims{
+) (RedisSession, error) {
+	s := RedisSession{
 		UserID:      userID,
 		Roles:       roles,
 		Fingerprint: fingerprint,
 		IssuedAt:    issuedAt,
-		ExpiresAt:   expiresAt,
 	}
 
-	if err := uc.Validate(); err != nil {
-		return UserClaims{}, err
+	if err := s.Validate(); err != nil {
+		return RedisSession{}, err
 	}
-
-	return uc, nil
+	return s, nil
 }
 
-func (c UserClaims) Validate() error {
-	if err := validate.V.Struct(c); err != nil {
-		return err
-	}
-
-	return c.Fingerprint.Validate()
+func (s RedisSession) Validate() error {
+	return errs.First(validate.Caller(s), s.Fingerprint.Validate)
 }
