@@ -9,15 +9,9 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/config"
 	jwtToken "github.com/AridanWarlock/pinnAutomizer/internal/adapter/jwt/token"
-	kafkaAtLeastOnceConsumer "github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaConsumer/atLeastOnce"
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaProducer"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis"
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis/goRedis"
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis/indempotency"
 	"github.com/AridanWarlock/pinnAutomizer/internal/outbox"
 	httpMiddleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
-	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
 	authLogin "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/login"
 	authLogout "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/logout"
 	authMe "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/me"
@@ -30,6 +24,9 @@ import (
 	tasksSolve "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/solve"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/passwordHasher"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/indempotency"
 	"github.com/rs/zerolog"
 
 	_ "github.com/AridanWarlock/pinnAutomizer/docs"
@@ -94,7 +91,7 @@ func AppRun(
 	redisAdapter := redis.NewRedis(redisClient)
 	redisIdempotencyStore := indempotency.NewStore(redisAdapter, time.Hour, 3*time.Minute)
 	// kafka producer
-	producer := kafkaProducer.New(cfg.KafkaProducer)
+	producer := kafkaProducer.New(cfg.KafkaWriter)
 	defer func() {
 		if err := producer.Close(); err != nil {
 			log.Error().Err(err).Msg("kafka producer shutdown error")
@@ -181,7 +178,7 @@ func AppRun(
 	// tasks-on-train
 	go func() {
 		tasksOnTrainConsumeAdapter := kafkaAtLeastOnceConsumer.New(
-			cfg.KafkaConsumer,
+			cfg.KafkaReader,
 			"tasks.on.train",
 			producer,
 			log,
@@ -191,7 +188,7 @@ func AppRun(
 	// tasks-after-train
 	go func() {
 		tasksAfterTrainConsumeAdapter := kafkaAtLeastOnceConsumer.New(
-			cfg.KafkaConsumer,
+			cfg.KafkaReader,
 			"tasks.after.train",
 			producer,
 			log,

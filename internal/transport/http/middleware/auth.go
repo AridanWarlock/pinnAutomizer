@@ -1,4 +1,4 @@
-package httpMiddleware
+package middleware
 
 import (
 	"context"
@@ -8,9 +8,10 @@ import (
 	"strings"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
-	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/response"
 )
 
 var (
@@ -61,7 +62,7 @@ func New(
 	}
 }
 
-func (a *Auth) Middleware() Middleware {
+func (a *Auth) Middleware() middleware.Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if a.isPublicURL(r.URL.Path) {
@@ -74,7 +75,7 @@ func (a *Auth) Middleware() Middleware {
 			r, err := a.authenticate(r)
 
 			if err != nil {
-				rh := httpResponse.NewHandler(w, log)
+				rh := response.NewHandler(w, log)
 				rh.ErrorResponse(
 					fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, err),
 					"failed to authenticate",

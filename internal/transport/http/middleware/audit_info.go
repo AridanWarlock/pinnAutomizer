@@ -1,4 +1,4 @@
-package httpMiddleware
+package middleware
 
 import (
 	"crypto/sha256"
@@ -8,21 +8,22 @@ import (
 	"strings"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
-	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/response"
 )
 
 const FingerprintHeader = "X-Fingerprint"
 
-func AuditInfo() Middleware {
+func AuditInfo() middleware.Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 
 			audit, err := auditInfoFromRequest(r)
 			if err != nil {
-				rh := httpResponse.NewHandler(w, logger.FromContext(ctx))
+				rh := response.NewHandler(w, logger.FromContext(ctx))
 				rh.ErrorResponse(
 					fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err),
 					"failed on collect audit info",
