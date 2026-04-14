@@ -119,7 +119,9 @@ func TestUsecase_Logout(t *testing.T) {
 			}
 			tt.prepare(f)
 
-			ctx := test.SetUpContext(fixtures.NewAuditInfo(), fixtures.NewAuthInfo())
+			ctx := test.ContextWithZeroLogger()
+			ctx = fixtures.NewAuditInfo().WithContext(ctx)
+			ctx = fixtures.NewAuthInfo().WithContext(ctx)
 
 			uc := New(f.postgres, f.redis)
 			err := uc.Logout(ctx)
