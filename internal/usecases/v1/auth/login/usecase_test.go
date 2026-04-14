@@ -8,7 +8,8 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 	"github.com/stretchr/testify/assert"
 
@@ -34,12 +35,14 @@ func TestUsecase_Login(t *testing.T) {
 			claims.IssuedAt = fixedNow.Add(-time.Minute)
 			claims.Jti = fixtures.NewJti()
 		})
+		fixedAudit = fixtures.NewAuditInfo(func(audit *core.AuditInfo) {
+			audit.Fingerprint = fixedFingerprint
+		})
 	)
 
 	tests := []struct {
 		name    string
 		input   Input
-		audit   domain.AuditInfo
 		prepare func(f *fields)
 		check   func(t *testing.T, out Output, err error, f *fields)
 	}{
@@ -49,9 +52,6 @@ func TestUsecase_Login(t *testing.T) {
 				Login:    "admin",
 				Password: "12345678",
 			},
-			audit: fixtures.NewAuditInfo(func(audit *domain.AuditInfo) {
-				audit.Fingerprint = fixedFingerprint
-			}),
 			prepare: func(f *fields) {
 				f.postgres.GetUserByLoginFunc = func(ctx context.Context, login string) (domain.User, error) {
 					return fixtures.NewUser(func(user *domain.User) {
@@ -65,13 +65,13 @@ func TestUsecase_Login(t *testing.T) {
 				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, uID uuid.UUID) ([]domain.Role, error) {
 					return []domain.Role{fixtures.NewRole()}, nil
 				}
-				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) (domain.Jti, error) {
+				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
 					return fixtures.NewJti(), nil
 				}
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return nil
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 					return fixedToken, fixedJwtClaims, nil
 				}
 				f.postgres.LoginFunc = func(ctx context.Context, refresh domain.RefreshToken) (domain.RefreshToken, error) {
@@ -93,9 +93,6 @@ func TestUsecase_Login(t *testing.T) {
 				Login:    "admin",
 				Password: "12345678",
 			},
-			audit: fixtures.NewAuditInfo(func(audit *domain.AuditInfo) {
-				audit.Fingerprint = fixedFingerprint
-			}),
 			prepare: func(f *fields) {
 				f.postgres.GetUserByLoginFunc = func(ctx context.Context, login string) (domain.User, error) {
 					return fixtures.NewUser(func(user *domain.User) {
@@ -109,10 +106,10 @@ func TestUsecase_Login(t *testing.T) {
 				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, uID uuid.UUID) ([]domain.Role, error) {
 					return []domain.Role{fixtures.NewRole()}, nil
 				}
-				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) (domain.Jti, error) {
+				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
 					return domain.Jti{}, errs.ErrNotFound
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 					return fixedToken, fixedJwtClaims, nil
 				}
 				f.postgres.LoginFunc = func(ctx context.Context, refresh domain.RefreshToken) (domain.RefreshToken, error) {
@@ -134,9 +131,6 @@ func TestUsecase_Login(t *testing.T) {
 				Login:    "admin",
 				Password: "12345678",
 			},
-			audit: fixtures.NewAuditInfo(func(audit *domain.AuditInfo) {
-				audit.Fingerprint = fixedFingerprint
-			}),
 			prepare: func(f *fields) {
 				f.postgres.GetUserByLoginFunc = func(ctx context.Context, login string) (domain.User, error) {
 					return fixtures.NewUser(func(user *domain.User) {
@@ -150,13 +144,13 @@ func TestUsecase_Login(t *testing.T) {
 				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, uID uuid.UUID) ([]domain.Role, error) {
 					return []domain.Role{fixtures.NewRole()}, nil
 				}
-				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) (domain.Jti, error) {
+				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
 					return fixtures.NewJti(), nil
 				}
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return errs.ErrKeyNotFound
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 					return fixedToken, fixedJwtClaims, nil
 				}
 				f.postgres.LoginFunc = func(ctx context.Context, refresh domain.RefreshToken) (domain.RefreshToken, error) {
@@ -178,7 +172,6 @@ func TestUsecase_Login(t *testing.T) {
 				Login:    "",
 				Password: "12345678",
 			},
-			audit: fixtures.NewAuditInfo(),
 			prepare: func(f *fields) {
 			},
 			check: func(t *testing.T, out Output, err error, f *fields) {
@@ -193,7 +186,6 @@ func TestUsecase_Login(t *testing.T) {
 				Login:    "Ivan Ivanov",
 				Password: "root",
 			},
-			audit: fixtures.NewAuditInfo(),
 			prepare: func(f *fields) {
 			},
 			check: func(t *testing.T, out Output, err error, f *fields) {
@@ -208,9 +200,6 @@ func TestUsecase_Login(t *testing.T) {
 				Login:    "unknown",
 				Password: "12345678",
 			},
-			audit: fixtures.NewAuditInfo(func(audit *domain.AuditInfo) {
-				audit.Fingerprint = fixedFingerprint
-			}),
 			prepare: func(f *fields) {
 				f.postgres.GetUserByLoginFunc = func(ctx context.Context, l string) (domain.User, error) {
 					return domain.User{}, errs.ErrNotFound
@@ -229,9 +218,6 @@ func TestUsecase_Login(t *testing.T) {
 				Login:    "admin",
 				Password: "12345678",
 			},
-			audit: fixtures.NewAuditInfo(func(audit *domain.AuditInfo) {
-				audit.Fingerprint = fixedFingerprint
-			}),
 			prepare: func(f *fields) {
 				f.postgres.GetUserByLoginFunc = func(ctx context.Context, l string) (domain.User, error) {
 					return fixtures.NewUser(func(user *domain.User) {
@@ -255,9 +241,6 @@ func TestUsecase_Login(t *testing.T) {
 				Login:    "admin",
 				Password: "12345678",
 			},
-			audit: fixtures.NewAuditInfo(func(audit *domain.AuditInfo) {
-				audit.Fingerprint = fixedFingerprint
-			}),
 			prepare: func(f *fields) {
 				f.postgres.GetUserByLoginFunc = func(ctx context.Context, l string) (domain.User, error) {
 					return fixtures.NewUser(), nil
@@ -266,13 +249,13 @@ func TestUsecase_Login(t *testing.T) {
 				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, id uuid.UUID) ([]domain.Role, error) {
 					return []domain.Role{fixtures.NewRole()}, nil
 				}
-				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) (domain.Jti, error) {
+				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
 					return fixtures.NewJti(), nil
 				}
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return nil
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 					return "", domain.JwtClaims{}, errors.New("crypto: not available")
 				}
 			},
@@ -293,7 +276,7 @@ func TestUsecase_Login(t *testing.T) {
 				hasher:         &MockPasswordHasher{},
 			}
 
-			ctx := tt.audit.WithContext(testCtx)
+			ctx := fixedAudit.WithContext(testCtx)
 
 			tt.prepare(f)
 

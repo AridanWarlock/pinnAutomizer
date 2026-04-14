@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
-	authLogin "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/login"
+	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/google/uuid"
 )
 
@@ -25,7 +26,7 @@ type Redis interface {
 }
 
 type TokenGenerator interface {
-	GenerateAndGetClaims(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error)
+	GenerateAndGetClaims(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error)
 }
 
 type usecase struct {
@@ -51,7 +52,7 @@ func (u *usecase) Refresh(ctx context.Context, in Input) (Output, error) {
 		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
-	audit := domain.AuditInfoFromContext(ctx)
+	audit := core.AuditInfoFromContext(ctx)
 
 	oldRefresh, err := u.getValidRefreshToken(ctx, in.RefreshTokenString, audit.Fingerprint)
 	if err != nil {
@@ -94,7 +95,7 @@ func (u *usecase) Refresh(ctx context.Context, in Input) (Output, error) {
 func (u *usecase) getValidRefreshToken(
 	ctx context.Context,
 	token string,
-	fingerprint domain.Fingerprint,
+	fingerprint core.Fingerprint,
 ) (domain.RefreshToken, error) {
 	hash := crypt.Sha256(token)
 
@@ -107,7 +108,7 @@ func (u *usecase) getValidRefreshToken(
 		return domain.RefreshToken{}, fmt.Errorf("get refresh token from postgres: %w", err)
 	}
 
-	if refresh.Fingerprint != fingerprint {
+	if refresh.Audit.Fingerprint != fingerprint {
 		return domain.RefreshToken{}, errs.ErrSessionIsCompromised
 	}
 
@@ -151,7 +152,7 @@ func (u *usecase) setNewRedisSession(
 	jti domain.Jti,
 	userID uuid.UUID,
 	roles []domain.Role,
-	fingerprint domain.Fingerprint,
+	fingerprint core.Fingerprint,
 	issuedAt time.Time,
 ) error {
 	session, err := domain.NewRedisSession(
@@ -164,7 +165,7 @@ func (u *usecase) setNewRedisSession(
 		return fmt.Errorf("create redis session: %w", err)
 	}
 
-	err = u.redis.Set(ctx, jti.ToRedisKey(), session, authLogin.AccessTokenTtl)
+	err = u.redis.Set(ctx, jti.ToRedisKey(), session, auth.AccessTokenTTL)
 	if err != nil {
 		return fmt.Errorf("redis set: %w", err)
 	}

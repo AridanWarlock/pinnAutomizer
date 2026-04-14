@@ -3,10 +3,9 @@ package refresh_tokens
 import (
 	"context"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 )
@@ -14,7 +13,7 @@ import (
 func (r *Repository) Logout(
 	ctx context.Context,
 	userID uuid.UUID,
-	fingerprint domain.Fingerprint,
+	fingerprint core.Fingerprint,
 ) error {
 	q := r.sb.Delete(RefreshTokensTable).
 		Where(sq.Eq{
@@ -24,7 +23,7 @@ func (r *Repository) Logout(
 
 	tag, err := r.pool.Execx(ctx, q)
 	if err != nil {
-		return pgerr.ScanErr(err)
+		return err
 	}
 	if tag.RowsAffected() != 1 {
 		return errs.ErrNotFound

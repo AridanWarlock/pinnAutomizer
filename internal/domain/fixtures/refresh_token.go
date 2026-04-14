@@ -12,14 +12,12 @@ func NewRefreshToken(mods ...mod[domain.RefreshToken]) domain.RefreshToken {
 	now := time.Now()
 
 	us := domain.RefreshToken{
-		Hash:        crypt.Sha256(crypt.GenerateSecureToken()),
-		UserID:      uuid.New(),
-		Jti:         NewJti(),
-		Fingerprint: NewFingerprint(),
-		UserAgent:   NewUserAgent(),
-		IP:          NewUserIP(),
-		CreatedAt:   now,
-		ExpiresAt:   now.Add(time.Hour),
+		Hash:      crypt.Sha256(crypt.GenerateSecureToken()),
+		UserID:    uuid.New(),
+		Jti:       NewJti(),
+		Audit:     NewAuditInfo(),
+		CreatedAt: now,
+		ExpiresAt: now.Add(time.Hour),
 	}
 
 	return fixture(us, mods)

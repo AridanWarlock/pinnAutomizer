@@ -8,7 +8,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -45,7 +45,7 @@ func TestUsecase_Register(t *testing.T) {
 					return fixtures.NewRole(), nil
 				}
 
-				f.postgres.WrapFunc = func(ctx context.Context, fn func(context.Context) error) error {
+				f.postgres.InTransactionFunc = func(ctx context.Context, fn func(context.Context) error) error {
 					return fn(ctx)
 				}
 				f.postgres.CreateUserFunc = func(ctx context.Context, user domain.User) (domain.User, error) {
@@ -112,7 +112,7 @@ func TestUsecase_Register(t *testing.T) {
 					return fixtures.NewRole(), nil
 				}
 
-				f.postgres.WrapFunc = func(ctx context.Context, fn func(context.Context) error) error {
+				f.postgres.InTransactionFunc = func(ctx context.Context, fn func(context.Context) error) error {
 					return fn(ctx)
 				}
 				f.postgres.CreateUserFunc = func(ctx context.Context, user domain.User) (domain.User, error) {
@@ -139,7 +139,7 @@ func TestUsecase_Register(t *testing.T) {
 					return fixtures.NewRole(), nil
 				}
 
-				f.postgres.WrapFunc = func(ctx context.Context, fn func(context.Context) error) error {
+				f.postgres.InTransactionFunc = func(ctx context.Context, fn func(context.Context) error) error {
 					return fn(ctx)
 				}
 				f.postgres.CreateUserFunc = func(ctx context.Context, user domain.User) (domain.User, error) {

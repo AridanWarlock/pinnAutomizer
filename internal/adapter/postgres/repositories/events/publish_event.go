@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 )
@@ -20,7 +19,7 @@ func (r *Repository) PublishEvent(ctx context.Context, event domain.Event) (doma
 
 	var outRow EventRow
 	if err := r.pool.Getx(ctx, &outRow, query); err != nil {
-		return domain.Event{}, pgerr.ScanErr(err)
+		return domain.Event{}, err
 	}
 
 	return ToModel(outRow), nil

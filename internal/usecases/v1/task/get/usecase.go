@@ -7,7 +7,7 @@ import (
 	"slices"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
@@ -39,10 +39,6 @@ func (u *usecase) GetTasks(ctx context.Context, in Input) (Output, error) {
 	if err != nil {
 		log.Error().Err(err).Msg("usecase: postgres.GetTasksByIDs")
 		return Output{}, fmt.Errorf("getting tasks by id from postgres: %w", err)
-	}
-	if len(tasks) != len(in.IDs) {
-		log.Error().Err(domain.ErrIDNotExist).Msg("usecase: domain.ErrIDNotExist")
-		return Output{}, fmt.Errorf("getting tasks by id from postgres: %w", domain.ErrIDNotExist)
 	}
 
 	equationIDs := make(map[uuid.UUID]struct{})

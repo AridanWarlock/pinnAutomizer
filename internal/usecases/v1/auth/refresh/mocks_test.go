@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
 )
 
@@ -413,7 +414,7 @@ var _ TokenGenerator = &MockTokenGenerator{}
 //
 //		// make and configure a mocked TokenGenerator
 //		mockedTokenGenerator := &MockTokenGenerator{
-//			GenerateAndGetClaimsFunc: func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+//			GenerateAndGetClaimsFunc: func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 //				panic("mock out the GenerateAndGetClaims method")
 //			},
 //		}
@@ -424,7 +425,7 @@ var _ TokenGenerator = &MockTokenGenerator{}
 //	}
 type MockTokenGenerator struct {
 	// GenerateAndGetClaimsFunc mocks the GenerateAndGetClaims method.
-	GenerateAndGetClaimsFunc func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error)
+	GenerateAndGetClaimsFunc func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -438,7 +439,7 @@ type MockTokenGenerator struct {
 }
 
 // GenerateAndGetClaims calls GenerateAndGetClaimsFunc.
-func (mock *MockTokenGenerator) GenerateAndGetClaims(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+func (mock *MockTokenGenerator) GenerateAndGetClaims(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 	if mock.GenerateAndGetClaimsFunc == nil {
 		panic("MockTokenGenerator.GenerateAndGetClaimsFunc: method is nil but TokenGenerator.GenerateAndGetClaims was just called")
 	}

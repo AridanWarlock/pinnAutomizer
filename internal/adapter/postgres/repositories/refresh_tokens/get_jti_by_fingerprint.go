@@ -3,10 +3,9 @@ package refresh_tokens
 import (
 	"context"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 )
@@ -14,7 +13,7 @@ import (
 func (r *Repository) GetJtiByFingerprint(
 	ctx context.Context,
 	userID uuid.UUID,
-	fingerprint domain.Fingerprint,
+	fingerprint core.Fingerprint,
 ) (domain.Jti, error) {
 	q := r.sb.Select(RefreshTokensTableColumnJti).
 		From(RefreshTokensTable).
@@ -25,10 +24,7 @@ func (r *Repository) GetJtiByFingerprint(
 
 	var jti domain.Jti
 	if err := r.pool.Getx(ctx, &jti, q); err != nil {
-		if pgerr.IsNotFound(err) {
-			return domain.Jti{}, errs.ErrNotFound
-		}
-		return domain.Jti{}, pgerr.ScanErr(err)
+		return domain.Jti{}, err
 	}
 	return jti, nil
 }

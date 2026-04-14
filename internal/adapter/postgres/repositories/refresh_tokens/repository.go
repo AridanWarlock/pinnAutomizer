@@ -7,11 +7,11 @@ import (
 )
 
 type Repository struct {
-	pool pool.Poolx
+	pool pool.Pool
 	sb   squirrel.StatementBuilderType
 }
 
-func NewRepository(pool pool.Poolx) *Repository {
+func NewRepository(pool pool.Pool) *Repository {
 	return &Repository{
 		pool: pool,
 		sb:   squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),

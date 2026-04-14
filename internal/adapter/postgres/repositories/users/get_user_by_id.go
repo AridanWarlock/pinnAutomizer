@@ -2,13 +2,9 @@ package users
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
-
 	. "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 )
@@ -21,14 +17,7 @@ func (r *Repository) GetUserByID(ctx context.Context, id uuid.UUID) (domain.User
 
 	var row UserRow
 	if err := r.pool.Getx(ctx, &row, query); err != nil {
-		if pgerr.IsNotFound(err) {
-			return domain.User{}, fmt.Errorf(
-				"user with id=%v: %w",
-				id,
-				errs.ErrNotFound,
-			)
-		}
-		return domain.User{}, pgerr.ScanErr(err)
+		return domain.User{}, err
 	}
 	return ToModel(row), nil
 }

@@ -4,12 +4,11 @@ import (
 	"fmt"
 
 	jwtToken "github.com/AridanWarlock/pinnAutomizer/internal/adapter/jwt/token"
-	kafkaAtLeastOnceConsumer "github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaConsumer/atLeastOnce"
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaProducer"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis/goRedis"
-	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/kafka"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis/goRedis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
 	"github.com/caarlos0/env/v11"
 )
 
@@ -19,13 +18,13 @@ type App struct {
 
 type Config struct {
 	App                  App
-	HTTP                 httpServer.Config               `envPrefix:"HTTP_"`
-	Log                  logger.Config                   `envPrefix:"LOGGER_"`
-	Postgres             postgres.Config                 `envPrefix:"POSTGRES_"`
-	Redis                goRedis.Config                  `envPrefix:"REDIS_"`
-	AccessTokenGenerator jwtToken.Config                 `envPrefix:"JWT_"`
-	KafkaProducer        kafkaProducer.Config            `envPrefix:"KAFKA_PRODUCER_"`
-	KafkaConsumer        kafkaAtLeastOnceConsumer.Config `envPrefix:"KAFKA_CONSUMER_"`
+	HTTP                 server.Config      `envPrefix:"HTTP_"`
+	Log                  logger.Config      `envPrefix:"LOGGER_"`
+	Postgres             postgres.Config    `envPrefix:"POSTGRES_"`
+	Redis                goRedis.Config     `envPrefix:"REDIS_"`
+	AccessTokenGenerator jwtToken.Config    `envPrefix:"JWT_"`
+	KafkaWriter          kafka.WriterConfig `envPrefix:"KAFKA_WRITER_"`
+	KafkaReader          kafka.ReaderConfig `envPrefix:"KAFKA_READER_"`
 }
 
 func InitConfig() (Config, error) {

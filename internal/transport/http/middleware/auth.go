@@ -1,4 +1,4 @@
-package httpMiddleware
+package middleware
 
 import (
 	"context"
@@ -8,9 +8,11 @@ import (
 	"strings"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
-	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/response"
 )
 
 var (
@@ -19,7 +21,7 @@ var (
 )
 
 type TokenParser interface {
-	GetClaims(token domain.AccessToken) (domain.JwtClaims, error)
+	GetClaims(token core.AccessToken) (domain.JwtClaims, error)
 }
 
 type Redis interface {
@@ -61,7 +63,7 @@ func New(
 	}
 }
 
-func (a *Auth) Middleware() Middleware {
+func (a *Auth) Middleware() middleware.Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if a.isPublicURL(r.URL.Path) {
@@ -74,7 +76,7 @@ func (a *Auth) Middleware() Middleware {
 			r, err := a.authenticate(r)
 
 			if err != nil {
-				rh := httpResponse.NewHandler(w, log)
+				rh := response.NewHandler(w, log)
 				rh.ErrorResponse(
 					fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, err),
 					"failed to authenticate",
@@ -120,7 +122,7 @@ func (a *Auth) authenticate(r *http.Request) (*http.Request, error) {
 		return nil, fmt.Errorf("get session from redis: %w", err)
 	}
 
-	auditInfo := domain.AuditInfoFromContext(ctx)
+	auditInfo := core.AuditInfoFromContext(ctx)
 	if auditInfo.Fingerprint != session.Fingerprint {
 		return nil, fmt.Errorf(
 			"%w: fingerprint from headers and token not equals",
@@ -142,7 +144,7 @@ func (a *Auth) authenticate(r *http.Request) (*http.Request, error) {
 	return r.WithContext(ctx), nil
 }
 
-func (a *Auth) extractAccessToken(headers http.Header) (domain.AccessToken, error) {
+func (a *Auth) extractAccessToken(headers http.Header) (core.AccessToken, error) {
 	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
 		return "", ErrBearerTokenIsNotSet
@@ -150,7 +152,7 @@ func (a *Auth) extractAccessToken(headers http.Header) (domain.AccessToken, erro
 
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 
-	return domain.NewAccessToken(token)
+	return core.NewAccessToken(token)
 }
 
 func (a *Auth) getSessionFromRedis(ctx context.Context, jti domain.Jti) (domain.RedisSession, error) {

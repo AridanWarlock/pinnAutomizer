@@ -1,9 +1,11 @@
 package fixtures
 
-import "github.com/AridanWarlock/pinnAutomizer/internal/domain"
+import (
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+)
 
-func NewAuditInfo(mods ...mod[domain.AuditInfo]) domain.AuditInfo {
-	audit := domain.AuditInfo{
+func NewAuditInfo(mods ...mod[core.AuditInfo]) core.AuditInfo {
+	audit := core.AuditInfo{
 		Fingerprint: NewFingerprint(),
 		IP:          NewUserIP(),
 		Agent:       NewUserAgent(),

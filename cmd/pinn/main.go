@@ -9,15 +9,9 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/config"
 	jwtToken "github.com/AridanWarlock/pinnAutomizer/internal/adapter/jwt/token"
-	kafkaAtLeastOnceConsumer "github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaConsumer/atLeastOnce"
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/kafkaProducer"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis"
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis/goRedis"
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/redis/indempotency"
 	"github.com/AridanWarlock/pinnAutomizer/internal/outbox"
 	httpMiddleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
-	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
 	authLogin "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/login"
 	authLogout "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/logout"
 	authMe "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth/me"
@@ -28,8 +22,14 @@ import (
 	tasksGet "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/get"
 	tasksOnTrain "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/onTrain"
 	tasksSolve "github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/task/solve"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/kafka"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis/goRedis"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis/indempotency"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/passwordHasher"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/password"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
 	"github.com/rs/zerolog"
 
 	_ "github.com/AridanWarlock/pinnAutomizer/docs"
@@ -94,7 +94,7 @@ func AppRun(
 	redisAdapter := redis.NewRedis(redisClient)
 	redisIdempotencyStore := indempotency.NewStore(redisAdapter, time.Hour, 3*time.Minute)
 	// kafka producer
-	producer := kafkaProducer.New(cfg.KafkaProducer)
+	producer := kafka.NewWriter(cfg.KafkaWriter)
 	defer func() {
 		if err := producer.Close(); err != nil {
 			log.Error().Err(err).Msg("kafka producer shutdown error")
@@ -113,7 +113,7 @@ func AppRun(
 	// access token generator
 	accessTokenGenerator := jwtToken.NewGenerator(cfg.AccessTokenGenerator)
 	// password hasher
-	hasher := passwordHasher.New()
+	hasher := password.NewHasher()
 
 	// usecases
 	// auth
@@ -146,7 +146,7 @@ func AppRun(
 	tasksGetHandler := tasksGet.NewHttpHandler(tasksGetUsecase)
 	tasksSolveHandler := tasksSolve.NewHttpHandler(tasksSolveUsecase)
 	// routers
-	apiV1Router := httpServer.NewApiVersionRouter(httpServer.ApiVersion1)
+	apiV1Router := server.NewApiVersionRouter(server.ApiVersion(1))
 	apiV1Router.RegisterHandlers(
 		// auth
 		authLoginHandler,
@@ -160,44 +160,60 @@ func AppRun(
 		tasksSolveHandler,
 	)
 	// http server
-	server := httpServer.New(
+	httpServer := server.New(
 		cfg.HTTP,
 		log,
 		httpMiddleware.Cors(),
-		httpMiddleware.RequestID(),
-		httpMiddleware.Logger(log),
-		httpMiddleware.TraceID(),
+		middleware.RequestID(),
+		middleware.Logger(log),
+		middleware.TraceID(),
 		httpMiddleware.AuditInfo(),
 		httpMiddleware.New(redisAdapter, accessTokenGenerator).Middleware(),
-		httpMiddleware.Recover(),
+		middleware.Recover(),
 	)
-	server.RegisterApiRouters(apiV1Router)
-	server.RegisterSwagger()
+	httpServer.RegisterApiRouters(apiV1Router)
+	httpServer.RegisterSwagger()
 
 	// kafka consumers
 	// tasks
 	tasksOnTrainConsumer := tasksOnTrain.NewConsumer(tasksOnTrainUsecase, log)
 	tasksAfterTrainConsumer := tasksAfterTrain.NewConsumer(tasksAfterTrainUsecase, log)
 	// tasks-on-train
+	tasksOnTrainConsumeAdapter, err := kafka.NewReader(
+		cfg.KafkaReader,
+		"tasks.on.train",
+		kafka.StrategyAtLeastOnce,
+		log,
+		kafka.WithWriter(producer),
+	)
+	if err != nil {
+		return fmt.Errorf("tasks.on.train reader init: %w", err)
+	}
 	go func() {
-		tasksOnTrainConsumeAdapter := kafkaAtLeastOnceConsumer.New(
-			cfg.KafkaConsumer,
-			"tasks.on.train",
-			producer,
-			log,
-		)
-		tasksOnTrainConsumeAdapter.Run(ctx, tasksOnTrainConsumer.HandleMessage)
+		err := tasksOnTrainConsumeAdapter.Run(ctx, tasksOnTrainConsumer.HandleMessage)
+		if err != nil {
+			log.Error().Err(err).Msg("tasks.on.train consume error")
+			return
+		}
 	}()
 	// tasks-after-train
+	tasksAfterTrainConsumeAdapter, err := kafka.NewReader(
+		cfg.KafkaReader,
+		"tasks.after.train",
+		kafka.StrategyAtLeastOnce,
+		log,
+		kafka.WithWriter(producer),
+	)
+	if err != nil {
+		return fmt.Errorf("tasks.after.train reader init: %w", err)
+	}
 	go func() {
-		tasksAfterTrainConsumeAdapter := kafkaAtLeastOnceConsumer.New(
-			cfg.KafkaConsumer,
-			"tasks.after.train",
-			producer,
-			log,
-		)
-		tasksAfterTrainConsumeAdapter.Run(ctx, tasksAfterTrainConsumer.HandleMessage)
+		err := tasksAfterTrainConsumeAdapter.Run(ctx, tasksAfterTrainConsumer.HandleMessage)
+		if err != nil {
+			log.Error().Err(err).Msg("tasks.after.train consume error")
+			return
+		}
 	}()
 
-	return server.Run(ctx)
+	return httpServer.Run(ctx)
 }

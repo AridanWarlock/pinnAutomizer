@@ -8,8 +8,9 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -31,9 +32,7 @@ func TestUsecase_Refresh(t *testing.T) {
 		fixedRefresh     = fixtures.NewRefreshToken(func(refresh *domain.RefreshToken) {
 			refresh.UserID = fixedUserID
 
-			refresh.Fingerprint = fixedAuditInfo.Fingerprint
-			refresh.UserAgent = fixedAuditInfo.Agent
-			refresh.IP = fixedAuditInfo.IP
+			refresh.Audit = fixedAuditInfo
 		})
 		fixedClaims = fixtures.NewJwtClaims(func(claims *domain.JwtClaims) {
 			claims.UserID = fixedUserID
@@ -63,7 +62,7 @@ func TestUsecase_Refresh(t *testing.T) {
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return nil
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 					return fixedAccessToken, fixedClaims, nil
 				}
 				f.postgres.RotateRefreshTokenFunc = func(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error {
@@ -94,7 +93,7 @@ func TestUsecase_Refresh(t *testing.T) {
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return errs.ErrKeyNotFound
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 					return fixedAccessToken, fixedClaims, nil
 				}
 				f.postgres.RotateRefreshTokenFunc = func(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error {
@@ -164,7 +163,7 @@ func TestUsecase_Refresh(t *testing.T) {
 				f.postgres.GetRefreshTokenByHashFunc = func(ctx context.Context, hash string) (domain.RefreshToken, error) {
 					return fixtures.NewRefreshToken(func(refresh *domain.RefreshToken) {
 						refresh.ExpiresAt = fixedNow.Add(-time.Minute)
-						refresh.Fingerprint = "other fingerprint"
+						refresh.Audit.Fingerprint = "other fingerprint"
 					}), nil
 				}
 			},

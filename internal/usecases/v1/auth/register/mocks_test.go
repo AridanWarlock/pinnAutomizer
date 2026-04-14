@@ -102,8 +102,8 @@ var _ Postgres = &MockPostgres{}
 //			GetRoleByTitleFunc: func(ctx context.Context, title string) (domain.Role, error) {
 //				panic("mock out the GetRoleByTitle method")
 //			},
-//			WrapFunc: func(ctx context.Context, fn func(context.Context) error) error {
-//				panic("mock out the Wrap method")
+//			InTransactionFunc: func(ctx context.Context, inTx func(ctx context.Context) error) error {
+//				panic("mock out the InTransaction method")
 //			},
 //		}
 //
@@ -121,8 +121,8 @@ type MockPostgres struct {
 	// GetRoleByTitleFunc mocks the GetRoleByTitle method.
 	GetRoleByTitleFunc func(ctx context.Context, title string) (domain.Role, error)
 
-	// WrapFunc mocks the Wrap method.
-	WrapFunc func(ctx context.Context, fn func(context.Context) error) error
+	// InTransactionFunc mocks the InTransaction method.
+	InTransactionFunc func(ctx context.Context, inTx func(ctx context.Context) error) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -147,18 +147,18 @@ type MockPostgres struct {
 			// Title is the title argument value.
 			Title string
 		}
-		// Wrap holds details about calls to the Wrap method.
-		Wrap []struct {
+		// InTransaction holds details about calls to the InTransaction method.
+		InTransaction []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Fn is the fn argument value.
-			Fn func(context.Context) error
+			// InTx is the inTx argument value.
+			InTx func(ctx context.Context) error
 		}
 	}
 	lockCreateUser            sync.RWMutex
 	lockCreateUsersRolesBatch sync.RWMutex
 	lockGetRoleByTitle        sync.RWMutex
-	lockWrap                  sync.RWMutex
+	lockInTransaction         sync.RWMutex
 }
 
 // CreateUser calls CreateUserFunc.
@@ -269,39 +269,39 @@ func (mock *MockPostgres) GetRoleByTitleCalls() []struct {
 	return calls
 }
 
-// Wrap calls WrapFunc.
-func (mock *MockPostgres) Wrap(ctx context.Context, fn func(context.Context) error) error {
-	if mock.WrapFunc == nil {
-		panic("MockPostgres.WrapFunc: method is nil but Postgres.Wrap was just called")
+// InTransaction calls InTransactionFunc.
+func (mock *MockPostgres) InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error {
+	if mock.InTransactionFunc == nil {
+		panic("MockPostgres.InTransactionFunc: method is nil but Postgres.InTransaction was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
-		Fn  func(context.Context) error
+		Ctx  context.Context
+		InTx func(ctx context.Context) error
 	}{
-		Ctx: ctx,
-		Fn:  fn,
+		Ctx:  ctx,
+		InTx: inTx,
 	}
-	mock.lockWrap.Lock()
-	mock.calls.Wrap = append(mock.calls.Wrap, callInfo)
-	mock.lockWrap.Unlock()
-	return mock.WrapFunc(ctx, fn)
+	mock.lockInTransaction.Lock()
+	mock.calls.InTransaction = append(mock.calls.InTransaction, callInfo)
+	mock.lockInTransaction.Unlock()
+	return mock.InTransactionFunc(ctx, inTx)
 }
 
-// WrapCalls gets all the calls that were made to Wrap.
+// InTransactionCalls gets all the calls that were made to InTransaction.
 // Check the length with:
 //
-//	len(mockedPostgres.WrapCalls())
-func (mock *MockPostgres) WrapCalls() []struct {
-	Ctx context.Context
-	Fn  func(context.Context) error
+//	len(mockedPostgres.InTransactionCalls())
+func (mock *MockPostgres) InTransactionCalls() []struct {
+	Ctx  context.Context
+	InTx func(ctx context.Context) error
 } {
 	var calls []struct {
-		Ctx context.Context
-		Fn  func(context.Context) error
+		Ctx  context.Context
+		InTx func(ctx context.Context) error
 	}
-	mock.lockWrap.RLock()
-	calls = mock.calls.Wrap
-	mock.lockWrap.RUnlock()
+	mock.lockInTransaction.RLock()
+	calls = mock.calls.InTransaction
+	mock.lockInTransaction.RUnlock()
 	return calls
 }
 

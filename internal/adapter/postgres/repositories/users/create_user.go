@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 )
@@ -19,7 +18,7 @@ func (r *Repository) CreateUser(ctx context.Context, user domain.User) (domain.U
 
 	var outRow UserRow
 	if err := r.pool.Getx(ctx, &outRow, query); err != nil {
-		return domain.User{}, pgerr.ScanErr(err)
+		return domain.User{}, err
 	}
 	return ToModel(outRow), nil
 }

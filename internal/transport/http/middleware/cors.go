@@ -1,12 +1,14 @@
-package httpMiddleware
+package middleware
 
 import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
 )
 
-func Cors() Middleware {
+func Cors() middleware.Middleware {
 	allowedOrigins := map[string]struct{}{
 		"http://localhost:8080": {},
 		"http://0.0.0.0:8080":   {},

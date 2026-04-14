@@ -8,7 +8,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
 )
 
@@ -88,7 +88,7 @@ var _ Postgres = &MockPostgres{}
 //
 //		// make and configure a mocked Postgres
 //		mockedPostgres := &MockPostgres{
-//			LogoutFunc: func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
+//			LogoutFunc: func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error {
 //				panic("mock out the Logout method")
 //			},
 //		}
@@ -99,7 +99,7 @@ var _ Postgres = &MockPostgres{}
 //	}
 type MockPostgres struct {
 	// LogoutFunc mocks the Logout method.
-	LogoutFunc func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error
+	LogoutFunc func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -110,21 +110,21 @@ type MockPostgres struct {
 			// UserID is the userID argument value.
 			UserID uuid.UUID
 			// Fingerprint is the fingerprint argument value.
-			Fingerprint domain.Fingerprint
+			Fingerprint core.Fingerprint
 		}
 	}
 	lockLogout sync.RWMutex
 }
 
 // Logout calls LogoutFunc.
-func (mock *MockPostgres) Logout(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
+func (mock *MockPostgres) Logout(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error {
 	if mock.LogoutFunc == nil {
 		panic("MockPostgres.LogoutFunc: method is nil but Postgres.Logout was just called")
 	}
 	callInfo := struct {
 		Ctx         context.Context
 		UserID      uuid.UUID
-		Fingerprint domain.Fingerprint
+		Fingerprint core.Fingerprint
 	}{
 		Ctx:         ctx,
 		UserID:      userID,
@@ -143,12 +143,12 @@ func (mock *MockPostgres) Logout(ctx context.Context, userID uuid.UUID, fingerpr
 func (mock *MockPostgres) LogoutCalls() []struct {
 	Ctx         context.Context
 	UserID      uuid.UUID
-	Fingerprint domain.Fingerprint
+	Fingerprint core.Fingerprint
 } {
 	var calls []struct {
 		Ctx         context.Context
 		UserID      uuid.UUID
-		Fingerprint domain.Fingerprint
+		Fingerprint core.Fingerprint
 	}
 	mock.lockLogout.RLock()
 	calls = mock.calls.Logout

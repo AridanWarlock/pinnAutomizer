@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
-	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/response"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
 )
 
 type HttpHandler struct {
@@ -19,8 +19,8 @@ func NewHttpHandler(usecase Usecase) *HttpHandler {
 	}
 }
 
-func (h *HttpHandler) Route() httpServer.Route {
-	return httpServer.Route{
+func (h *HttpHandler) Route() server.Route {
+	return server.Route{
 		Method:  http.MethodPost,
 		Path:    "/auth/logout",
 		Handler: h.Logout,
@@ -30,7 +30,7 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	rh := httpResponse.NewHandler(w, log)
+	rh := response.NewHandler(w, log)
 
 	err := h.usecase.Logout(ctx)
 	if err != nil {

@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pool"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/repositories/equations"
@@ -13,7 +12,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/repositories/tasks"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/repositories/users"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/repositories/users_roles"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/postgres/poolx"
 )
 
 type EquationRepository = *equations.Repository
@@ -25,7 +24,7 @@ type UsersRepository = *users.Repository
 type UsersRolesRepository = *users_roles.Repository
 
 type Repository struct {
-	pool pool.Poolx
+	pool pool.Pool
 
 	EquationRepository
 	EventsRepository
@@ -37,50 +36,35 @@ type Repository struct {
 }
 
 func New(cfg Config) (*Repository, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	p, err := poolx.New(poolx.Config{
+		User:     cfg.User,
+		Password: cfg.Password,
+		Host:     cfg.Host,
+		Port:     cfg.Port,
+		DB:       cfg.DB,
+		SslMode:  cfg.SslMode,
+		Timeout:  cfg.Timeout,
+	})
 
-	connString := fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		cfg.User,
-		cfg.Password,
-		cfg.Host,
-		cfg.Port,
-		cfg.DB,
-		cfg.SslMode,
-	)
-	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
-		return nil, fmt.Errorf("parse pgxconfig: %w", err)
+		return nil, fmt.Errorf("postgres: poolx create: %w", err)
 	}
-
-	pgxPool, err := pgxpool.NewWithConfig(ctx, config)
-	if err != nil {
-		return nil, fmt.Errorf("pgxpool connect: %w", err)
-	}
-
-	err = pgxPool.Ping(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("ping postgres: %w", err)
-	}
-
-	poolx := pool.New(pgxPool, cfg.Timeout)
 
 	return &Repository{
-		pool: poolx,
+		pool: p,
 
-		EquationRepository:      equations.NewRepository(poolx),
-		EventsRepository:        events.NewRepository(poolx),
-		RefreshTokensRepository: refresh_tokens.NewRepository(poolx),
-		RolesRepository:         roles.NewRepository(poolx),
-		TasksRepository:         tasks.NewRepository(poolx),
-		UsersRepository:         users.NewRepository(poolx),
-		UsersRolesRepository:    users_roles.NewRepository(poolx),
+		EquationRepository:      equations.NewRepository(p),
+		EventsRepository:        events.NewRepository(p),
+		RefreshTokensRepository: refresh_tokens.NewRepository(p),
+		RolesRepository:         roles.NewRepository(p),
+		TasksRepository:         tasks.NewRepository(p),
+		UsersRepository:         users.NewRepository(p),
+		UsersRolesRepository:    users_roles.NewRepository(p),
 	}, nil
 }
 
-func (r *Repository) Wrap(ctx context.Context, fn func(context.Context) error) error {
-	return r.pool.Wrap(ctx, fn)
+func (r *Repository) InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error {
+	return r.pool.InTransaction(ctx, inTx)
 }
 
 func (r *Repository) Close() {
