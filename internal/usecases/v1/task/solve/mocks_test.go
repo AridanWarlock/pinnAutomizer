@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
 )
 
@@ -81,246 +82,6 @@ func (mock *MockUsecase) SolveTaskCalls() []struct {
 	mock.lockSolveTask.RLock()
 	calls = mock.calls.SolveTask
 	mock.lockSolveTask.RUnlock()
-	return calls
-}
-
-// Ensure that MockRedis does implement Redis.
-// If this is not the case, regenerate this file with mockery.
-var _ Redis = &MockRedis{}
-
-// MockRedis is a mock implementation of Redis.
-//
-//	func TestSomethingThatUsesRedis(t *testing.T) {
-//
-//		// make and configure a mocked Redis
-//		mockedRedis := &MockRedis{
-//			DeleteFunc: func(ctx context.Context, key string) error {
-//				panic("mock out the Delete method")
-//			},
-//			GetFunc: func(ctx context.Context, key string, target any) (domain.IdempotencyStatus, error) {
-//				panic("mock out the Get method")
-//			},
-//			SetFunc: func(ctx context.Context, key string, status domain.IdempotencyStatus, value any) error {
-//				panic("mock out the Set method")
-//			},
-//			TryLockFunc: func(ctx context.Context, key string) (bool, error) {
-//				panic("mock out the TryLock method")
-//			},
-//		}
-//
-//		// use mockedRedis in code that requires Redis
-//		// and then make assertions.
-//
-//	}
-type MockRedis struct {
-	// DeleteFunc mocks the Delete method.
-	DeleteFunc func(ctx context.Context, key string) error
-
-	// GetFunc mocks the Get method.
-	GetFunc func(ctx context.Context, key string, target any) (domain.IdempotencyStatus, error)
-
-	// SetFunc mocks the Set method.
-	SetFunc func(ctx context.Context, key string, status domain.IdempotencyStatus, value any) error
-
-	// TryLockFunc mocks the TryLock method.
-	TryLockFunc func(ctx context.Context, key string) (bool, error)
-
-	// calls tracks calls to the methods.
-	calls struct {
-		// Delete holds details about calls to the Delete method.
-		Delete []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Key is the key argument value.
-			Key string
-		}
-		// Get holds details about calls to the Get method.
-		Get []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Key is the key argument value.
-			Key string
-			// Target is the target argument value.
-			Target any
-		}
-		// Set holds details about calls to the Set method.
-		Set []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Key is the key argument value.
-			Key string
-			// Status is the status argument value.
-			Status domain.IdempotencyStatus
-			// Value is the value argument value.
-			Value any
-		}
-		// TryLock holds details about calls to the TryLock method.
-		TryLock []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Key is the key argument value.
-			Key string
-		}
-	}
-	lockDelete  sync.RWMutex
-	lockGet     sync.RWMutex
-	lockSet     sync.RWMutex
-	lockTryLock sync.RWMutex
-}
-
-// Delete calls DeleteFunc.
-func (mock *MockRedis) Delete(ctx context.Context, key string) error {
-	if mock.DeleteFunc == nil {
-		panic("MockRedis.DeleteFunc: method is nil but Redis.Delete was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-		Key string
-	}{
-		Ctx: ctx,
-		Key: key,
-	}
-	mock.lockDelete.Lock()
-	mock.calls.Delete = append(mock.calls.Delete, callInfo)
-	mock.lockDelete.Unlock()
-	return mock.DeleteFunc(ctx, key)
-}
-
-// DeleteCalls gets all the calls that were made to Delete.
-// Check the length with:
-//
-//	len(mockedRedis.DeleteCalls())
-func (mock *MockRedis) DeleteCalls() []struct {
-	Ctx context.Context
-	Key string
-} {
-	var calls []struct {
-		Ctx context.Context
-		Key string
-	}
-	mock.lockDelete.RLock()
-	calls = mock.calls.Delete
-	mock.lockDelete.RUnlock()
-	return calls
-}
-
-// Get calls GetFunc.
-func (mock *MockRedis) Get(ctx context.Context, key string, target any) (domain.IdempotencyStatus, error) {
-	if mock.GetFunc == nil {
-		panic("MockRedis.GetFunc: method is nil but Redis.Get was just called")
-	}
-	callInfo := struct {
-		Ctx    context.Context
-		Key    string
-		Target any
-	}{
-		Ctx:    ctx,
-		Key:    key,
-		Target: target,
-	}
-	mock.lockGet.Lock()
-	mock.calls.Get = append(mock.calls.Get, callInfo)
-	mock.lockGet.Unlock()
-	return mock.GetFunc(ctx, key, target)
-}
-
-// GetCalls gets all the calls that were made to Get.
-// Check the length with:
-//
-//	len(mockedRedis.GetCalls())
-func (mock *MockRedis) GetCalls() []struct {
-	Ctx    context.Context
-	Key    string
-	Target any
-} {
-	var calls []struct {
-		Ctx    context.Context
-		Key    string
-		Target any
-	}
-	mock.lockGet.RLock()
-	calls = mock.calls.Get
-	mock.lockGet.RUnlock()
-	return calls
-}
-
-// Set calls SetFunc.
-func (mock *MockRedis) Set(ctx context.Context, key string, status domain.IdempotencyStatus, value any) error {
-	if mock.SetFunc == nil {
-		panic("MockRedis.SetFunc: method is nil but Redis.Set was just called")
-	}
-	callInfo := struct {
-		Ctx    context.Context
-		Key    string
-		Status domain.IdempotencyStatus
-		Value  any
-	}{
-		Ctx:    ctx,
-		Key:    key,
-		Status: status,
-		Value:  value,
-	}
-	mock.lockSet.Lock()
-	mock.calls.Set = append(mock.calls.Set, callInfo)
-	mock.lockSet.Unlock()
-	return mock.SetFunc(ctx, key, status, value)
-}
-
-// SetCalls gets all the calls that were made to Set.
-// Check the length with:
-//
-//	len(mockedRedis.SetCalls())
-func (mock *MockRedis) SetCalls() []struct {
-	Ctx    context.Context
-	Key    string
-	Status domain.IdempotencyStatus
-	Value  any
-} {
-	var calls []struct {
-		Ctx    context.Context
-		Key    string
-		Status domain.IdempotencyStatus
-		Value  any
-	}
-	mock.lockSet.RLock()
-	calls = mock.calls.Set
-	mock.lockSet.RUnlock()
-	return calls
-}
-
-// TryLock calls TryLockFunc.
-func (mock *MockRedis) TryLock(ctx context.Context, key string) (bool, error) {
-	if mock.TryLockFunc == nil {
-		panic("MockRedis.TryLockFunc: method is nil but Redis.TryLock was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-		Key string
-	}{
-		Ctx: ctx,
-		Key: key,
-	}
-	mock.lockTryLock.Lock()
-	mock.calls.TryLock = append(mock.calls.TryLock, callInfo)
-	mock.lockTryLock.Unlock()
-	return mock.TryLockFunc(ctx, key)
-}
-
-// TryLockCalls gets all the calls that were made to TryLock.
-// Check the length with:
-//
-//	len(mockedRedis.TryLockCalls())
-func (mock *MockRedis) TryLockCalls() []struct {
-	Ctx context.Context
-	Key string
-} {
-	var calls []struct {
-		Ctx context.Context
-		Key string
-	}
-	mock.lockTryLock.RLock()
-	calls = mock.calls.TryLock
-	mock.lockTryLock.RUnlock()
 	return calls
 }
 
@@ -449,5 +210,245 @@ func (mock *MockPostgres) PublishEventCalls() []struct {
 	mock.lockPublishEvent.RLock()
 	calls = mock.calls.PublishEvent
 	mock.lockPublishEvent.RUnlock()
+	return calls
+}
+
+// Ensure that MockRedis does implement Redis.
+// If this is not the case, regenerate this file with mockery.
+var _ Redis = &MockRedis{}
+
+// MockRedis is a mock implementation of Redis.
+//
+//	func TestSomethingThatUsesRedis(t *testing.T) {
+//
+//		// make and configure a mocked Redis
+//		mockedRedis := &MockRedis{
+//			DeleteFunc: func(ctx context.Context, idKey core.IdempotencyKey) error {
+//				panic("mock out the Delete method")
+//			},
+//			GetFunc: func(ctx context.Context, idKey core.IdempotencyKey, target any) (core.IdempotencyStatus, error) {
+//				panic("mock out the Get method")
+//			},
+//			SetFunc: func(ctx context.Context, idKey core.IdempotencyKey, status core.IdempotencyStatus, value any) error {
+//				panic("mock out the Set method")
+//			},
+//			TryLockFunc: func(ctx context.Context, idKey core.IdempotencyKey) (bool, error) {
+//				panic("mock out the TryLock method")
+//			},
+//		}
+//
+//		// use mockedRedis in code that requires Redis
+//		// and then make assertions.
+//
+//	}
+type MockRedis struct {
+	// DeleteFunc mocks the Delete method.
+	DeleteFunc func(ctx context.Context, idKey core.IdempotencyKey) error
+
+	// GetFunc mocks the Get method.
+	GetFunc func(ctx context.Context, idKey core.IdempotencyKey, target any) (core.IdempotencyStatus, error)
+
+	// SetFunc mocks the Set method.
+	SetFunc func(ctx context.Context, idKey core.IdempotencyKey, status core.IdempotencyStatus, value any) error
+
+	// TryLockFunc mocks the TryLock method.
+	TryLockFunc func(ctx context.Context, idKey core.IdempotencyKey) (bool, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Delete holds details about calls to the Delete method.
+		Delete []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// IdKey is the idKey argument value.
+			IdKey core.IdempotencyKey
+		}
+		// Get holds details about calls to the Get method.
+		Get []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// IdKey is the idKey argument value.
+			IdKey core.IdempotencyKey
+			// Target is the target argument value.
+			Target any
+		}
+		// Set holds details about calls to the Set method.
+		Set []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// IdKey is the idKey argument value.
+			IdKey core.IdempotencyKey
+			// Status is the status argument value.
+			Status core.IdempotencyStatus
+			// Value is the value argument value.
+			Value any
+		}
+		// TryLock holds details about calls to the TryLock method.
+		TryLock []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// IdKey is the idKey argument value.
+			IdKey core.IdempotencyKey
+		}
+	}
+	lockDelete  sync.RWMutex
+	lockGet     sync.RWMutex
+	lockSet     sync.RWMutex
+	lockTryLock sync.RWMutex
+}
+
+// Delete calls DeleteFunc.
+func (mock *MockRedis) Delete(ctx context.Context, idKey core.IdempotencyKey) error {
+	if mock.DeleteFunc == nil {
+		panic("MockRedis.DeleteFunc: method is nil but Redis.Delete was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		IdKey core.IdempotencyKey
+	}{
+		Ctx:   ctx,
+		IdKey: idKey,
+	}
+	mock.lockDelete.Lock()
+	mock.calls.Delete = append(mock.calls.Delete, callInfo)
+	mock.lockDelete.Unlock()
+	return mock.DeleteFunc(ctx, idKey)
+}
+
+// DeleteCalls gets all the calls that were made to Delete.
+// Check the length with:
+//
+//	len(mockedRedis.DeleteCalls())
+func (mock *MockRedis) DeleteCalls() []struct {
+	Ctx   context.Context
+	IdKey core.IdempotencyKey
+} {
+	var calls []struct {
+		Ctx   context.Context
+		IdKey core.IdempotencyKey
+	}
+	mock.lockDelete.RLock()
+	calls = mock.calls.Delete
+	mock.lockDelete.RUnlock()
+	return calls
+}
+
+// Get calls GetFunc.
+func (mock *MockRedis) Get(ctx context.Context, idKey core.IdempotencyKey, target any) (core.IdempotencyStatus, error) {
+	if mock.GetFunc == nil {
+		panic("MockRedis.GetFunc: method is nil but Redis.Get was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		IdKey  core.IdempotencyKey
+		Target any
+	}{
+		Ctx:    ctx,
+		IdKey:  idKey,
+		Target: target,
+	}
+	mock.lockGet.Lock()
+	mock.calls.Get = append(mock.calls.Get, callInfo)
+	mock.lockGet.Unlock()
+	return mock.GetFunc(ctx, idKey, target)
+}
+
+// GetCalls gets all the calls that were made to Get.
+// Check the length with:
+//
+//	len(mockedRedis.GetCalls())
+func (mock *MockRedis) GetCalls() []struct {
+	Ctx    context.Context
+	IdKey  core.IdempotencyKey
+	Target any
+} {
+	var calls []struct {
+		Ctx    context.Context
+		IdKey  core.IdempotencyKey
+		Target any
+	}
+	mock.lockGet.RLock()
+	calls = mock.calls.Get
+	mock.lockGet.RUnlock()
+	return calls
+}
+
+// Set calls SetFunc.
+func (mock *MockRedis) Set(ctx context.Context, idKey core.IdempotencyKey, status core.IdempotencyStatus, value any) error {
+	if mock.SetFunc == nil {
+		panic("MockRedis.SetFunc: method is nil but Redis.Set was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		IdKey  core.IdempotencyKey
+		Status core.IdempotencyStatus
+		Value  any
+	}{
+		Ctx:    ctx,
+		IdKey:  idKey,
+		Status: status,
+		Value:  value,
+	}
+	mock.lockSet.Lock()
+	mock.calls.Set = append(mock.calls.Set, callInfo)
+	mock.lockSet.Unlock()
+	return mock.SetFunc(ctx, idKey, status, value)
+}
+
+// SetCalls gets all the calls that were made to Set.
+// Check the length with:
+//
+//	len(mockedRedis.SetCalls())
+func (mock *MockRedis) SetCalls() []struct {
+	Ctx    context.Context
+	IdKey  core.IdempotencyKey
+	Status core.IdempotencyStatus
+	Value  any
+} {
+	var calls []struct {
+		Ctx    context.Context
+		IdKey  core.IdempotencyKey
+		Status core.IdempotencyStatus
+		Value  any
+	}
+	mock.lockSet.RLock()
+	calls = mock.calls.Set
+	mock.lockSet.RUnlock()
+	return calls
+}
+
+// TryLock calls TryLockFunc.
+func (mock *MockRedis) TryLock(ctx context.Context, idKey core.IdempotencyKey) (bool, error) {
+	if mock.TryLockFunc == nil {
+		panic("MockRedis.TryLockFunc: method is nil but Redis.TryLock was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		IdKey core.IdempotencyKey
+	}{
+		Ctx:   ctx,
+		IdKey: idKey,
+	}
+	mock.lockTryLock.Lock()
+	mock.calls.TryLock = append(mock.calls.TryLock, callInfo)
+	mock.lockTryLock.Unlock()
+	return mock.TryLockFunc(ctx, idKey)
+}
+
+// TryLockCalls gets all the calls that were made to TryLock.
+// Check the length with:
+//
+//	len(mockedRedis.TryLockCalls())
+func (mock *MockRedis) TryLockCalls() []struct {
+	Ctx   context.Context
+	IdKey core.IdempotencyKey
+} {
+	var calls []struct {
+		Ctx   context.Context
+		IdKey core.IdempotencyKey
+	}
+	mock.lockTryLock.RLock()
+	calls = mock.calls.TryLock
+	mock.lockTryLock.RUnlock()
 	return calls
 }

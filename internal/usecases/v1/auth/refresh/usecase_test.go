@@ -8,8 +8,8 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -31,9 +31,7 @@ func TestUsecase_Refresh(t *testing.T) {
 		fixedRefresh     = fixtures.NewRefreshToken(func(refresh *domain.RefreshToken) {
 			refresh.UserID = fixedUserID
 
-			refresh.Fingerprint = fixedAuditInfo.Fingerprint
-			refresh.UserAgent = fixedAuditInfo.Agent
-			refresh.IP = fixedAuditInfo.IP
+			refresh.Audit = fixedAuditInfo
 		})
 		fixedClaims = fixtures.NewJwtClaims(func(claims *domain.JwtClaims) {
 			claims.UserID = fixedUserID
@@ -164,7 +162,7 @@ func TestUsecase_Refresh(t *testing.T) {
 				f.postgres.GetRefreshTokenByHashFunc = func(ctx context.Context, hash string) (domain.RefreshToken, error) {
 					return fixtures.NewRefreshToken(func(refresh *domain.RefreshToken) {
 						refresh.ExpiresAt = fixedNow.Add(-time.Minute)
-						refresh.Fingerprint = "other fingerprint"
+						refresh.Audit.Fingerprint = "other fingerprint"
 					}), nil
 				}
 			},

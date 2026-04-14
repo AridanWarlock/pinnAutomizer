@@ -10,7 +10,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

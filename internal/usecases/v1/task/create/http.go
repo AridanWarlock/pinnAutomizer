@@ -89,7 +89,7 @@ func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	task := out.Task
 
-	response := Response{
+	res := Response{
 		ID:          task.ID,
 		Name:        task.Name,
 		Description: task.Description,
@@ -99,5 +99,5 @@ func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		EquationType: out.Equation.Type,
 		CreatedAt:    task.CreatedAt,
 	}
-	rh.JsonResponse(response, http.StatusCreated)
+	rh.JsonResponse(res, http.StatusCreated)
 }

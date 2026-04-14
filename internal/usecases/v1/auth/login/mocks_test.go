@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
 )
 
@@ -95,7 +96,7 @@ var _ Postgres = &MockPostgres{}
 //
 //		// make and configure a mocked Postgres
 //		mockedPostgres := &MockPostgres{
-//			GetJtiByFingerprintFunc: func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) (domain.Jti, error) {
+//			GetJtiByFingerprintFunc: func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
 //				panic("mock out the GetJtiByFingerprint method")
 //			},
 //			GetRolesByUserIDFunc: func(ctx context.Context, userID uuid.UUID) ([]domain.Role, error) {
@@ -115,7 +116,7 @@ var _ Postgres = &MockPostgres{}
 //	}
 type MockPostgres struct {
 	// GetJtiByFingerprintFunc mocks the GetJtiByFingerprint method.
-	GetJtiByFingerprintFunc func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) (domain.Jti, error)
+	GetJtiByFingerprintFunc func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error)
 
 	// GetRolesByUserIDFunc mocks the GetRolesByUserID method.
 	GetRolesByUserIDFunc func(ctx context.Context, userID uuid.UUID) ([]domain.Role, error)
@@ -135,7 +136,7 @@ type MockPostgres struct {
 			// UserID is the userID argument value.
 			UserID uuid.UUID
 			// Fingerprint is the fingerprint argument value.
-			Fingerprint domain.Fingerprint
+			Fingerprint core.Fingerprint
 		}
 		// GetRolesByUserID holds details about calls to the GetRolesByUserID method.
 		GetRolesByUserID []struct {
@@ -166,14 +167,14 @@ type MockPostgres struct {
 }
 
 // GetJtiByFingerprint calls GetJtiByFingerprintFunc.
-func (mock *MockPostgres) GetJtiByFingerprint(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) (domain.Jti, error) {
+func (mock *MockPostgres) GetJtiByFingerprint(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
 	if mock.GetJtiByFingerprintFunc == nil {
 		panic("MockPostgres.GetJtiByFingerprintFunc: method is nil but Postgres.GetJtiByFingerprint was just called")
 	}
 	callInfo := struct {
 		Ctx         context.Context
 		UserID      uuid.UUID
-		Fingerprint domain.Fingerprint
+		Fingerprint core.Fingerprint
 	}{
 		Ctx:         ctx,
 		UserID:      userID,
@@ -192,12 +193,12 @@ func (mock *MockPostgres) GetJtiByFingerprint(ctx context.Context, userID uuid.U
 func (mock *MockPostgres) GetJtiByFingerprintCalls() []struct {
 	Ctx         context.Context
 	UserID      uuid.UUID
-	Fingerprint domain.Fingerprint
+	Fingerprint core.Fingerprint
 } {
 	var calls []struct {
 		Ctx         context.Context
 		UserID      uuid.UUID
-		Fingerprint domain.Fingerprint
+		Fingerprint core.Fingerprint
 	}
 	mock.lockGetJtiByFingerprint.RLock()
 	calls = mock.calls.GetJtiByFingerprint

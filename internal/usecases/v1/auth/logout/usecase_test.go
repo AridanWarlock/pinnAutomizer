@@ -6,9 +6,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 	"github.com/stretchr/testify/assert"
 
@@ -32,7 +32,7 @@ func TestUsecase_Logout(t *testing.T) {
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return nil
 				}
-				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
+				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error {
 					return nil
 				}
 			},
@@ -46,7 +46,7 @@ func TestUsecase_Logout(t *testing.T) {
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return nil
 				}
-				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
+				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error {
 					return errs.ErrNotFound
 				}
 			},
@@ -60,7 +60,7 @@ func TestUsecase_Logout(t *testing.T) {
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return errs.ErrKeyNotFound
 				}
-				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
+				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error {
 					return nil
 				}
 			},
@@ -74,7 +74,7 @@ func TestUsecase_Logout(t *testing.T) {
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return errs.ErrKeyNotFound
 				}
-				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
+				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error {
 					return errs.ErrNotFound
 				}
 			},
@@ -100,7 +100,7 @@ func TestUsecase_Logout(t *testing.T) {
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return nil
 				}
-				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error {
+				f.postgres.LogoutFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error {
 					return sql.ErrConnDone
 				}
 			},
