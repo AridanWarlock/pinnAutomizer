@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
 )
 
@@ -14,9 +15,9 @@ type RefreshTokenRaw struct {
 	UserID uuid.UUID  `db:"user_id"`
 	Jti    domain.Jti `db:"jti"`
 
-	Fingerprint domain.Fingerprint `db:"fingerprint"`
-	Agent       domain.UserAgent   `db:"agent"`
-	IP          netip.Addr         `db:"ip"`
+	Fingerprint core.Fingerprint `db:"fingerprint"`
+	Agent       core.UserAgent   `db:"agent"`
+	IP          netip.Addr       `db:"ip"`
 
 	ExpiresAt time.Time `db:"expires_at"`
 	CreatedAt time.Time `db:"created_at"`
@@ -43,9 +44,9 @@ func FromModel(model domain.RefreshToken) RefreshTokenRaw {
 		Hash:        model.Hash,
 		UserID:      model.UserID,
 		Jti:         model.Jti,
-		Fingerprint: model.Fingerprint,
-		Agent:       model.UserAgent,
-		IP:          netip.Addr(model.IP),
+		Fingerprint: model.Audit.Fingerprint,
+		Agent:       model.Audit.Agent,
+		IP:          netip.Addr(model.Audit.IP),
 		ExpiresAt:   model.ExpiresAt,
 		CreatedAt:   model.CreatedAt,
 	}
@@ -53,13 +54,15 @@ func FromModel(model domain.RefreshToken) RefreshTokenRaw {
 
 func ToModel(raw RefreshTokenRaw) domain.RefreshToken {
 	return domain.RefreshToken{
-		Hash:        raw.Hash,
-		UserID:      raw.UserID,
-		Jti:         raw.Jti,
-		Fingerprint: raw.Fingerprint,
-		UserAgent:   raw.Agent,
-		IP:          domain.UserIP(raw.IP),
-		ExpiresAt:   raw.ExpiresAt,
-		CreatedAt:   raw.CreatedAt,
+		Hash:   raw.Hash,
+		UserID: raw.UserID,
+		Jti:    raw.Jti,
+		Audit: core.NewAuditInfo(
+			raw.Fingerprint,
+			core.UserIP(raw.IP),
+			raw.Agent,
+		),
+		ExpiresAt: raw.ExpiresAt,
+		CreatedAt: raw.CreatedAt,
 	}
 }

@@ -7,7 +7,7 @@ import (
 	"slices"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"

@@ -7,14 +7,14 @@ import (
 	"net/http"
 
 	"github.com/AridanWarlock/pinnAutomizer/docs"
-	httpMiddleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
 	"github.com/rs/zerolog"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 type Server struct {
 	mux         *http.ServeMux
-	middlewares []httpMiddleware.Middleware
+	middlewares []middleware.Middleware
 
 	cfg Config
 	log zerolog.Logger
@@ -23,7 +23,7 @@ type Server struct {
 func New(
 	cfg Config,
 	log zerolog.Logger,
-	middlewares ...httpMiddleware.Middleware,
+	middlewares ...middleware.Middleware,
 ) *Server {
 	return &Server{
 		mux:         http.NewServeMux(),
@@ -59,7 +59,7 @@ func (s *Server) RegisterSwagger() {
 }
 
 func (s *Server) Run(ctx context.Context) error {
-	mux := httpMiddleware.ChainMiddleware(s.mux, s.middlewares...)
+	mux := middleware.ChainMiddleware(s.mux, s.middlewares...)
 
 	server := &http.Server{
 		Addr:         s.cfg.Addr,

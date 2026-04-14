@@ -3,7 +3,6 @@ package events
 import (
 	"context"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 
@@ -20,15 +19,15 @@ func (r *Repository) DeleteEventsByIDs(ctx context.Context, ids []uuid.UUID) err
 
 	tag, err := r.pool.Execx(ctx, query)
 	if err != nil {
-		return pgerr.ScanErr(err)
+		return err
 	}
 
-	expected := int64(len(ids))
+	expected := len(ids)
 	actual := tag.RowsAffected()
 
 	if actual < expected {
-		log.Info().Int64("deleted_count", actual).
-			Int64("requested_count", expected).
+		log.Info().Int("deleted_count", actual).
+			Int("requested_count", expected).
 			Interface("ids", ids).
 			Msg("delete events by id")
 	}

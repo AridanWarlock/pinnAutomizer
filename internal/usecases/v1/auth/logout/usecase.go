@@ -6,12 +6,13 @@ import (
 	"fmt"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/google/uuid"
 )
 
 type Postgres interface {
-	Logout(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) error
+	Logout(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error
 }
 
 type Redis interface {
@@ -34,7 +35,7 @@ func New(
 }
 
 func (u *usecase) Logout(ctx context.Context) error {
-	audit := domain.AuditInfoFromContext(ctx)
+	audit := core.AuditInfoFromContext(ctx)
 	auth := domain.AuthInfoFromContext(ctx)
 
 	err := u.redis.Delete(ctx, auth.Jti.ToRedisKey())

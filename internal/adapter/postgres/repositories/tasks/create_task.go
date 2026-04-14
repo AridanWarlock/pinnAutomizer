@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 )
@@ -20,7 +19,7 @@ func (r *Repository) CreateTask(ctx context.Context, task domain.Task) (domain.T
 
 	var outRow TaskRow
 	if err := r.pool.Getx(ctx, &outRow, query); err != nil {
-		return domain.Task{}, pgerr.ScanErr(err)
+		return domain.Task{}, err
 	}
 	return ToModel(outRow), nil
 }

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/segmentio"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/kafka/segmentio"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )

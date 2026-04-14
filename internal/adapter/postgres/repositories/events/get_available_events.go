@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
 
 func (r *Repository) GetAvailableEvents(ctx context.Context, batchSize int) ([]domain.Event, error) {
@@ -28,7 +27,7 @@ func (r *Repository) GetAvailableEvents(ctx context.Context, batchSize int) ([]d
 
 	var rows []EventRow
 	if err := r.pool.Selectx(ctx, &rows, query); err != nil {
-		return nil, pgerr.ScanErr(err)
+		return nil, err
 	}
 
 	events := make([]domain.Event, len(rows))

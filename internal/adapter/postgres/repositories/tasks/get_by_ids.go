@@ -3,7 +3,6 @@ package tasks
 import (
 	"context"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 
@@ -24,7 +23,7 @@ func (r *Repository) GetTasksByIDs(
 
 	var rows []TaskRow
 	if err := r.pool.Selectx(ctx, &rows, query); err != nil {
-		return nil, pgerr.ScanErr(err)
+		return nil, err
 	}
 
 	tasks := make([]domain.Task, len(rows))

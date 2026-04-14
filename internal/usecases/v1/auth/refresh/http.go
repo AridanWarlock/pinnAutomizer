@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
-	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
-	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/response"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
 )
 
 type Response struct {
@@ -24,8 +24,8 @@ func NewHttpHandler(usecase Usecase) *HttpHandler {
 	}
 }
 
-func (h *HttpHandler) Route() httpServer.Route {
-	return httpServer.Route{
+func (h *HttpHandler) Route() server.Route {
+	return server.Route{
 		Method:  http.MethodPost,
 		Path:    "/auth/refresh",
 		Handler: h.Refresh,
@@ -35,7 +35,7 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	rh := httpResponse.NewHandler(w, log)
+	rh := response.NewHandler(w, log)
 
 	refreshToken, err := r.Cookie("refresh_token")
 	if err != nil {

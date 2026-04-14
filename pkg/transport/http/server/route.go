@@ -3,18 +3,18 @@ package server
 import (
 	"net/http"
 
-	httpMiddleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
 )
 
 type Route struct {
 	Method      string
 	Path        string
 	Handler     http.HandlerFunc
-	Middlewares []httpMiddleware.Middleware
+	Middlewares []middleware.Middleware
 }
 
 func (r Route) WithMiddleware() http.Handler {
-	return httpMiddleware.ChainMiddleware(
+	return middleware.ChainMiddleware(
 		r.Handler,
 		r.Middlewares...,
 	)

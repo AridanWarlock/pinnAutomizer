@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/kafka/consumer"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/kafka/segmentio"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/consumer"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/segmentio"
 	"github.com/rs/zerolog"
 )
 
@@ -53,13 +53,13 @@ func WithWriter(writer *Writer) Option {
 	}
 }
 
-func New(
+func NewReader(
 	cfg ReaderConfig,
 	topic string,
 	strategy Strategy,
 	log zerolog.Logger,
 	options ...Option,
-) *Reader {
+) (*Reader, error) {
 	r := &Reader{
 		strategy: strategy,
 		cfg:      cfg,
@@ -72,7 +72,11 @@ func New(
 		opt(r)
 	}
 
-	return r
+	if err := r.Validate(); err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }
 
 func (r *Reader) Run(
@@ -93,10 +97,6 @@ func (r *Reader) runAtLeastOnce(
 	ctx context.Context,
 	handler Handler,
 ) error {
-	if r.writer == nil {
-		return fmt.Errorf("%w: nil writer", ErrInvalidStrategySetup)
-	}
-
 	reader := segmentio.NewReader(
 		segmentio.ReaderConfig{
 			Broker:  r.cfg.Broker,
@@ -203,4 +203,11 @@ func (r *Reader) runAtMostOnce(
 	)
 
 	return atMostOnceConsumer.Run(ctx, handlerFunc)
+}
+
+func (r *Reader) Validate() error {
+	if r.strategy == StrategyAtLeastOnce && r.writer == nil {
+		return fmt.Errorf("%w: nil writer", ErrInvalidStrategySetup)
+	}
+	return nil
 }

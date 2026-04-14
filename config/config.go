@@ -5,9 +5,9 @@ import (
 
 	jwtToken "github.com/AridanWarlock/pinnAutomizer/internal/adapter/jwt/token"
 	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/kafka"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis/goRedis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
 	"github.com/caarlos0/env/v11"
 )

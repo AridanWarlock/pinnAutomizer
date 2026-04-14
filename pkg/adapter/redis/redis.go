@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis/goRedis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
 )
 
 type Redis struct {

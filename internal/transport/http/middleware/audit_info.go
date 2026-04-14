@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
@@ -37,26 +37,26 @@ func AuditInfo() middleware.Middleware {
 	}
 }
 
-func auditInfoFromRequest(r *http.Request) (domain.AuditInfo, error) {
+func auditInfoFromRequest(r *http.Request) (core.AuditInfo, error) {
 	uaString := r.UserAgent()
-	ua, err := domain.NewUserAgent(uaString)
+	ua, err := core.NewUserAgent(uaString)
 	if err != nil {
-		return domain.AuditInfo{}, err
+		return core.AuditInfo{}, err
 	}
 
 	ipString := rawIP(r)
-	ip, err := domain.NewUserIP(ipString)
+	ip, err := core.NewUserIP(ipString)
 	if err != nil {
-		return domain.AuditInfo{}, err
+		return core.AuditInfo{}, err
 	}
 
 	fpHash := rawFingerprintHash(r)
-	fp, err := domain.NewFingerprintFromHash(fpHash)
+	fp, err := core.NewFingerprintFromHash(fpHash)
 	if err != nil {
-		return domain.AuditInfo{}, err
+		return core.AuditInfo{}, err
 	}
 
-	return domain.NewAuditInfo(fp, ip, ua), nil
+	return core.NewAuditInfo(fp, ip, ua), nil
 }
 
 func rawFingerprintHash(r *http.Request) []byte {

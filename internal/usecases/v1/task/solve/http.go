@@ -3,10 +3,10 @@ package tasksSolve
 import (
 	"net/http"
 
-	httpRequest "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/request"
-	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
-	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/request"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/response"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
 	"github.com/google/uuid"
 )
 
@@ -25,8 +25,8 @@ func NewHttpHandler(usecase Usecase) *HttpHandler {
 	}
 }
 
-func (h *HttpHandler) Route() httpServer.Route {
-	return httpServer.Route{
+func (h *HttpHandler) Route() server.Route {
+	return server.Route{
 		Method:  http.MethodGet,
 		Path:    "/tasks/{id}/solve",
 		Handler: h.SolveTask,
@@ -36,11 +36,11 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) SolveTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	rh := httpResponse.NewHandler(w, log)
+	rh := response.NewHandler(w, log)
 
 	var req Request
-	if err := httpRequest.DecodeAndValidateRequest(w, r, &req); err != nil {
-		log.Info().Err(err).Msg("parse json error")
+	if err := request.DecodeAndValidate(w, r, &req); err != nil {
+		rh.ErrorResponse(err, "failed to decode and validate HTTP request")
 		return
 	}
 

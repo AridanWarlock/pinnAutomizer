@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"github.com/segmentio/kafka-go"
 )
 
 type Message struct {
@@ -27,15 +27,14 @@ func NewConsumer(usecase Usecase, log zerolog.Logger) *Consumer {
 	}
 }
 
-func (c *Consumer) HandleMessage(ctx context.Context, msg kafka.Message, idempotencyKey string) error {
+func (c *Consumer) HandleMessage(ctx context.Context, msg core.KafkaMessage) error {
 	var message Message
 	if err := json.Unmarshal(msg.Value, &message); err != nil {
 		return fmt.Errorf("unmarshal message: %w", err)
 	}
 
 	input := Input{
-		ID:             message.TaskID,
-		IdempotencyKey: idempotencyKey,
+		ID: message.TaskID,
 	}
 
 	err := c.usecase.UpdateTaskAfterTrain(ctx, input)

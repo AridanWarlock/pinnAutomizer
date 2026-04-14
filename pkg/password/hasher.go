@@ -1,4 +1,4 @@
-package passwordHasher
+package password
 
 import (
 	"errors"
@@ -13,7 +13,7 @@ var ErrInvalidPassword = errors.New("invalid password")
 type Hasher struct {
 }
 
-func New() *Hasher {
+func NewHasher() *Hasher {
 	return &Hasher{}
 }
 

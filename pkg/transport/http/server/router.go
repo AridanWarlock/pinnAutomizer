@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	httpMiddleware "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/middleware"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
 )
 
 type ApiVersion int
@@ -12,10 +12,10 @@ type ApiVersion int
 type ApiVersionRouter struct {
 	mux         *http.ServeMux
 	apiVersion  ApiVersion
-	middlewares []httpMiddleware.Middleware
+	middlewares []middleware.Middleware
 }
 
-func NewApiVersionRouter(apiVersion ApiVersion, middlewares ...httpMiddleware.Middleware) *ApiVersionRouter {
+func NewApiVersionRouter(apiVersion ApiVersion, middlewares ...middleware.Middleware) *ApiVersionRouter {
 	return &ApiVersionRouter{
 		mux:         http.NewServeMux(),
 		apiVersion:  apiVersion,
@@ -46,5 +46,5 @@ func (r *ApiVersionRouter) registerRoute(route Route) {
 }
 
 func (r *ApiVersionRouter) WithMiddleware() http.Handler {
-	return httpMiddleware.ChainMiddleware(r.mux, r.middlewares...)
+	return middleware.ChainMiddleware(r.mux, r.middlewares...)
 }

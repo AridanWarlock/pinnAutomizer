@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 
@@ -20,7 +19,7 @@ func (r *Repository) GetRolesByUserID(ctx context.Context, userID uuid.UUID) ([]
 
 	var rows []RoleRaw
 	if err := r.pool.Selectx(ctx, &rows, q); err != nil {
-		return nil, pgerr.ScanErr(err)
+		return nil, err
 	}
 
 	roles := make([]domain.Role, len(rows))

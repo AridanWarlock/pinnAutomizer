@@ -270,7 +270,7 @@ func (mock *MockPostgres) PublishEventCalls() []struct {
 }
 
 // Wrap calls WrapFunc.
-func (mock *MockPostgres) Wrap(ctx context.Context, fn func(context.Context) error) error {
+func (mock *MockPostgres) InTransaction(ctx context.Context, fn func(context.Context) error) error {
 	if mock.WrapFunc == nil {
 		panic("MockPostgres.WrapFunc: method is nil but Postgres.Wrap was just called")
 	}

@@ -1,4 +1,4 @@
-package jsonDecoder
+package request
 
 import (
 	"encoding/json"
@@ -19,7 +19,7 @@ var (
 	ErrUnexpectedDecodeError = errors.New("unexpected decode error")
 )
 
-func ParseRequestBody(
+func decodeRequestBody(
 	w http.ResponseWriter,
 	r *http.Request,
 	dst any,

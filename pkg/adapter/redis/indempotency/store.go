@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
 )
 
 type Store struct {
@@ -29,13 +29,9 @@ type envelope struct {
 	Data   json.RawMessage        `json:"data,omitempty"`
 }
 
-func fullKey(key string) string {
-	return "idemp:" + key
-}
-
-func (s *Store) Get(ctx context.Context, key string, target any) (core.IdempotencyStatus, error) {
+func (s *Store) Get(ctx context.Context, idKey core.IdempotencyKey, target any) (core.IdempotencyStatus, error) {
 	var env envelope
-	err := s.redis.Get(ctx, fullKey(key), &env)
+	err := s.redis.Get(ctx, idKey.ToRedisKey(), &env)
 
 	if err != nil {
 		return "", fmt.Errorf("get idempotency key: %w", err)
@@ -52,7 +48,7 @@ func (s *Store) Get(ctx context.Context, key string, target any) (core.Idempoten
 
 func (s *Store) Set(
 	ctx context.Context,
-	key string,
+	idKey core.IdempotencyKey,
 	status core.IdempotencyStatus,
 	data any,
 ) error {
@@ -69,7 +65,7 @@ func (s *Store) Set(
 		}
 	}
 
-	err = s.redis.Set(ctx, fullKey(key), env, s.ttl)
+	err = s.redis.Set(ctx, idKey.ToRedisKey(), env, s.ttl)
 
 	if err != nil {
 		return fmt.Errorf("storage idempotency: %w", err)
@@ -79,9 +75,9 @@ func (s *Store) Set(
 
 func (s *Store) TryLock(
 	ctx context.Context,
-	key string,
+	idKey core.IdempotencyKey,
 ) (bool, error) {
-	success, err := s.redis.TryLock(ctx, key, core.IdempotencyStatusPending, s.lockTtl)
+	success, err := s.redis.TryLock(ctx, idKey.ToRedisKey(), core.IdempotencyStatusPending, s.lockTtl)
 	if err != nil {
 		return false, fmt.Errorf("try lock idempotency: %w", err)
 	}
@@ -89,8 +85,8 @@ func (s *Store) TryLock(
 	return success, nil
 }
 
-func (s *Store) Delete(ctx context.Context, key string) error {
-	err := s.redis.Delete(ctx, fullKey(key))
+func (s *Store) Delete(ctx context.Context, idKey core.IdempotencyKey) error {
+	err := s.redis.Delete(ctx, idKey.ToRedisKey())
 	if err != nil {
 		return fmt.Errorf("delete idempotency: %w", err)
 	}

@@ -3,9 +3,9 @@ package authMe
 import (
 	"net/http"
 
-	httpResponse "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/response"
-	httpServer "github.com/AridanWarlock/pinnAutomizer/internal/transport/http/server"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/response"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
 	"github.com/google/uuid"
 )
 
@@ -24,8 +24,8 @@ func NewHttpHandler(usecase Usecase) *HttpHandler {
 	}
 }
 
-func (h *HttpHandler) Route() httpServer.Route {
-	return httpServer.Route{
+func (h *HttpHandler) Route() server.Route {
+	return server.Route{
 		Method:  http.MethodGet,
 		Path:    "/auth/me",
 		Handler: h.Me,
@@ -35,7 +35,7 @@ func (h *HttpHandler) Route() httpServer.Route {
 func (h *HttpHandler) Me(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	rh := httpResponse.NewHandler(w, log)
+	rh := response.NewHandler(w, log)
 
 	out, err := h.usecase.Me(ctx)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
@@ -121,7 +122,7 @@ func (a *Auth) authenticate(r *http.Request) (*http.Request, error) {
 		return nil, fmt.Errorf("get session from redis: %w", err)
 	}
 
-	auditInfo := domain.AuditInfoFromContext(ctx)
+	auditInfo := core.AuditInfoFromContext(ctx)
 	if auditInfo.Fingerprint != session.Fingerprint {
 		return nil, fmt.Errorf(
 			"%w: fingerprint from headers and token not equals",

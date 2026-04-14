@@ -5,20 +5,21 @@ import (
 	"fmt"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/google/uuid"
 )
 
-type Redis interface {
-	Get(ctx context.Context, key string, target any) (domain.IdempotencyStatus, error)
-	Set(ctx context.Context, key string, status domain.IdempotencyStatus, value any) error
-	TryLock(ctx context.Context, key string) (bool, error)
-	Delete(ctx context.Context, key string) error
-}
-
 type Postgres interface {
 	UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status, oldStatus string) error
+}
+
+type Redis interface {
+	Get(ctx context.Context, idKey core.IdempotencyKey, target any) (core.IdempotencyStatus, error)
+	Set(ctx context.Context, idKey core.IdempotencyKey, status core.IdempotencyStatus, value any) error
+	TryLock(ctx context.Context, idKey core.IdempotencyKey) (bool, error)
+	Delete(ctx context.Context, idKey core.IdempotencyKey) error
 }
 
 type usecase struct {
@@ -43,16 +44,17 @@ func (u *usecase) UpdateTaskOnTrain(ctx context.Context, in Input) error {
 		return fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
-	ok, err := u.redis.TryLock(ctx, in.IdempotencyKey)
+	idKey := core.MustIdempotencyKeyFromContext(ctx)
+	ok, err := u.redis.TryLock(ctx, idKey)
 	if err != nil {
 		return fmt.Errorf("redis try lock: %w", err)
 	}
 	if !ok {
-		status, err := u.redis.Get(ctx, in.IdempotencyKey, nil)
+		status, err := u.redis.Get(ctx, idKey, nil)
 		if err != nil {
 			return fmt.Errorf("redis get key: %w", err)
 		}
-		if status == domain.IdempotencyStatusCompleted {
+		if status == core.IdempotencyStatusCompleted {
 			return nil
 		}
 		return errs.ErrOperationInProgress
@@ -63,7 +65,7 @@ func (u *usecase) UpdateTaskOnTrain(ctx context.Context, in Input) error {
 		if success {
 			return
 		}
-		if err := u.redis.Delete(ctx, in.IdempotencyKey); err != nil {
+		if err := u.redis.Delete(ctx, idKey); err != nil {
 			log.Error().Err(err).Msg("redis: cleanup key error")
 		}
 	}()
@@ -80,7 +82,7 @@ func (u *usecase) UpdateTaskOnTrain(ctx context.Context, in Input) error {
 
 	success = true
 
-	err = u.redis.Set(ctx, in.IdempotencyKey, domain.IdempotencyStatusCompleted, nil)
+	err = u.redis.Set(ctx, idKey, core.IdempotencyStatusCompleted, nil)
 	if err != nil {
 		log.Warn().Err(err).Msg("redis: set key error")
 	}

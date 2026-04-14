@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/pgerr"
 	. "github.com/AridanWarlock/pinnAutomizer/internal/adapter/postgres/schema"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
 
 func (r *Repository) CreateUsersRolesBatch(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error) {
@@ -34,7 +33,7 @@ func (r *Repository) CreateUsersRolesBatch(ctx context.Context, usersRoles []dom
 
 	var outRows []UsersRolesRow
 	if err := r.pool.Selectx(ctx, &outRows, query); err != nil {
-		return nil, pgerr.ScanErr(err)
+		return nil, err
 	}
 
 	res := make([]domain.UsersRoles, batchSize)

@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/tx"
 	"github.com/rs/zerolog"
 
 	"github.com/google/uuid"
@@ -22,12 +22,11 @@ const (
 type Postgres interface {
 	GetAvailableEvents(ctx context.Context, batchSize int) ([]domain.Event, error)
 	DeleteEventsByIDs(ctx context.Context, ids []uuid.UUID) error
-
-	tx.Wrapper
+	InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error
 }
 
 type Writer interface {
-	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
+	WriteMessages(ctx context.Context, msgs ...core.KafkaMessage) error
 }
 
 type Worker struct {
@@ -67,7 +66,7 @@ func NewWorker(postgres Postgres, writer Writer, log zerolog.Logger) *Worker {
 }
 
 func (w *Worker) ProcessEvents(ctx context.Context) {
-	err := w.postgres.Wrap(ctx, w.getAndPublishEvents)
+	err := w.postgres.InTransaction(ctx, w.getAndPublishEvents)
 
 	if err != nil {
 		w.log.Error().Err(err).Msg("process event error")
@@ -84,16 +83,13 @@ func (w *Worker) getAndPublishEvents(ctx context.Context) error {
 		return nil
 	}
 
-	msgs := make([]kafka.Message, 0, len(events))
+	msgs := make([]core.KafkaMessage, 0, len(events))
 	for _, event := range events {
-		msgs = append(msgs, kafka.Message{
+		msgs = append(msgs, core.KafkaMessage{
 			Topic: event.Topic,
 			Value: event.Data,
-			Headers: []kafka.Header{
-				{
-					Key:   HeaderIdempotencyKey,
-					Value: []byte(event.ID.String()),
-				},
+			Headers: map[string]string{
+				HeaderIdempotencyKey: event.ID.String(),
 			},
 		})
 	}

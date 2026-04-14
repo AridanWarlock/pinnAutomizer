@@ -3,8 +3,8 @@ package kafka
 import (
 	"context"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/kafka/segmentio"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/segmentio"
 )
 
 type Writer struct {

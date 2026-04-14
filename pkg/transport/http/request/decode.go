@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/jsonDecoder"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
 
@@ -14,42 +13,34 @@ type validatable interface {
 	Validate() error
 }
 
-func DecodeAndValidateRequest(w http.ResponseWriter, r *http.Request, dst any) error {
-	err := jsonDecoder.ParseRequestBody(w, r, dst)
+func DecodeAndValidate(w http.ResponseWriter, r *http.Request, dst any) error {
+	err := decodeRequestBody(w, r, dst)
 	switch {
 	case err == nil:
-	case errors.Is(err, jsonDecoder.ErrBadJson):
+	case errors.Is(err, ErrBadJson):
 		return fmt.Errorf(
 			"decode json: %v: %w",
 			err,
 			errs.ErrInvalidArgument,
 		)
-	case errors.Is(err, jsonDecoder.ErrEntityToLarge):
-		return fmt.Errorf(
-			"decode json: %v: %w",
-			err,
-			errs.ErrEntityToLarge,
-		)
+	case errors.Is(err, ErrEntityToLarge):
+		return fmt.Errorf("decode json: %w: ", err)
 	default:
 		return fmt.Errorf("unexpected decode json error: %w", err)
 	}
 
-	if err := validate.V.Struct(dst); err != nil {
-		return fmt.Errorf(
-			"request validation: %v: %w",
-			err,
-			errs.ErrInvalidArgument,
-		)
+	if v, ok := dst.(validatable); ok {
+		err = v.Validate()
+	} else {
+		err = validate.V.Struct(dst)
 	}
 
-	if v, ok := dst.(validatable); ok {
-		if err := v.Validate(); err != nil {
-			return fmt.Errorf(
-				"request validation: %v: %w",
-				err,
-				errs.ErrInvalidArgument,
-			)
-		}
+	if err != nil {
+		return fmt.Errorf(
+			"request validation: %w: %v",
+			errs.ErrInvalidArgument,
+			err,
+		)
 	}
 
 	return nil

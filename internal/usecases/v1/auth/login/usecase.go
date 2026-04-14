@@ -7,20 +7,17 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
+	"github.com/AridanWarlock/pinnAutomizer/internal/usecases/v1/auth"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/google/uuid"
-)
-
-const (
-	AccessTokenTtl  = 15 * time.Minute
-	RefreshTokenTtl = 7 * 24 * time.Hour
 )
 
 type Postgres interface {
 	GetUserByLogin(ctx context.Context, login string) (domain.User, error)
 	GetRolesByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Role, error)
-	GetJtiByFingerprint(ctx context.Context, userID uuid.UUID, fingerprint domain.Fingerprint) (domain.Jti, error)
+	GetJtiByFingerprint(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error)
 	Login(ctx context.Context, token domain.RefreshToken) (domain.RefreshToken, error)
 }
 
@@ -63,7 +60,7 @@ func (u *usecase) Login(ctx context.Context, in Input) (Output, error) {
 		return Output{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 
-	auditInfo := domain.AuditInfoFromContext(ctx)
+	auditInfo := core.AuditInfoFromContext(ctx)
 	fingerprint := auditInfo.Fingerprint
 
 	userID, roles, err := u.getUserData(ctx, in)
@@ -123,7 +120,7 @@ func (u *usecase) getUserData(ctx context.Context, in Input) (uuid.UUID, []domai
 func (u *usecase) deleteOldRedisSession(
 	ctx context.Context,
 	userID uuid.UUID,
-	fingerprint domain.Fingerprint,
+	fingerprint core.Fingerprint,
 ) error {
 	jti, err := u.postgres.GetJtiByFingerprint(ctx, userID, fingerprint)
 	if err != nil {
@@ -147,7 +144,7 @@ func (u *usecase) generateSecureTokenAndLogin(
 	ctx context.Context,
 	userID uuid.UUID,
 	jti domain.Jti,
-	auditInfo domain.AuditInfo,
+	auditInfo core.AuditInfo,
 ) (string, time.Time, error) {
 	secureToken := crypt.GenerateSecureToken()
 	hash := crypt.Sha256(secureToken)
@@ -156,10 +153,8 @@ func (u *usecase) generateSecureTokenAndLogin(
 		hash,
 		userID,
 		jti,
-		auditInfo.Fingerprint,
-		auditInfo.Agent,
-		auditInfo.IP,
-		RefreshTokenTtl,
+		auditInfo,
+		auth.RefreshTokenTTL,
 	)
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("create refresh token: %w", err)
@@ -178,7 +173,7 @@ func (u *usecase) createNewSessionInRedis(
 	jti domain.Jti,
 	userID uuid.UUID,
 	roles []domain.Role,
-	fingerprint domain.Fingerprint,
+	fingerprint core.Fingerprint,
 	issuedAt time.Time,
 ) error {
 	redisSession, err := domain.NewRedisSession(
@@ -191,7 +186,7 @@ func (u *usecase) createNewSessionInRedis(
 		return fmt.Errorf("create redis session: %w", err)
 	}
 
-	err = u.redis.Set(ctx, jti.ToRedisKey(), redisSession, AccessTokenTtl)
+	err = u.redis.Set(ctx, jti.ToRedisKey(), redisSession, auth.AccessTokenTTL)
 	if err != nil {
 		return fmt.Errorf("set session in redis: %w", err)
 	}

@@ -5,16 +5,14 @@ import (
 	"fmt"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/internal/errs"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/tx"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
 
 type Postgres interface {
 	GetRoleByTitle(ctx context.Context, title string) (domain.Role, error)
 	CreateUser(ctx context.Context, user domain.User) (domain.User, error)
 	CreateUsersRolesBatch(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error)
-
-	tx.Wrapper
+	InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error
 }
 
 type PasswordHasher interface {
@@ -56,7 +54,7 @@ func (u *usecase) Register(ctx context.Context, in Input) (Output, error) {
 		return Output{}, fmt.Errorf("get role by title from postgres: %w", err)
 	}
 
-	err = u.postgres.Wrap(ctx, func(ctx context.Context) error {
+	err = u.postgres.InTransaction(ctx, func(ctx context.Context) error {
 		user, err = u.createUser(ctx, user, []domain.Role{role})
 		return err
 	})
