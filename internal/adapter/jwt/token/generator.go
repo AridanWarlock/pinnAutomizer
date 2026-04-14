@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -29,12 +30,12 @@ func NewGenerator(cfg Config) *Generator {
 	}
 }
 
-func (g *Generator) Generate(userID uuid.UUID) (domain.AccessToken, error) {
+func (g *Generator) Generate(userID uuid.UUID) (core.AccessToken, error) {
 	token, _, err := g.generateAndGetClaims(userID)
 	return token, err
 }
 
-func (g *Generator) GenerateAndGetClaims(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+func (g *Generator) GenerateAndGetClaims(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 	token, claims, err := g.generateAndGetClaims(userID)
 	if err != nil {
 		return "", domain.JwtClaims{}, err
@@ -51,7 +52,7 @@ func (g *Generator) GenerateAndGetClaims(userID uuid.UUID) (domain.AccessToken, 
 	}
 	return token, jwtClaims, nil
 }
-func (g *Generator) generateAndGetClaims(userID uuid.UUID) (domain.AccessToken, Claims, error) {
+func (g *Generator) generateAndGetClaims(userID uuid.UUID) (core.AccessToken, Claims, error) {
 	issuedAt := time.Now()
 
 	jti, err := domain.NewJti(uuid.New())
@@ -71,11 +72,11 @@ func (g *Generator) generateAndGetClaims(userID uuid.UUID) (domain.AccessToken, 
 		return "", Claims{}, ErrSigningToken
 	}
 
-	accessToken, err := domain.NewAccessToken(signedString)
+	accessToken, err := core.NewAccessToken(signedString)
 	return accessToken, claims, err
 }
 
-func (g *Generator) GetClaims(token domain.AccessToken) (domain.JwtClaims, error) {
+func (g *Generator) GetClaims(token core.AccessToken) (domain.JwtClaims, error) {
 	parsedToken, err := jwt.ParseWithClaims(string(token), &Claims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

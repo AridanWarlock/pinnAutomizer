@@ -26,7 +26,7 @@ type Redis interface {
 }
 
 type TokenGenerator interface {
-	GenerateAndGetClaims(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error)
+	GenerateAndGetClaims(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error)
 }
 
 type usecase struct {

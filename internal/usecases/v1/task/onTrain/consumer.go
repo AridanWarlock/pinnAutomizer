@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
@@ -41,7 +41,7 @@ func (c *Consumer) HandleMessage(ctx context.Context, msg core.KafkaMessage) err
 
 	err := c.usecase.UpdateTaskOnTrain(ctx, input)
 	if err != nil {
-		if errors.Is(err, domain.ErrAlreadyExists) {
+		if errors.Is(err, errs.ErrOperationInProgress) {
 			return nil
 		}
 		return err

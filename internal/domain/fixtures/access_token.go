@@ -1,9 +1,9 @@
 package fixtures
 
 import (
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 )
 
-func NewAccessToken() domain.AccessToken {
+func NewAccessToken() core.AccessToken {
 	return "new.access.token"
 }

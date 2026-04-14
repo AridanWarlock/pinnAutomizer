@@ -21,7 +21,7 @@ var (
 )
 
 type TokenParser interface {
-	GetClaims(token domain.AccessToken) (domain.JwtClaims, error)
+	GetClaims(token core.AccessToken) (domain.JwtClaims, error)
 }
 
 type Redis interface {
@@ -144,7 +144,7 @@ func (a *Auth) authenticate(r *http.Request) (*http.Request, error) {
 	return r.WithContext(ctx), nil
 }
 
-func (a *Auth) extractAccessToken(headers http.Header) (domain.AccessToken, error) {
+func (a *Auth) extractAccessToken(headers http.Header) (core.AccessToken, error) {
 	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
 		return "", ErrBearerTokenIsNotSet
@@ -152,7 +152,7 @@ func (a *Auth) extractAccessToken(headers http.Header) (domain.AccessToken, erro
 
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 
-	return domain.NewAccessToken(token)
+	return core.NewAccessToken(token)
 }
 
 func (a *Auth) getSessionFromRedis(ctx context.Context, jti domain.Jti) (domain.RedisSession, error) {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/internal/domain/fixtures"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
@@ -61,7 +62,7 @@ func TestUsecase_Refresh(t *testing.T) {
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return nil
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 					return fixedAccessToken, fixedClaims, nil
 				}
 				f.postgres.RotateRefreshTokenFunc = func(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error {
@@ -92,7 +93,7 @@ func TestUsecase_Refresh(t *testing.T) {
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return errs.ErrKeyNotFound
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 					return fixedAccessToken, fixedClaims, nil
 				}
 				f.postgres.RotateRefreshTokenFunc = func(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error {

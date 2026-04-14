@@ -1,4 +1,4 @@
-package domain
+package core
 
 type Nullable[T any] struct {
 	Value *T

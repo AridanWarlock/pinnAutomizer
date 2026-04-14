@@ -71,7 +71,7 @@ func TestUsecase_Login(t *testing.T) {
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return nil
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 					return fixedToken, fixedJwtClaims, nil
 				}
 				f.postgres.LoginFunc = func(ctx context.Context, refresh domain.RefreshToken) (domain.RefreshToken, error) {
@@ -109,7 +109,7 @@ func TestUsecase_Login(t *testing.T) {
 				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
 					return domain.Jti{}, errs.ErrNotFound
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 					return fixedToken, fixedJwtClaims, nil
 				}
 				f.postgres.LoginFunc = func(ctx context.Context, refresh domain.RefreshToken) (domain.RefreshToken, error) {
@@ -150,7 +150,7 @@ func TestUsecase_Login(t *testing.T) {
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return errs.ErrKeyNotFound
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 					return fixedToken, fixedJwtClaims, nil
 				}
 				f.postgres.LoginFunc = func(ctx context.Context, refresh domain.RefreshToken) (domain.RefreshToken, error) {
@@ -255,7 +255,7 @@ func TestUsecase_Login(t *testing.T) {
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return nil
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (domain.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
 					return "", domain.JwtClaims{}, errors.New("crypto: not available")
 				}
 			},

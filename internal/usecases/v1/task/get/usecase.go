@@ -40,10 +40,6 @@ func (u *usecase) GetTasks(ctx context.Context, in Input) (Output, error) {
 		log.Error().Err(err).Msg("usecase: postgres.GetTasksByIDs")
 		return Output{}, fmt.Errorf("getting tasks by id from postgres: %w", err)
 	}
-	if len(tasks) != len(in.IDs) {
-		log.Error().Err(domain.ErrIDNotExist).Msg("usecase: domain.ErrIDNotExist")
-		return Output{}, fmt.Errorf("getting tasks by id from postgres: %w", domain.ErrIDNotExist)
-	}
 
 	equationIDs := make(map[uuid.UUID]struct{})
 	for _, task := range tasks {
