@@ -99,10 +99,10 @@ var _ Postgres = &MockPostgres{}
 //			GetRefreshTokenByHashFunc: func(ctx context.Context, hash string) (domain.RefreshToken, error) {
 //				panic("mock out the GetRefreshTokenByHash method")
 //			},
-//			GetRolesByUserIDFunc: func(ctx context.Context, userID uuid.UUID) ([]domain.Role, error) {
+//			GetRolesByUserIDFunc: func(ctx context.Context, userID uuid.UUID) ([]core.Role, error) {
 //				panic("mock out the GetRolesByUserID method")
 //			},
-//			RotateRefreshTokenFunc: func(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error {
+//			RotateRefreshTokenFunc: func(ctx context.Context, oldHash string, newHash string, newJti core.Jti) error {
 //				panic("mock out the RotateRefreshToken method")
 //			},
 //		}
@@ -116,10 +116,10 @@ type MockPostgres struct {
 	GetRefreshTokenByHashFunc func(ctx context.Context, hash string) (domain.RefreshToken, error)
 
 	// GetRolesByUserIDFunc mocks the GetRolesByUserID method.
-	GetRolesByUserIDFunc func(ctx context.Context, userID uuid.UUID) ([]domain.Role, error)
+	GetRolesByUserIDFunc func(ctx context.Context, userID uuid.UUID) ([]core.Role, error)
 
 	// RotateRefreshTokenFunc mocks the RotateRefreshToken method.
-	RotateRefreshTokenFunc func(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error
+	RotateRefreshTokenFunc func(ctx context.Context, oldHash string, newHash string, newJti core.Jti) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -146,7 +146,7 @@ type MockPostgres struct {
 			// NewHash is the newHash argument value.
 			NewHash string
 			// NewJti is the newJti argument value.
-			NewJti domain.Jti
+			NewJti core.Jti
 		}
 	}
 	lockGetRefreshTokenByHash sync.RWMutex
@@ -191,7 +191,7 @@ func (mock *MockPostgres) GetRefreshTokenByHashCalls() []struct {
 }
 
 // GetRolesByUserID calls GetRolesByUserIDFunc.
-func (mock *MockPostgres) GetRolesByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Role, error) {
+func (mock *MockPostgres) GetRolesByUserID(ctx context.Context, userID uuid.UUID) ([]core.Role, error) {
 	if mock.GetRolesByUserIDFunc == nil {
 		panic("MockPostgres.GetRolesByUserIDFunc: method is nil but Postgres.GetRolesByUserID was just called")
 	}
@@ -227,7 +227,7 @@ func (mock *MockPostgres) GetRolesByUserIDCalls() []struct {
 }
 
 // RotateRefreshToken calls RotateRefreshTokenFunc.
-func (mock *MockPostgres) RotateRefreshToken(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error {
+func (mock *MockPostgres) RotateRefreshToken(ctx context.Context, oldHash string, newHash string, newJti core.Jti) error {
 	if mock.RotateRefreshTokenFunc == nil {
 		panic("MockPostgres.RotateRefreshTokenFunc: method is nil but Postgres.RotateRefreshToken was just called")
 	}
@@ -235,7 +235,7 @@ func (mock *MockPostgres) RotateRefreshToken(ctx context.Context, oldHash string
 		Ctx     context.Context
 		OldHash string
 		NewHash string
-		NewJti  domain.Jti
+		NewJti  core.Jti
 	}{
 		Ctx:     ctx,
 		OldHash: oldHash,
@@ -256,13 +256,13 @@ func (mock *MockPostgres) RotateRefreshTokenCalls() []struct {
 	Ctx     context.Context
 	OldHash string
 	NewHash string
-	NewJti  domain.Jti
+	NewJti  core.Jti
 } {
 	var calls []struct {
 		Ctx     context.Context
 		OldHash string
 		NewHash string
-		NewJti  domain.Jti
+		NewJti  core.Jti
 	}
 	mock.lockRotateRefreshToken.RLock()
 	calls = mock.calls.RotateRefreshToken
@@ -414,7 +414,7 @@ var _ TokenGenerator = &MockTokenGenerator{}
 //
 //		// make and configure a mocked TokenGenerator
 //		mockedTokenGenerator := &MockTokenGenerator{
-//			GenerateAndGetClaimsFunc: func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
+//			GenerateAndGetClaimsFunc: func(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error) {
 //				panic("mock out the GenerateAndGetClaims method")
 //			},
 //		}
@@ -425,7 +425,7 @@ var _ TokenGenerator = &MockTokenGenerator{}
 //	}
 type MockTokenGenerator struct {
 	// GenerateAndGetClaimsFunc mocks the GenerateAndGetClaims method.
-	GenerateAndGetClaimsFunc func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error)
+	GenerateAndGetClaimsFunc func(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -439,7 +439,7 @@ type MockTokenGenerator struct {
 }
 
 // GenerateAndGetClaims calls GenerateAndGetClaimsFunc.
-func (mock *MockTokenGenerator) GenerateAndGetClaims(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
+func (mock *MockTokenGenerator) GenerateAndGetClaims(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error) {
 	if mock.GenerateAndGetClaimsFunc == nil {
 		panic("MockTokenGenerator.GenerateAndGetClaimsFunc: method is nil but TokenGenerator.GenerateAndGetClaims was just called")
 	}

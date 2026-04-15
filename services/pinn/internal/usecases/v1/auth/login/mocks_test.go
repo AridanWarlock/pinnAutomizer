@@ -96,10 +96,10 @@ var _ Postgres = &MockPostgres{}
 //
 //		// make and configure a mocked Postgres
 //		mockedPostgres := &MockPostgres{
-//			GetJtiByFingerprintFunc: func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
+//			GetJtiByFingerprintFunc: func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (core.Jti, error) {
 //				panic("mock out the GetJtiByFingerprint method")
 //			},
-//			GetRolesByUserIDFunc: func(ctx context.Context, userID uuid.UUID) ([]domain.Role, error) {
+//			GetRolesByUserIDFunc: func(ctx context.Context, userID uuid.UUID) ([]core.Role, error) {
 //				panic("mock out the GetRolesByUserID method")
 //			},
 //			GetUserByLoginFunc: func(ctx context.Context, login string) (domain.User, error) {
@@ -116,10 +116,10 @@ var _ Postgres = &MockPostgres{}
 //	}
 type MockPostgres struct {
 	// GetJtiByFingerprintFunc mocks the GetJtiByFingerprint method.
-	GetJtiByFingerprintFunc func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error)
+	GetJtiByFingerprintFunc func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (core.Jti, error)
 
 	// GetRolesByUserIDFunc mocks the GetRolesByUserID method.
-	GetRolesByUserIDFunc func(ctx context.Context, userID uuid.UUID) ([]domain.Role, error)
+	GetRolesByUserIDFunc func(ctx context.Context, userID uuid.UUID) ([]core.Role, error)
 
 	// GetUserByLoginFunc mocks the GetUserByLogin method.
 	GetUserByLoginFunc func(ctx context.Context, login string) (domain.User, error)
@@ -167,7 +167,7 @@ type MockPostgres struct {
 }
 
 // GetJtiByFingerprint calls GetJtiByFingerprintFunc.
-func (mock *MockPostgres) GetJtiByFingerprint(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
+func (mock *MockPostgres) GetJtiByFingerprint(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (core.Jti, error) {
 	if mock.GetJtiByFingerprintFunc == nil {
 		panic("MockPostgres.GetJtiByFingerprintFunc: method is nil but Postgres.GetJtiByFingerprint was just called")
 	}
@@ -207,7 +207,7 @@ func (mock *MockPostgres) GetJtiByFingerprintCalls() []struct {
 }
 
 // GetRolesByUserID calls GetRolesByUserIDFunc.
-func (mock *MockPostgres) GetRolesByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Role, error) {
+func (mock *MockPostgres) GetRolesByUserID(ctx context.Context, userID uuid.UUID) ([]core.Role, error) {
 	if mock.GetRolesByUserIDFunc == nil {
 		panic("MockPostgres.GetRolesByUserIDFunc: method is nil but Postgres.GetRolesByUserID was just called")
 	}
@@ -458,7 +458,7 @@ var _ TokenGenerator = &MockTokenGenerator{}
 //
 //		// make and configure a mocked TokenGenerator
 //		mockedTokenGenerator := &MockTokenGenerator{
-//			GenerateAndGetClaimsFunc: func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
+//			GenerateAndGetClaimsFunc: func(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error) {
 //				panic("mock out the GenerateAndGetClaims method")
 //			},
 //		}
@@ -469,7 +469,7 @@ var _ TokenGenerator = &MockTokenGenerator{}
 //	}
 type MockTokenGenerator struct {
 	// GenerateAndGetClaimsFunc mocks the GenerateAndGetClaims method.
-	GenerateAndGetClaimsFunc func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error)
+	GenerateAndGetClaimsFunc func(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -483,7 +483,7 @@ type MockTokenGenerator struct {
 }
 
 // GenerateAndGetClaims calls GenerateAndGetClaimsFunc.
-func (mock *MockTokenGenerator) GenerateAndGetClaims(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
+func (mock *MockTokenGenerator) GenerateAndGetClaims(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error) {
 	if mock.GenerateAndGetClaimsFunc == nil {
 		panic("MockTokenGenerator.GenerateAndGetClaimsFunc: method is nil but TokenGenerator.GenerateAndGetClaims was just called")
 	}

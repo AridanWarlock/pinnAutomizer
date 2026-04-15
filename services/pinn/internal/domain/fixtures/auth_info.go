@@ -3,15 +3,15 @@ package fixtures
 import (
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pinn/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
 )
 
-func NewAuthInfo(mods ...mod[domain.AuthInfo]) domain.AuthInfo {
-	auth := domain.AuthInfo{
+func NewAuthInfo(mods ...mod[core.AuthInfo]) core.AuthInfo {
+	auth := core.AuthInfo{
 		Jti:      NewJti(),
 		UserID:   uuid.New(),
-		Roles:    []domain.Role{NewRole()},
+		Roles:    []core.Role{NewRole()},
 		IssuedAt: time.Now(),
 	}
 

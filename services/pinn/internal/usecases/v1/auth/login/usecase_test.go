@@ -30,7 +30,7 @@ func TestUsecase_Login(t *testing.T) {
 		fixedToken       = fixtures.NewAccessToken()
 		fixedFingerprint = fixtures.NewFingerprint()
 		testCtx          = test.ContextWithZeroLogger()
-		fixedJwtClaims   = fixtures.NewJwtClaims(func(claims *domain.JwtClaims) {
+		fixedJwtClaims   = fixtures.NewJwtClaims(func(claims *core.JwtClaims) {
 			claims.UserID = fixedID
 			claims.IssuedAt = fixedNow.Add(-time.Minute)
 			claims.Jti = fixtures.NewJti()
@@ -62,16 +62,16 @@ func TestUsecase_Login(t *testing.T) {
 				f.hasher.CompareHashAndPasswordFunc = func(h, p string) error {
 					return nil
 				}
-				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, uID uuid.UUID) ([]domain.Role, error) {
-					return []domain.Role{fixtures.NewRole()}, nil
+				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, uID uuid.UUID) ([]core.Role, error) {
+					return []core.Role{fixtures.NewRole()}, nil
 				}
-				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
+				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (core.Jti, error) {
 					return fixtures.NewJti(), nil
 				}
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return nil
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error) {
 					return fixedToken, fixedJwtClaims, nil
 				}
 				f.postgres.LoginFunc = func(ctx context.Context, refresh domain.RefreshToken) (domain.RefreshToken, error) {
@@ -103,13 +103,13 @@ func TestUsecase_Login(t *testing.T) {
 				f.hasher.CompareHashAndPasswordFunc = func(h, p string) error {
 					return nil
 				}
-				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, uID uuid.UUID) ([]domain.Role, error) {
-					return []domain.Role{fixtures.NewRole()}, nil
+				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, uID uuid.UUID) ([]core.Role, error) {
+					return []core.Role{fixtures.NewRole()}, nil
 				}
-				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
-					return domain.Jti{}, errs.ErrNotFound
+				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (core.Jti, error) {
+					return core.Jti{}, errs.ErrNotFound
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error) {
 					return fixedToken, fixedJwtClaims, nil
 				}
 				f.postgres.LoginFunc = func(ctx context.Context, refresh domain.RefreshToken) (domain.RefreshToken, error) {
@@ -141,16 +141,16 @@ func TestUsecase_Login(t *testing.T) {
 				f.hasher.CompareHashAndPasswordFunc = func(h, p string) error {
 					return nil
 				}
-				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, uID uuid.UUID) ([]domain.Role, error) {
-					return []domain.Role{fixtures.NewRole()}, nil
+				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, uID uuid.UUID) ([]core.Role, error) {
+					return []core.Role{fixtures.NewRole()}, nil
 				}
-				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
+				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (core.Jti, error) {
 					return fixtures.NewJti(), nil
 				}
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return errs.ErrKeyNotFound
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error) {
 					return fixedToken, fixedJwtClaims, nil
 				}
 				f.postgres.LoginFunc = func(ctx context.Context, refresh domain.RefreshToken) (domain.RefreshToken, error) {
@@ -246,17 +246,17 @@ func TestUsecase_Login(t *testing.T) {
 					return fixtures.NewUser(), nil
 				}
 				f.hasher.CompareHashAndPasswordFunc = func(h, p string) error { return nil }
-				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, id uuid.UUID) ([]domain.Role, error) {
-					return []domain.Role{fixtures.NewRole()}, nil
+				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, id uuid.UUID) ([]core.Role, error) {
+					return []core.Role{fixtures.NewRole()}, nil
 				}
-				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (domain.Jti, error) {
+				f.postgres.GetJtiByFingerprintFunc = func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (core.Jti, error) {
 					return fixtures.NewJti(), nil
 				}
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return nil
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
-					return "", domain.JwtClaims{}, errors.New("crypto: not available")
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error) {
+					return "", core.JwtClaims{}, errors.New("crypto: not available")
 				}
 			},
 			check: func(t *testing.T, out Output, err error, f *fields) {

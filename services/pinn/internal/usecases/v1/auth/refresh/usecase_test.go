@@ -34,7 +34,7 @@ func TestUsecase_Refresh(t *testing.T) {
 
 			refresh.Audit = fixedAuditInfo
 		})
-		fixedClaims = fixtures.NewJwtClaims(func(claims *domain.JwtClaims) {
+		fixedClaims = fixtures.NewJwtClaims(func(claims *core.JwtClaims) {
 			claims.UserID = fixedUserID
 		})
 
@@ -56,16 +56,16 @@ func TestUsecase_Refresh(t *testing.T) {
 				f.postgres.GetRefreshTokenByHashFunc = func(ctx context.Context, hash string) (domain.RefreshToken, error) {
 					return fixedRefresh, nil
 				}
-				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, userID uuid.UUID) ([]domain.Role, error) {
-					return []domain.Role{fixtures.NewRole()}, nil
+				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, userID uuid.UUID) ([]core.Role, error) {
+					return []core.Role{fixtures.NewRole()}, nil
 				}
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return nil
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error) {
 					return fixedAccessToken, fixedClaims, nil
 				}
-				f.postgres.RotateRefreshTokenFunc = func(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error {
+				f.postgres.RotateRefreshTokenFunc = func(ctx context.Context, oldHash string, newHash string, newJti core.Jti) error {
 					return nil
 				}
 				f.redis.SetFunc = func(ctx context.Context, key string, value any, ttl time.Duration) error {
@@ -87,16 +87,16 @@ func TestUsecase_Refresh(t *testing.T) {
 				f.postgres.GetRefreshTokenByHashFunc = func(ctx context.Context, hash string) (domain.RefreshToken, error) {
 					return fixedRefresh, nil
 				}
-				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, userID uuid.UUID) ([]domain.Role, error) {
-					return []domain.Role{fixtures.NewRole()}, nil
+				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, userID uuid.UUID) ([]core.Role, error) {
+					return []core.Role{fixtures.NewRole()}, nil
 				}
 				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
 					return errs.ErrKeyNotFound
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, domain.JwtClaims, error) {
+				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error) {
 					return fixedAccessToken, fixedClaims, nil
 				}
-				f.postgres.RotateRefreshTokenFunc = func(ctx context.Context, oldHash string, newHash string, newJti domain.Jti) error {
+				f.postgres.RotateRefreshTokenFunc = func(ctx context.Context, oldHash string, newHash string, newJti core.Jti) error {
 					return nil
 				}
 				f.redis.SetFunc = func(ctx context.Context, key string, value any, ttl time.Duration) error {

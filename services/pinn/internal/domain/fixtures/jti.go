@@ -1,10 +1,10 @@
 package fixtures
 
 import (
-	"github.com/AridanWarlock/pinnAutomizer/pinn/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
 )
 
-func NewJti() domain.Jti {
-	return domain.Jti(uuid.New())
+func NewJti() core.Jti {
+	return core.Jti(uuid.New())
 }

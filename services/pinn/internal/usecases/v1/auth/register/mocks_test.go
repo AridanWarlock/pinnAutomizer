@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/AridanWarlock/pinnAutomizer/pinn/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 )
 
 // Ensure that MockUsecase does implement Usecase.
@@ -99,7 +100,7 @@ var _ Postgres = &MockPostgres{}
 //			CreateUsersRolesBatchFunc: func(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error) {
 //				panic("mock out the CreateUsersRolesBatch method")
 //			},
-//			GetRoleByTitleFunc: func(ctx context.Context, title string) (domain.Role, error) {
+//			GetRoleByTitleFunc: func(ctx context.Context, title string) (core.Role, error) {
 //				panic("mock out the GetRoleByTitle method")
 //			},
 //			InTransactionFunc: func(ctx context.Context, inTx func(ctx context.Context) error) error {
@@ -119,7 +120,7 @@ type MockPostgres struct {
 	CreateUsersRolesBatchFunc func(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error)
 
 	// GetRoleByTitleFunc mocks the GetRoleByTitle method.
-	GetRoleByTitleFunc func(ctx context.Context, title string) (domain.Role, error)
+	GetRoleByTitleFunc func(ctx context.Context, title string) (core.Role, error)
 
 	// InTransactionFunc mocks the InTransaction method.
 	InTransactionFunc func(ctx context.Context, inTx func(ctx context.Context) error) error
@@ -234,7 +235,7 @@ func (mock *MockPostgres) CreateUsersRolesBatchCalls() []struct {
 }
 
 // GetRoleByTitle calls GetRoleByTitleFunc.
-func (mock *MockPostgres) GetRoleByTitle(ctx context.Context, title string) (domain.Role, error) {
+func (mock *MockPostgres) GetRoleByTitle(ctx context.Context, title string) (core.Role, error) {
 	if mock.GetRoleByTitleFunc == nil {
 		panic("MockPostgres.GetRoleByTitleFunc: method is nil but Postgres.GetRoleByTitle was just called")
 	}

@@ -1,12 +1,12 @@
 package fixtures
 
 import (
-	"github.com/AridanWarlock/pinnAutomizer/pinn/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
 )
 
-func NewRole(mods ...mod[domain.Role]) domain.Role {
-	us := domain.Role{
+func NewRole(mods ...mod[core.Role]) core.Role {
+	us := core.Role{
 		ID:    uuid.New(),
 		Title: "ROLE_USER",
 	}

@@ -3,14 +3,14 @@ package fixtures
 import (
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pinn/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
 )
 
-func NewRedisSession(mods ...mod[domain.RedisSession]) domain.RedisSession {
-	s := domain.RedisSession{
+func NewRedisSession(mods ...mod[core.RedisSession]) core.RedisSession {
+	s := core.RedisSession{
 		UserID:      uuid.New(),
-		Roles:       []domain.Role{NewRole()},
+		Roles:       []core.Role{NewRole()},
 		Fingerprint: NewFingerprint(),
 		IssuedAt:    time.Now(),
 	}

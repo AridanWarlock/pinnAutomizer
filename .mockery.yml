@@ -1,6 +1,6 @@
 template: matryer
 packages:
-  github.com/AridanWarlock/pinnAutomizer/internal/usecases:
+  github.com/AridanWarlock/pinnAutomizer:
     config:
       filename: "mocks_test.go"
       all: true

@@ -8,6 +8,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pinn/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pinn/internal/domain/fixtures"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +42,7 @@ func TestUsecase_Register(t *testing.T) {
 				f.hasher.HashPasswordFunc = func(password string) (string, error) {
 					return "hashed_password", nil
 				}
-				f.postgres.GetRoleByTitleFunc = func(ctx context.Context, title string) (domain.Role, error) {
+				f.postgres.GetRoleByTitleFunc = func(ctx context.Context, title string) (core.Role, error) {
 					return fixtures.NewRole(), nil
 				}
 
@@ -108,7 +109,7 @@ func TestUsecase_Register(t *testing.T) {
 				f.hasher.HashPasswordFunc = func(password string) (string, error) {
 					return "hash", nil
 				}
-				f.postgres.GetRoleByTitleFunc = func(ctx context.Context, title string) (domain.Role, error) {
+				f.postgres.GetRoleByTitleFunc = func(ctx context.Context, title string) (core.Role, error) {
 					return fixtures.NewRole(), nil
 				}
 
@@ -135,7 +136,7 @@ func TestUsecase_Register(t *testing.T) {
 				f.hasher.HashPasswordFunc = func(password string) (string, error) {
 					return "hash", nil
 				}
-				f.postgres.GetRoleByTitleFunc = func(ctx context.Context, title string) (domain.Role, error) {
+				f.postgres.GetRoleByTitleFunc = func(ctx context.Context, title string) (core.Role, error) {
 					return fixtures.NewRole(), nil
 				}
 
