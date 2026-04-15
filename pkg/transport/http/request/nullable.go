@@ -3,11 +3,11 @@ package request
 import (
 	"encoding/json"
 
-	"github.com/AridanWarlock/pinnAutomizer/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 )
 
 type Nullable[T any] struct {
-	domain.Nullable[T]
+	core.Nullable[T]
 }
 
 func (n *Nullable[T]) UnmarshalJSON(b []byte) error {

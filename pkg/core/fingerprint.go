@@ -2,6 +2,8 @@ package core
 
 import (
 	"encoding/hex"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
 
 type Fingerprint string
@@ -19,7 +21,11 @@ func NewFingerprint(hex string) (Fingerprint, error) {
 }
 
 func (f Fingerprint) Validate() error {
-	if len(f) != 64 {
+	err := validate.V.Var(
+		f.String(),
+		"required,hexadecimal,len=64",
+	)
+	if err != nil {
 		return ErrInvalidFingerprint
 	}
 	return nil

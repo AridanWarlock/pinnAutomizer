@@ -2,7 +2,7 @@ services:
   pinn-backend:
     build:
       context: ${PROJECT_ROOT}
-      dockerfile: ${PROJECT_ROOT}/cmd/pinn/Dockerfile
+      dockerfile: ${PROJECT_ROOT}/services/pinn/cmd/Dockerfile
     container_name: pinn-backend
     environment:
       - ENVIRONMENT=${ENVIRONMENT}
@@ -24,8 +24,6 @@ services:
       - POSTGRES_TIMEOUT=${POSTGRES_TIMEOUT}
       # Tokens
       - JWT_SECRET=${JWT_SECRET}
-      - JWT_TOKEN_TTL=${JWT_TOKEN_TTL}
-      - REFRESH_TOKEN_TTL=${REFRESH_TOKEN_TTL}
       # Kafka
       - KAFKA_WRITER_BROKER=kafka:${KAFKA_PORT}
       - KAFKA_READER_BROKER=kafka:${KAFKA_PORT}
@@ -41,9 +39,47 @@ services:
       - REDIS_MIN_IDLE_CONNECTIONS=${REDIS_MIN_IDLE_CONNECTIONS}
       - REDIS_POOL_TIMEOUT=${REDIS_POOL_TIMEOUT}
     volumes:
-      - ${PROJECT_ROOT}/out/logs:/app/out/logs
+      - ${PROJECT_ROOT}/out/pinn/logs:/app/out/logs
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  pinn-gateway:
+    build:
+      context: ${PROJECT_ROOT}
+      dockerfile: ${PROJECT_ROOT}/services/gateway/cmd/Dockerfile
+    container_name: pinn-gateway
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT}
+      - AUTH_SERVICE_ADDR=http://pinn-backend:8080
+      # HTTP server
+      - HTTP_ADDR=${HTTP_ADDR}
+      - HTTP_TIMEOUT=${HTTP_TIMEOUT}
+      - HTTP_IDLE_TIMEOUT=${HTTP_IDLE_TIMEOUT}
+      - HTTP_SHUTDOWN_TIMEOUT=${HTTP_SHUTDOWN_TIMEOUT}
+      # Logger
+      - LOGGER_ENVIRONMENT=${LOGGER_ENVIRONMENT}
+      - LOGGER_LEVEL=${LOGGER_LEVEL}
+      - LOGGER_FOLDER=/app/out/logs
+      # Tokens
+      - JWT_SECRET=${JWT_SECRET}
+      # Redis
+      - REDIS_ADDR=redis:${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB}
+      - REDIS_DIAL_TIMEOUT=${REDIS_DIAL_TIMEOUT}
+      - REDIS_READ_TIMEOUT=${REDIS_READ_TIMEOUT}
+      - REDIS_WRITE_TIMEOUT=${REDIS_WRITE_TIMEOUT}
+      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE}
+      - REDIS_MIN_IDLE_CONNECTIONS=${REDIS_MIN_IDLE_CONNECTIONS}
+      - REDIS_POOL_TIMEOUT=${REDIS_POOL_TIMEOUT}
     ports:
-      - "${HTTP_PORT}:${HTTP_PORT}"
+      - "8080:8080"
+    volumes:
+      - ${PROJECT_ROOT}/out/gateway/logs:/app/out/logs
     deploy:
       restart_policy:
         condition: on-failure

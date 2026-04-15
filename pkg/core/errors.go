@@ -8,4 +8,6 @@ var (
 	ErrInvalidUserAgent      = errors.New("invalid user agent")
 	ErrInvalidIP             = errors.New("invalid ip")
 	ErrInvalidAccessToken    = errors.New("invalid access token")
+	ErrInvalidJti            = errors.New("invalid jti")
+	ErrInvalidAuthInfo       = errors.New("invalid auth info")
 )

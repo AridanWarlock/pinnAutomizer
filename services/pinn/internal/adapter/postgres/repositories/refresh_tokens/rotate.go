@@ -1,0 +1,31 @@
+package refresh_tokens
+
+import (
+	"context"
+
+	. "github.com/AridanWarlock/pinnAutomizer/pinn/internal/adapter/postgres/schema"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	sq "github.com/Masterminds/squirrel"
+)
+
+func (r *Repository) RotateRefreshToken(
+	ctx context.Context,
+	oldHash string,
+	newHash string,
+	newJti core.Jti,
+) error {
+	q := r.sb.Update(RefreshTokensTable).
+		Set(RefreshTokensTableColumnHash, newHash).
+		Set(RefreshTokensTableColumnJti, newJti).
+		Where(sq.Eq{RefreshTokensTableColumnHash: oldHash})
+
+	tag, err := r.pool.Execx(ctx, q)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return errs.ErrNotFound
+	}
+	return nil
+}

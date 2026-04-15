@@ -17,3 +17,7 @@ func (a UserAgent) Validate() error {
 	}
 	return nil
 }
+
+func (a UserAgent) String() string {
+	return string(a)
+}

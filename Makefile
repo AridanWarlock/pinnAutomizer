@@ -28,6 +28,12 @@ postgres-port-forward:
 postgres-port-close:
 	docker compose down postgres-port-forwarder
 
+kafka-ui-up:
+	@docker compose up -d kafka-ui
+
+kafka-ui-down:
+	@docker compose down kafka-ui
+
 goose-create:
 	@if [ -z "$(name)" ]; then \
 		echo "Отсутствует необходимый параметр name. Пример: make goose-create name=init"; \
@@ -40,18 +46,6 @@ goose-create:
 
 goose-up:
 	@docker compose run --rm pinn-postgres-goose
-
-pinnapp-local-run:
-	@docker compose up --build pinn-backend
-
-pinnapp-local-shutdown:
-	@docker compose down pinn-backend
-
-pinnapp-deploy:
-	@docker compose up -d --build pinn-backend
-
-pinnapp-undeploy:
-	@docker compose down pinn-backend
 
 swagger-gen:
 	@docker compose run --rm swagger \
@@ -71,8 +65,21 @@ mockery:
     		-e GOCACHE=/root/.cache/go-build \
     		mockery
 
-kafka-ui-up:
-	@docker compose up -d kafka-ui
 
-kafka-ui-down:
-	@docker compose down kafka-ui
+pinnapp-local-run:
+	@docker compose up --build pinn-backend
+
+pinnapp-local-shutdown:
+	@docker compose down pinn-backend
+
+pinnapp-deploy:
+	@docker compose up -d --build pinn-backend
+
+pinnapp-undeploy:
+	@docker compose down pinn-backend
+
+gateway-local-run:
+	@docker compose up --build pinn-gateway
+
+gateway-local-shutdown:
+	@docker compose down pinn-gateway

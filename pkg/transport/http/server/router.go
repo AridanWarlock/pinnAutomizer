@@ -23,13 +23,9 @@ func NewApiVersionRouter(apiVersion ApiVersion, middlewares ...middleware.Middle
 	}
 }
 
-type HttpHandler interface {
-	Route() Route
-}
-
 func (r *ApiVersionRouter) RegisterHandlers(handlers ...HttpHandler) {
 	for _, handler := range handlers {
-		r.registerRoute(handler.Route())
+		r.mux.Handle(handler.Pattern, handler.Handler)
 	}
 }
 
