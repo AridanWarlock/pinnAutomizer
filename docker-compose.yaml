@@ -57,12 +57,12 @@ services:
       - LOGGER_LEVEL=${LOGGER_LEVEL}
       - LOGGER_FOLDER=/app/out/logs
       # Postgres
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_HOST=pinn-postgres
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_TIMEOUT=${POSTGRES_TIMEOUT}
+      - POSTGRES_USER=${AUTH_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${AUTH_POSTGRES_PASSWORD}
+      - POSTGRES_PORT=${AUTH_POSTGRES_PORT}
+      - POSTGRES_HOST=pinn-postgres-auth
+      - POSTGRES_DB=${AUTH_POSTGRES_DB}
+      - POSTGRES_TIMEOUT=${AUTH_POSTGRES_TIMEOUT}
       # Tokens
       - JWT_SECRET=${JWT_SECRET}
       # Redis
@@ -84,6 +84,38 @@ services:
         max_attempts: 3
         window: 120s
 
+  pinn-postgres-auth:
+    image: postgres:18.1-alpine
+    container_name: pinn-postgres-auth
+    command: ["postgres", "-c", "port=${AUTH_POSTGRES_PORT}"]
+    environment:
+      POSTGRES_USER: ${AUTH_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${AUTH_POSTGRES_DB}
+      POSTGRES_PORT: ${AUTH_POSTGRES_PORT}
+    volumes:
+      - ${PROJECT_ROOT}/out/auth/pgdata:/var/lib/postgresql
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  goose-auth:
+    image: kukymbr/goose-docker:3.27.0
+    environment:
+      - GOOSE_DRIVER=postgres
+      - GOOSE_DBSTRING=host=pinn-postgres-auth port=${AUTH_POSTGRES_PORT} user=${AUTH_POSTGRES_USER} password=${AUTH_POSTGRES_PASSWORD} dbname=${AUTH_POSTGRES_DB}
+    volumes:
+      - ${PROJECT_ROOT}/services/auth/migrations:/migrations
+
+  auth-postgres-port-forwarder:
+    image: alpine/socat:1.8.0.3
+    command: tcp-listen:${AUTH_POSTGRES_PORT},fork,reuseaddr tcp-connect:pinn-postgres-auth:${AUTH_POSTGRES_PORT}
+    ports:
+      - "127.0.0.1:${AUTH_POSTGRES_PORT}:${AUTH_POSTGRES_PORT}"
+
   pinn-tasks:
     build:
       context: ${PROJECT_ROOT}
@@ -101,12 +133,12 @@ services:
       - LOGGER_LEVEL=${LOGGER_LEVEL}
       - LOGGER_FOLDER=/app/out/logs
       # Postgres
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_HOST=pinn-postgres
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_TIMEOUT=${POSTGRES_TIMEOUT}
+      - POSTGRES_USER=${TASKS_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${TASKS_POSTGRES_PASSWORD}
+      - POSTGRES_PORT=${TASKS_POSTGRES_PORT}
+      - POSTGRES_HOST=pinn-postgres-tasks
+      - POSTGRES_DB=${TASKS_POSTGRES_DB}
+      - POSTGRES_TIMEOUT=${TASKS_POSTGRES_TIMEOUT}
       # Kafka
       - KAFKA_WRITER_BROKER=kafka:${KAFKA_PORT}
       - KAFKA_READER_BROKER=kafka:${KAFKA_PORT}
@@ -130,31 +162,36 @@ services:
         max_attempts: 3
         window: 120s
 
-  pinn-postgres:
-    image: postgres:18.1-alpine
-    container_name: pinn-env-postgres
+  pinn-postgres-tasks:
+    image: postgres:18.1-bookworm
+    container_name: pinn-postgres-tasks
+    command: ["postgres", "-c", "port=${TASKS_POSTGRES_PORT}"]
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${TASKS_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${TASKS_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${TASKS_POSTGRES_DB}
     volumes:
-      - ${PROJECT_ROOT}/out/pgdata:/var/lib/postgresql
-    restart: always
+      - ${PROJECT_ROOT}/out/tasks/pgdata:/var/lib/postgresql/
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
 
-  pinn-postgres-goose:
+  goose-tasks:
     image: kukymbr/goose-docker:3.27.0
     environment:
       - GOOSE_DRIVER=postgres
-      - GOOSE_DBSTRING=host=pinn-postgres port=${POSTGRES_PORT} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB}
+      - GOOSE_DBSTRING=host=pinn-postgres-tasks port=${TASKS_POSTGRES_PORT} user=${TASKS_POSTGRES_USER} password=${TASKS_POSTGRES_PASSWORD} dbname=${TASKS_POSTGRES_DB}
     volumes:
-      - ${PROJECT_ROOT}/migrations:/migrations
+      - ${PROJECT_ROOT}/services/tasks/migrations:/migrations
 
-  postgres-port-forwarder:
+  tasks-postgres-port-forwarder:
     image: alpine/socat:1.8.0.3
-    container_name: pinn-postgres-port-forwarder
-    command: tcp-listen:${POSTGRES_PORT},fork,reuseaddr tcp-connect:pinn-postgres:${POSTGRES_PORT}
+    command: tcp-listen:${TASKS_POSTGRES_PORT},fork,reuseaddr tcp-connect:pinn-postgres-tasks:${TASKS_POSTGRES_PORT}
     ports:
-      - "127.0.0.1:${POSTGRES_PORT}:${POSTGRES_PORT}"
+      - "127.0.0.1:${TASKS_POSTGRES_PORT}:${TASKS_POSTGRES_PORT}"
 
   swagger:
     build:

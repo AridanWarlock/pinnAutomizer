@@ -33,9 +33,10 @@ func NewHttpHandler(usecase Usecase) *HttpHandler {
 
 func (h *HttpHandler) Route() server.Route {
 	return server.Route{
-		Method:  http.MethodPost,
-		Path:    "/auth/register",
-		Handler: h.Register,
+		Method:   http.MethodPost,
+		Path:     "/auth/register",
+		Handler:  h.Register,
+		IsPublic: true,
 	}
 }
 
