@@ -66,20 +66,20 @@ mockery:
     		mockery
 
 
-pinnapp-local-run:
-	@docker compose up --build pinn-backend
-
-pinnapp-local-shutdown:
-	@docker compose down pinn-backend
-
-pinnapp-deploy:
-	@docker compose up -d --build pinn-backend
-
-pinnapp-undeploy:
-	@docker compose down pinn-backend
-
-gateway-local-run:
+gateway-run:
 	@docker compose up --build pinn-gateway
 
-gateway-local-shutdown:
+gateway-shutdown:
 	@docker compose down pinn-gateway
+
+auth-run:
+	@docker compose up --build pinn-auth
+
+auth-shutdown:
+	@docker compose down pinn-auth
+
+tasks-run:
+	@docker compose up --build pinn-tasks
+
+tasks-shutdown:
+	@docker compose down pinn-tasks

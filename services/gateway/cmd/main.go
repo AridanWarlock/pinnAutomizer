@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/AridanWarlock/pinnAutomizer/gateway/config"
+	"github.com/AridanWarlock/pinnAutomizer/gateway/internal/config"
 	"github.com/AridanWarlock/pinnAutomizer/gateway/internal/transport/http/middleware"
 	"github.com/AridanWarlock/pinnAutomizer/gateway/internal/transport/http/proxy"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis"
@@ -64,7 +64,7 @@ func AppRun(
 	// access token generator
 	accessTokenGenerator := jwt.NewGenerator(cfg.AccessTokenGenerator)
 	// http server
-	httpServer := server.New(
+	httpServer := server.NewWithoutDefaultMiddlewares(
 		cfg.HTTP,
 		log,
 		middleware.Cors(),
@@ -80,11 +80,21 @@ func AppRun(
 	if err != nil {
 		return fmt.Errorf("create auth proxy: %w", err)
 	}
+	tasksProxy, err := proxy.NewServiceProxy(cfg.App.TasksAddr)
+	if err != nil {
+		return fmt.Errorf("create auth proxy: %w", err)
+	}
 
-	httpServer.RegisterHandlers(server.HttpHandler{
-		Pattern: "/api/v1/auth/",
-		Handler: authProxy,
-	})
+	httpServer.RegisterHandlers(
+		server.HttpHandler{
+			Pattern: "/api/v1/auth/",
+			Handler: authProxy,
+		},
+		server.HttpHandler{
+			Pattern: "/api/v1/tasks/",
+			Handler: tasksProxy,
+		},
+	)
 
 	// httpServer.RegisterSwagger()
 

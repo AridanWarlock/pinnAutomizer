@@ -5,17 +5,17 @@ WORKDIR /app
 ENV GOWORK=off
 
 COPY pkg/go.mod pkg/go.sum ./pkg/
-COPY services/gateway/go.mod services/gateway/go.sum ./services/gateway/
+COPY services/auth/go.mod services/auth/go.sum ./services/auth/
 
-WORKDIR /app/services/gateway
+WORKDIR /app/services/auth
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
 WORKDIR /app
 COPY pkg/ ./pkg/
-COPY services/gateway/ ./services/gateway
+COPY services/auth/ ./services/auth
 
-WORKDIR /app/services/gateway
+WORKDIR /app/services/auth
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     GOCACHE=/root/.cache/go-build \
