@@ -6,11 +6,23 @@ export PROJECT_ROOT=$(shell pwd)
 ps:
 	@docker ps
 
-env-up:
-	@docker compose up -d pinn-postgres redis kafka
+gateway-env-up:
+	@docker compose up -d redis
 
-env-down:
-	@docker compose down pinn-postgres redis kafka
+gateway-env-down:
+	@docker compose down redis
+
+auth-env-up:
+	@docker compose up -d pinn-postgres-auth redis kafka
+
+auth-env-down:
+	@docker compose down pinn-postgres-auth redis kafka
+
+tasks-env-up:
+	@docker compose up -d pinn-postgres-tasks redis kafka
+
+tasks-env-down:
+	@docker compose down pinn-postgres-tasks redis kafka
 
 env-cleanup:
 	@read -p "Очистить все volume файлы окружения? Опасность утери данных. [y/n]: " ans; \
@@ -18,15 +30,25 @@ env-cleanup:
   	  echo "Очистка окружения отменена"; \
   	  exit 0; \
   	fi; \
-	docker compose down pinn-postgres postgres-port-forwarder redis && \
-	rm -rf ${PROJECT_ROOT}/out/pgdata ${PROJECT_ROOT}/out/redis_data ${PROJECT_ROOT}/out/kafka && \
+	docker compose down \
+		pinn-postgres-auth  auth-postgres-port-forwarder \
+		pinn-postgres-tasks  tasks-postgres-port-forwarder \
+	 	redis kafka && \
+	rm -rf ${PROJECT_ROOT}/out/auth/pgdata ${PROJECT_ROOT}/out/tasks/pgdata \
+		${PROJECT_ROOT}/out/redis_data ${PROJECT_ROOT}/out/kafka && \
 	echo "Файлы окружения очищены"
 
-postgres-port-forward:
-	@docker compose up -d postgres-port-forwarder
+auth-postgres-port-forward:
+	@docker compose up -d auth-postgres-port-forwarder
 
-postgres-port-close:
-	docker compose down postgres-port-forwarder
+auth-postgres-port-close:
+	docker compose down auth-postgres-port-forwarder
+
+tasks-postgres-port-forward:
+	@docker compose up -d tasks-postgres-port-forwarder
+
+tasks-postgres-port-close:
+	docker compose down tasks-postgres-port-forwarder
 
 kafka-ui-up:
 	@docker compose up -d kafka-ui
@@ -34,18 +56,32 @@ kafka-ui-up:
 kafka-ui-down:
 	@docker compose down kafka-ui
 
-goose-create:
+auth-goose-create:
 	@if [ -z "$(name)" ]; then \
-		echo "Отсутствует необходимый параметр name. Пример: make goose-create name=init"; \
+		echo "Отсутствует необходимый параметр name. Пример: make auth-goose-create name=init"; \
 		exit 1; \
 	fi; \
 	docker compose run --rm \
 		-e GOOSE_COMMAND=create \
 		-e GOOSE_COMMAND_ARG="$(name) sql" \
-		pinn-postgres-goose
+		goose-auth
 
-goose-up:
-	@docker compose run --rm pinn-postgres-goose
+auth-goose-up:
+	@docker compose run --rm goose-auth
+
+
+tasks-goose-create:
+	@if [ -z "$(name)" ]; then \
+		echo "Отсутствует необходимый параметр name. Пример: make tasks-goose-create name=init"; \
+		exit 1; \
+	fi; \
+	docker compose run --rm \
+		-e GOOSE_COMMAND=create \
+		-e GOOSE_COMMAND_ARG="$(name) sql" \
+		goose-tasks
+
+tasks-goose-up:
+	@docker compose run --rm goose-tasks
 
 swagger-gen:
 	@docker compose run --rm swagger \
