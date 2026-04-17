@@ -23,6 +23,26 @@ func New(
 	log zerolog.Logger,
 	middlewares ...middleware.Middleware,
 ) *Server {
+	defaultMiddlewares := []middleware.Middleware{
+		middleware.RequestID(),
+		middleware.Logger(log),
+		middleware.TraceID(),
+		middleware.Recover(),
+		middleware.AuditInfo(),
+	}
+
+	return NewWithoutDefaultMiddlewares(
+		cfg,
+		log,
+		append(defaultMiddlewares, middlewares...)...,
+	)
+}
+
+func NewWithoutDefaultMiddlewares(
+	cfg Config,
+	log zerolog.Logger,
+	middlewares ...middleware.Middleware,
+) *Server {
 	return &Server{
 		mux:         http.NewServeMux(),
 		middlewares: middlewares,
