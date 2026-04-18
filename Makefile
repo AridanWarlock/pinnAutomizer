@@ -84,15 +84,29 @@ tasks-goose-up:
 	@docker compose run --rm goose-tasks
 
 swagger-gen:
-	@docker compose run --rm swagger \
-		init \
-		-g cmd/pinn/main.go \
-		-o docs \
+	@if [ -z "$(service)" ]; then \
+		echo "Отсутствует необходимый параметр service. Пример: make swagger-gen service=auth"; \
+		exit 1; \
+	fi; \
+	docker compose run --rm \
+		-v ${PROJECT_ROOT}:/code \
+		swagger init \
+		-g services/$(service)/cmd/main.go \
+		-o services/$(service)/docs \
+		--instanceName $(service)-api \
 		--parseInternal \
-		--exclude internal/usecases/**/**/*_test.go \
-		--quiet
+		--parseDependency
+#		--parseDepth 2
+#		--quiet
+
 swagger-fmt:
-	@docker compose run --rm swagger fmt
+	@if [ -z "$(service)" ]; then \
+		echo "Отсутствует необходимый параметр service. Пример: make swagger-gen service=auth"; \
+		exit 1; \
+	fi; \
+	@docker compose run --rm \
+		-v ${PROJECT_ROOT}/services/$(service):/code \
+		swagger fmt
 
 mockery:
 	@docker compose run --rm \

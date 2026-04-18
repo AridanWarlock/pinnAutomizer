@@ -3,10 +3,10 @@ package authLogin
 import (
 	"net/http"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpin"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpout"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/request"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/response"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
 )
 
 type Request struct {
@@ -28,8 +28,8 @@ func NewHttpHandler(usecase Usecase) *HttpHandler {
 	}
 }
 
-func (h *HttpHandler) Route() server.Route {
-	return server.Route{
+func (h *HttpHandler) Route() httpsrv.Route {
+	return httpsrv.Route{
 		Method:   http.MethodPost,
 		Path:     "/auth/login",
 		Handler:  h.Login,
@@ -40,10 +40,10 @@ func (h *HttpHandler) Route() server.Route {
 func (h *HttpHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	rh := response.NewHandler(w, log)
+	rh := httpout.NewHandler(w, log)
 
 	var req Request
-	if err := request.DecodeAndValidate(w, r, &req); err != nil {
+	if err := httpin.DecodeAndValidate(w, r, &req); err != nil {
 		rh.ErrorResponse(err, "failed to decode and validate HTTP request")
 		return
 	}

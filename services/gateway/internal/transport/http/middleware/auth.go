@@ -9,9 +9,9 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpmv"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpout"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/response"
 )
 
 var (
@@ -38,7 +38,7 @@ type auth struct {
 func Auth(
 	redis Redis,
 	parser TokenParser,
-) middleware.Middleware {
+) httpmv.Middleware {
 	publicPaths := map[string]struct{}{
 		"/api/v1/auth/login":    {},
 		"/api/v1/auth/register": {},
@@ -63,7 +63,7 @@ func Auth(
 	return auth.middleware()
 }
 
-func (a *auth) middleware() middleware.Middleware {
+func (a *auth) middleware() httpmv.Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if a.isPublicURL(r.URL.Path) {
@@ -76,7 +76,7 @@ func (a *auth) middleware() middleware.Middleware {
 			r, err := a.authenticate(r)
 
 			if err != nil {
-				rh := response.NewHandler(w, log)
+				rh := httpout.NewHandler(w, log)
 				rh.ErrorResponse(
 					fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, err),
 					"failed to authenticate",

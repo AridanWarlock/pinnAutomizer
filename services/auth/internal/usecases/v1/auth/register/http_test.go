@@ -8,11 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain/domainfixtures"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,8 +21,9 @@ func TestHttpHandler_Register(t *testing.T) {
 	}
 
 	var (
-		fixedID    = uuid.New()
-		fixedLogin = "new_user"
+		fixedUser  = domainfixtures.NewUser()
+		fixedID    = fixedUser.ID
+		fixedLogin = fixedUser.Login
 		testCtx    = test.ContextWithZeroLogger()
 	)
 
@@ -46,9 +45,7 @@ func TestHttpHandler_Register(t *testing.T) {
 				f.usecase.RegisterFunc = func(ctx context.Context, in Input) (Output, error) {
 					assert.Equal(t, fixedLogin, in.Login)
 					return Output{
-						User: domainfixtures.NewUser(func(user *domain.User) {
-							user.Login = fixedLogin
-						}),
+						User: fixedUser,
 					}, nil
 				}
 			},

@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpmv"
 )
 
-func Cors() middleware.Middleware {
+func Cors() httpmv.Middleware {
 	allowedOrigins := map[string]struct{}{
 		"http://localhost:8080": {},
 		"http://0.0.0.0:8080":   {},

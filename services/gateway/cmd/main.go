@@ -9,12 +9,12 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/gateway/internal/config"
 	"github.com/AridanWarlock/pinnAutomizer/gateway/internal/transport/http/middleware"
 	"github.com/AridanWarlock/pinnAutomizer/gateway/internal/transport/http/proxy"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis/goRedis"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpmv"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	coreMiddleware "github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/middleware"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
 	"github.com/rs/zerolog"
 )
 
@@ -64,14 +64,14 @@ func AppRun(
 	// access token generator
 	accessTokenGenerator := jwt.NewGenerator(cfg.AccessTokenGenerator)
 	// http server
-	httpServer := server.NewWithoutDefaultMiddlewares(
+	httpServer := httpsrv.New(
 		cfg.HTTP,
 		log,
 		middleware.Cors(),
-		coreMiddleware.RequestID(),
-		coreMiddleware.Logger(log),
-		coreMiddleware.TraceID(),
-		coreMiddleware.Recover(),
+		httpmv.RequestID(),
+		httpmv.Logger(log),
+		httpmv.TraceID(),
+		httpmv.Recover(),
 		middleware.AuditInfo(),
 		middleware.Auth(redisAdapter, accessTokenGenerator),
 	)
@@ -86,11 +86,11 @@ func AppRun(
 	}
 
 	httpServer.RegisterHandlers(
-		server.HttpHandler{
+		httpsrv.HttpHandler{
 			Pattern: "/api/v1/auth/",
 			Handler: authProxy,
 		},
-		server.HttpHandler{
+		httpsrv.HttpHandler{
 			Pattern: "/api/v1/tasks/",
 			Handler: tasksProxy,
 		},

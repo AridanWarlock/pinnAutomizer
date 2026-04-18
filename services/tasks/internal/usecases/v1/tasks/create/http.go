@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpin"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpout"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/request"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/response"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
 	"github.com/google/uuid"
 )
 
@@ -41,8 +41,8 @@ func NewHttpHandler(usecase Usecase) *HttpHandler {
 	}
 }
 
-func (h *HttpHandler) Route() server.Route {
-	return server.Route{
+func (h *HttpHandler) Route() httpsrv.Route {
+	return httpsrv.Route{
 		Method:   http.MethodPost,
 		Path:     "/tasks",
 		Handler:  h.CreateTask,
@@ -59,16 +59,16 @@ func (h *HttpHandler) Route() server.Route {
 //	@Produce		json
 //	@Param			request	body		Request						true	"CreateTask тело запроса"
 //	@Success		201		{object}	Response					"Успешно созданная PINN задача"
-//	@Failure		400		{object}	http_response.ErrorResponse	"Bad request"
-//	@Failure		500		{object}	http_response.ErrorResponse	"Internal server error"
+//	@Failure		400		{object}	response.ErrorResponse	"Bad request"
+//	@Failure		500		{object}	response.ErrorResponse	"Internal server error"
 //	@Router			/tasks 	[post]
 func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-	rh := response.NewHandler(w, log)
+	rh := httpout.NewHandler(w, log)
 
 	var req Request
-	if err := request.DecodeAndValidate(w, r, &req); err != nil {
+	if err := httpin.DecodeAndValidate(w, r, &req); err != nil {
 		rh.ErrorResponse(err, "failed to decode and validate HTTP request")
 		return
 	}
