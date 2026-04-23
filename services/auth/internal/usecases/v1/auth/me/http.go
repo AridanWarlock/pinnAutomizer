@@ -12,7 +12,7 @@ import (
 type Response struct {
 	ID    uuid.UUID `json:"id"`
 	Login string    `json:"login"`
-}
+} // @name MeResponse
 
 type HttpHandler struct {
 	usecase Usecase
@@ -33,6 +33,16 @@ func (h *HttpHandler) Route() httpsrv.Route {
 	}
 }
 
+// Me 			godoc
+//
+//	@Summary		Информация о пользователе
+//	@Description	Информация о пользователе из текущей сессии
+//	@Tags			auth
+//	@Produce		json
+//	@Success		200		{object}	Response					"MeResponse информация о пользователе"
+//	@Failure		401		{object}	httpout.ErrorResponse	"Unauthorized"
+//	@Failure		500		{object}	httpout.ErrorResponse	"Internal server error"
+//	@Router			/auth/me 	[get]
 func (h *HttpHandler) Me(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)

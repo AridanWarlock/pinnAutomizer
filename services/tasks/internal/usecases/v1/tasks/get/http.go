@@ -11,10 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type Request struct {
-	IDs []uuid.UUID `json:"ids"`
-}
-
 type taskDto struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
@@ -26,11 +22,11 @@ type taskDto struct {
 	EquationType string `json:"equation_type"`
 
 	CreatedAt time.Time `json:"created_at"`
-}
+} // @name TaskDTO
 
 type Response struct {
 	Tasks []taskDto `json:"tasks"`
-}
+} // @name GetTasksResponse
 
 type HttpHandler struct {
 	usecase Usecase
@@ -53,29 +49,32 @@ func (h *HttpHandler) Route() httpsrv.Route {
 
 // GetTasks 			godoc
 //
-//	@Summary		Получить статус задач
-//	@Description	Получить статус  PINN задач по id
-//	@Tags			tasks
-//	@Accept			json
-//	@Produce		json
-//	@Param			request	body		Request						true	"GetTasks тело запроса"
-//	@Success		200		{object}	Response					"Статус PINN задач"
-//	@Failure		400		{object}	http_response.ErrorResponse	"Bad request"
-//	@Failure		500		{object}	http_response.ErrorResponse	"Internal server error"
-//	@Router			/tasks 	[get]
+//		@Summary		Получить статус задач
+//		@Description	Получить статус  PINN задач по id
+//		@Tags			tasks
+//		@Accept			json
+//		@Produce		json
+//	 @Param          limit   query     int     false  "Количество записей"  default(100) minimum(1) maximum(100)
+//	 @Param          offset  query     int     false  "Смещение"            default(0)   minimum(0)
+//	 @Param          sort    query     string  false  "Поле сортировки"     Enums(created_at, name) default(created_at)
+//	 @Param          order   query     string  false  "Направление сортировки"         Enums(asc, desc) default(desc)
+//		@Success		200		{object}	Response					"GetTasksResponse информация о задачах"
+//		@Failure		400		{object}	httpout.ErrorResponse	"Bad request"
+//		@Failure		500		{object}	httpout.ErrorResponse	"Internal server error"
+//		@Router			/tasks 	[get]
 func (h *HttpHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 	rh := httpout.NewHandler(w, log)
 
-	var req Request
-	if err := httpin.DecodeAndValidate(w, r, &req); err != nil {
+	options, err := httpin.ParsePaginationOptions(r)
+	if err != nil {
 		rh.ErrorResponse(err, "failed to decode and validate HTTP request")
 		return
 	}
 
 	in := Input{
-		IDs: req.IDs,
+		Pagination: options,
 	}
 
 	out, err := h.usecase.GetTasks(ctx, in)

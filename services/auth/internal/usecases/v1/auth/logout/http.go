@@ -28,6 +28,15 @@ func (h *HttpHandler) Route() httpsrv.Route {
 	}
 }
 
+// Logout 			godoc
+//
+//	@Summary		Выход из системы
+//	@Description	Выход из системы PINN Automizer
+//	@Tags			auth
+//	@Success		204		"Успешный выход из системы"
+//	@Failure		401		{object}	httpout.ErrorResponse	"Unauthorized"
+//	@Failure		500		{object}	httpout.ErrorResponse	"Internal server error"
+//	@Router			/auth/logout 	[post]
 func (h *HttpHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)

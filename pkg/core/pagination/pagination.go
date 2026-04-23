@@ -1,26 +1,42 @@
 package pagination
 
+import (
+	"errors"
+	"fmt"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
+)
+
+var (
+	ErrInvalidPagination = errors.New("invalid pagination")
+)
+
 type Option func(opts *Options)
 
 type Options struct {
-	limit  int `validate:"min=0"`
-	offset int `validate:"min=0"`
-	sort   []SortField
+	limit  *int        `validate:"min=1,max=100"`
+	offset *int        `validate:"min=0"`
+	sort   []SortField `validate:"dive,required"`
 }
 
-func NewOptions(opts ...Option) Options {
+func NewOptions(opts ...Option) (Options, error) {
 	var o Options
 	for _, opt := range opts {
 		opt(&o)
 	}
-	return o
+
+	if err := o.Validate(); err != nil {
+		return Options{}, err
+	}
+
+	return o, nil
 }
 
-func (p *Options) Limit() int {
+func (p *Options) Limit() *int {
 	return p.limit
 }
 
-func (p *Options) Offset() int {
+func (p *Options) Offset() *int {
 	return p.offset
 }
 
@@ -28,25 +44,35 @@ func (p *Options) OrderBy() []SortField {
 	return p.sort
 }
 
+func (p *Options) Validate() error {
+	if err := validate.V.Struct(p); err != nil {
+		return fmt.Errorf(
+			"%w: %v",
+			ErrInvalidPagination,
+			err,
+		)
+	}
+	return nil
+}
+
 type SortField struct {
-	Name string
-	Desc bool
+	Name      string `validate:"required"`
+	Direction string `validate:"required,oneof=ASC DESC"`
 }
 
-var (
-	ASC  = false
-	DESC = true
-)
-
-func OrderBy(name string, desc bool) SortField {
-	return SortField{Name: name, Desc: desc}
+func (s SortField) String() string {
+	return fmt.Sprintf("%s %s", s.Name, s.Direction)
 }
 
-func WithLimit(limit int) Option {
+func OrderBy(name string, direction string) SortField {
+	return SortField{Name: name, Direction: direction}
+}
+
+func WithLimit(limit *int) Option {
 	return func(opts *Options) { opts.limit = limit }
 }
 
-func WithOffset(offset int) Option {
+func WithOffset(offset *int) Option {
 	return func(opts *Options) { opts.offset = offset }
 }
 

@@ -14,12 +14,12 @@ type Request struct {
 	Login             string `json:"login" validate:"required"`
 	Password          string `json:"password" validate:"required,min=5"`
 	PasswordConfirmed string `json:"password_confirmed" validate:"required,eqfield=Password"`
-}
+} // @name RegisterRequest
 
 type Response struct {
-	ID    uuid.UUID `json:"ID"`
+	ID    uuid.UUID `json:"id"`
 	Login string    `json:"login"`
-}
+} // @name RegisterResponse
 
 type HttpHandler struct {
 	usecase Usecase
@@ -40,6 +40,18 @@ func (h *HttpHandler) Route() httpsrv.Route {
 	}
 }
 
+// Register 			godoc
+//
+//	@Summary		Регистрация в системе
+//	@Description	Регистрация в системе PINN Automizer
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		Request						true	"RegisterRequest тело запроса"
+//	@Success		201		{object}	Response					"UserResponse новый пользователь"
+//	@Failure		400		{object}	httpout.ErrorResponse	"Bad request"
+//	@Failure		500		{object}	httpout.ErrorResponse	"Internal server error"
+//	@Router			/auth/register 	[post]
 func (h *HttpHandler) Register(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)

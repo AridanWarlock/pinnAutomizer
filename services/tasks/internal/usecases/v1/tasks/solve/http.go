@@ -13,7 +13,7 @@ import (
 type Request struct {
 	TaskID    uuid.UUID      `json:"task_id"`
 	Constants map[string]any `json:"constants"`
-}
+} // @name SolveTaskRequest
 
 type HttpHandler struct {
 	usecase Usecase
@@ -33,6 +33,17 @@ func (h *HttpHandler) Route() httpsrv.Route {
 	}
 }
 
+// SolveTask 			godoc
+//
+//		@Summary		Отправить задачу на исполнение
+//		@Description	Отправить PINN задачу на исполнение
+//		@Tags			tasks
+//		@Accept			json
+//	    @Param          id   path      string  true  "ID задачи (UUID)" format(uuid)
+//		@Success		204		"Задача успешно отправлена в очередь"
+//		@Failure		400		{object}	httpout.ErrorResponse	"Bad request"
+//		@Failure		500		{object}	httpout.ErrorResponse	"Internal server error"
+//		@Router			/tasks/{id}/solve 	[post]
 func (h *HttpHandler) SolveTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
@@ -55,5 +66,5 @@ func (h *HttpHandler) SolveTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rh.EmptyResponse(http.StatusOK)
+	rh.EmptyResponse(http.StatusNoContent)
 }

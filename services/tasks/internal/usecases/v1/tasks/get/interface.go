@@ -3,15 +3,13 @@ package tasksGet
 import (
 	"context"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/pagination"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-
-	"github.com/google/uuid"
 )
 
 type Input struct {
-	IDs    []uuid.UUID `validate:"required,min=1,max=20,dive,required,uuid"`
-	UserID uuid.UUID   `validate:"required,uuid"`
+	Pagination pagination.Options
 }
 
 func (i Input) Validate() error {

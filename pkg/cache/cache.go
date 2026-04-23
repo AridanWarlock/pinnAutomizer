@@ -1,7 +1,7 @@
 package cache
 
 import (
-	"context"
+	"math/rand"
 	"slices"
 	"sort"
 	"strconv"
@@ -22,11 +22,37 @@ var (
 	DefaultHashFunc = xxhash.Sum64
 )
 
+type Option func(c *Cache)
+
+func WithReplicas(replicas int) Option {
+	return func(c *Cache) {
+		c.replicas = replicas
+	}
+}
+
+func WithNumBuckets(numBuckets int) Option {
+	return func(c *Cache) {
+		c.numBuckets = numBuckets
+	}
+}
+
+func WithHashFunc(hashFunc func(key []byte) uint64) Option {
+	return func(c *Cache) {
+		c.hashFunc = hashFunc
+	}
+}
+
+func WithCleanupInterval(cleanupInterval time.Duration) Option {
+	return func(c *Cache) {
+		c.cleanupInterval = cleanupInterval
+	}
+}
+
 type Cache struct {
-	replicas int
-	ring     []uint64
-	nodes    map[uint64]int
-	buckets  map[int]*bucket
+	numBuckets int
+	replicas   int
+	ring       []uint64
+	nodes      map[uint64]*bucket
 
 	hashFunc func(key []byte) uint64
 	mu       sync.RWMutex
@@ -34,46 +60,51 @@ type Cache struct {
 	cleanupInterval time.Duration
 }
 
-func New(
-	numBuckets int,
-	replicas int,
-	hashFunc func(key []byte) uint64,
-	cleanupInterval time.Duration,
+func NewCache(
+	opts ...Option,
 ) *Cache {
-	if replicas <= 0 {
-		replicas = DefaultReplicas
+	c := &Cache{
+		mu: sync.RWMutex{},
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	if c.numBuckets <= 1 {
+		c.numBuckets = DefaultBuckets
+	}
+	if c.replicas <= 0 {
+		c.replicas = DefaultReplicas
+	}
+	if c.hashFunc == nil {
+		c.hashFunc = DefaultHashFunc
+	}
+	if c.cleanupInterval <= 0 {
+		c.cleanupInterval = DefaultCleanupInterval
 	}
 
 	var ring []uint64
-	nodes := make(map[uint64]int)
+	nodes := make(map[uint64]*bucket)
 
-	buckets := make(map[int]*bucket, numBuckets)
-	for bucketID := range buckets {
-		buckets[bucketID] = newBucket(cleanupInterval)
+	for bucketID := range c.numBuckets {
+		bucket := newBucket(c.cleanupInterval)
 
-		for i := range replicas {
+		for i := range c.replicas {
 			replicaKey := strconv.Itoa(bucketID) + ":" + strconv.Itoa(i)
 
-			hash := hashFunc([]byte(replicaKey))
+			hash := c.hashFunc([]byte(replicaKey))
 			ring = append(ring, hash)
 
-			nodes[hash] = bucketID
+			nodes[hash] = bucket
 		}
 	}
 
 	slices.Sort(ring)
 
-	return &Cache{
-		replicas: replicas,
-		ring:     make([]uint64, numBuckets),
-		nodes:    nodes,
-		buckets:  buckets,
+	c.ring = ring
+	c.nodes = nodes
 
-		hashFunc: hashFunc,
-		mu:       sync.RWMutex{},
-
-		cleanupInterval: cleanupInterval,
-	}
+	return c
 }
 
 func (c *Cache) getBucket(key string) *bucket {
@@ -81,53 +112,53 @@ func (c *Cache) getBucket(key string) *bucket {
 	defer c.mu.RUnlock()
 
 	hash := c.hashFunc([]byte(key))
+	nodeIdx := c.getNodeIdx(hash)
 
+	return c.nodes[nodeIdx]
+}
+
+func (c *Cache) getNodeIdx(hash uint64) uint64 {
 	idx := sort.Search(len(c.ring), func(i int) bool {
 		return c.ring[i] >= hash
 	})
-	if idx == len(c.ring) {
-		idx = 0
-	}
+	idx = idx % len(c.ring)
 
-	bucketID := c.nodes[c.ring[idx]]
-	return c.buckets[bucketID]
+	nodeIdx := c.ring[idx]
+	return nodeIdx
 }
 
 func (c *Cache) AddBucket() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	bucketID := len(c.ring)
 	bucket := newBucket(c.cleanupInterval)
-	c.buckets[bucketID] = bucket
-
 	for i := range c.replicas {
-		replicaKey := strconv.Itoa(bucketID) + ":" + strconv.Itoa(i)
+		replicaKey := strconv.Itoa(c.numBuckets) + ":" + strconv.Itoa(i)
 
 		hash := c.hashFunc([]byte(replicaKey))
 		c.ring = append(c.ring, hash)
 
-		c.nodes[hash] = bucketID
+		c.nodes[hash] = bucket
 	}
 
 	slices.Sort(c.ring)
+	c.numBuckets++
 }
 
-func (c *Cache) RemoveBucket(id int) error {
+func (c *Cache) RemoveRandomBucket() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if id < 0 {
-		return ErrIndexOutOfRange
-	}
-
-	if len(c.buckets) == 1 {
+	if c.numBuckets == 1 {
 		return ErrRemovingLastBucket
 	}
 
+	nodeIdx := c.getNodeIdx(rand.Uint64())
+	bucket := c.nodes[nodeIdx]
+
 	newRing := make([]uint64, 0, len(c.ring))
 	for _, h := range c.ring {
-		if c.nodes[h] == id {
+		if c.nodes[h] == bucket {
 			delete(c.nodes, h)
 			continue
 		}
@@ -135,38 +166,34 @@ func (c *Cache) RemoveBucket(id int) error {
 		newRing = append(newRing, h)
 	}
 	c.ring = newRing
+	c.numBuckets--
 
-	delete(c.buckets, id)
+	bucket.close()
 
 	return nil
 }
 
-func (c *Cache) Get(ctx context.Context, key string) (any, bool) {
+func (c *Cache) Get(key string) (any, bool) {
 	b := c.getBucket(key)
-	v, err := b.get(ctx, key)
-
-	if err != nil {
-		return nil, false
-	}
-	return v, true
+	return b.get(key)
 }
 
-func (c *Cache) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
+func (c *Cache) Set(key string, value any, ttl time.Duration) {
 	if ttl <= 0 {
 		ttl = DefaultTtl
 	}
 
 	b := c.getBucket(key)
-	return b.set(ctx, key, value, ttl)
+	b.set(key, value, ttl)
 }
 
-func (c *Cache) Delete(ctx context.Context, key string) error {
+func (c *Cache) Delete(key string) {
 	b := c.getBucket(key)
-	return b.delete(ctx, key)
+	b.delete(key)
 }
 
 func (c *Cache) Close() {
-	for _, b := range c.buckets {
-		b.close()
+	for _, bucket := range c.nodes {
+		bucket.close()
 	}
 }

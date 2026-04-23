@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"context"
 	"sync"
 	"time"
 )
@@ -14,8 +13,10 @@ type entry struct {
 type bucket struct {
 	data map[string]entry
 
-	mu   sync.RWMutex
-	done chan struct{}
+	mu sync.RWMutex
+
+	done   chan struct{}
+	closed bool
 }
 
 func newBucket(cleanupInterval time.Duration) *bucket {
@@ -40,23 +41,17 @@ func newBucket(cleanupInterval time.Duration) *bucket {
 	return b
 }
 
-func (b *bucket) get(ctx context.Context, key string) (any, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-
+func (b *bucket) get(key string) (any, bool) {
 	b.mu.RLock()
 	entry, ok := b.data[key]
 	b.mu.RUnlock()
 
 	if !ok {
-		return nil, ErrNotFound
+		return nil, false
 	}
 
 	if time.Now().Before(entry.expiresAt) {
-		return entry.value, nil
+		return entry.value, true
 	}
 
 	b.mu.Lock()
@@ -66,16 +61,10 @@ func (b *bucket) get(ctx context.Context, key string) (any, error) {
 	if ok && time.Now().After(entry.expiresAt) {
 		delete(b.data, key)
 	}
-	return nil, ErrNotFound
+	return nil, false
 }
 
-func (b *bucket) set(ctx context.Context, key string, value any, ttl time.Duration) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-
+func (b *bucket) set(key string, value any, ttl time.Duration) {
 	entry := entry{
 		value:     value,
 		expiresAt: time.Now().Add(ttl),
@@ -84,22 +73,12 @@ func (b *bucket) set(ctx context.Context, key string, value any, ttl time.Durati
 	b.mu.Lock()
 	b.data[key] = entry
 	b.mu.Unlock()
-
-	return nil
 }
 
-func (b *bucket) delete(ctx context.Context, key string) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-
+func (b *bucket) delete(key string) {
 	b.mu.Lock()
 	delete(b.data, key)
 	b.mu.Unlock()
-
-	return nil
 }
 
 func (b *bucket) cleanup() {
@@ -108,12 +87,24 @@ func (b *bucket) cleanup() {
 
 	now := time.Now()
 	for key, entry := range b.data {
-		if entry.expiresAt.After(now) {
+		if entry.expiresAt.Before(now) {
 			delete(b.data, key)
 		}
 	}
 }
 
 func (b *bucket) close() {
+	if b.closed {
+		return
+	}
+
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.closed {
+		return
+	}
+
 	close(b.done)
+	b.closed = true
 }

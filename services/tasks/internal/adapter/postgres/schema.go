@@ -52,3 +52,9 @@ var TasksColumns = []string{
 	TasksEquationId,
 	TasksCreatedAt,
 }
+
+var TasksSortColumns = map[string]struct{}{
+	TasksName:      {},
+	TasksStatus:    {},
+	TasksCreatedAt: {},
+}

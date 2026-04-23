@@ -12,7 +12,7 @@ import (
 
 type Response struct {
 	AccessToken string `json:"access_token"`
-}
+} // @name RefreshResponse
 
 type HttpHandler struct {
 	usecase Usecase
@@ -33,6 +33,16 @@ func (h *HttpHandler) Route() httpsrv.Route {
 	}
 }
 
+// Refresh 			godoc
+//
+//	@Summary		Обновление access токена
+//	@Description	Обновление access токена по refresh токену
+//	@Tags			auth
+//	@Produce		json
+//	@Success		200		{object}	Response					"RefreshResponse новый jwt access токен"
+//	@Failure		401		{object}	httpout.ErrorResponse	"Unauthorized"
+//	@Failure		500		{object}	httpout.ErrorResponse	"Internal server error"
+//	@Router			/auth/refresh 	[post]
 func (h *HttpHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)

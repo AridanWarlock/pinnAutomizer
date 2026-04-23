@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	_ "github.com/AridanWarlock/pinnAutomizer/auth/docs"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/config"
 	authLogin "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/login"
@@ -22,9 +23,9 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// @title		PINN Automizer App
+// @title		PINN Automizer AuthService
 // @version	1.0
-// @host		127.0.0.1:8080
+// @host		:8080
 // @BasePath	/api/v1
 func main() {
 	cfg, err := config.InitConfig()

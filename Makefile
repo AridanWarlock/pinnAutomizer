@@ -91,12 +91,12 @@ swagger-gen:
 	docker compose run --rm \
 		-v ${PROJECT_ROOT}:/code \
 		swagger init \
-		-g services/$(service)/cmd/main.go \
+		-g cmd/main.go \
 		-o services/$(service)/docs \
-		--instanceName $(service)-api \
+		-dir services/$(service) \
 		--parseInternal \
-		--parseDependency
-#		--parseDepth 2
+		--parseDependency \
+		--parseDepth 2
 #		--quiet
 
 swagger-fmt:

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/pagination"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	sq "github.com/Masterminds/squirrel"
@@ -39,6 +40,44 @@ func (r *Repository) GetTaskByID(ctx context.Context, id uuid.UUID) (domain.Task
 	}
 
 	return ToTaskModel(outRow), nil
+}
+
+func (r *Repository) GetTasksByUserID(
+	ctx context.Context,
+	userID uuid.UUID,
+	opts pagination.Options,
+) ([]domain.Task, error) {
+	q := r.sb.Select(TasksColumns...).
+		From(TasksTable).
+		Where(sq.Eq{TasksUserId: userID})
+
+	if limit := opts.Limit(); limit != nil {
+		q = q.Limit(uint64(*limit))
+	}
+	if offset := opts.Offset(); offset != nil {
+		q = q.Offset(uint64(*offset))
+	}
+	var orderBys []string
+	for _, sf := range opts.OrderBy() {
+		if _, ok := TasksSortColumns[sf.Name]; ok {
+			orderBys = append(orderBys, sf.String())
+		}
+	}
+	if len(orderBys) == 0 {
+		orderBys = append(orderBys, TasksCreatedAt+" DESC")
+	}
+	q = q.OrderBy(orderBys...)
+
+	var rows []TaskRow
+	if err := r.pool.Selectx(ctx, &rows, q); err != nil {
+		return nil, err
+	}
+
+	tasks := make([]domain.Task, len(rows))
+	for i, row := range rows {
+		tasks[i] = ToTaskModel(row)
+	}
+	return tasks, nil
 }
 
 func (r *Repository) GetTasksByIDs(

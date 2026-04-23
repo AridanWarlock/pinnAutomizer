@@ -12,11 +12,11 @@ import (
 type Request struct {
 	Login    string `json:"login" validate:"required"`
 	Password string `json:"password" validate:"required,min=5"`
-}
+} // @name LoginRequest
 
 type Response struct {
 	AccessToken string `json:"access_token"`
-}
+} // @name LoginResponse
 
 type HttpHandler struct {
 	usecase Usecase
@@ -37,6 +37,19 @@ func (h *HttpHandler) Route() httpsrv.Route {
 	}
 }
 
+// Login 			godoc
+//
+//	@Summary		Вход в систему
+//	@Description	Вход в систему PINN Automizer
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		Request						true	"LoginRequest тело запроса"
+//	@Success		200		{object}	Response					"LoginResponse jwt access токен"
+//	@Failure		400		{object}	httpout.ErrorResponse	"Bad request"
+//	@Failure		401		{object}	httpout.ErrorResponse	"Unauthorized"
+//	@Failure		500		{object}	httpout.ErrorResponse	"Internal server error"
+//	@Router			/auth/login 	[post]
 func (h *HttpHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
