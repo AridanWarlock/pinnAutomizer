@@ -3,10 +3,10 @@ package config
 import (
 	"fmt"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis/goRedis"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
 	"github.com/caarlos0/env/v11"
 )
 
@@ -18,7 +18,7 @@ type App struct {
 
 type Config struct {
 	App                  App
-	HTTP                 server.Config  `envPrefix:"HTTP_"`
+	HTTP                 httpsrv.Config `envPrefix:"HTTP_"`
 	Log                  logger.Config  `envPrefix:"LOGGER_"`
 	Redis                goRedis.Config `envPrefix:"REDIS_"`
 	AccessTokenGenerator jwt.Config     `envPrefix:"JWT_"`

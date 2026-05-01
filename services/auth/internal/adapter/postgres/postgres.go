@@ -3,26 +3,25 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres/repositories/refresh_tokens"
-	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres/repositories/roles"
-	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres/repositories/users"
-	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres/repositories/users_roles"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/postgres/poolx"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
+	sq "github.com/Masterminds/squirrel"
 )
 
-type RefreshTokensRepository = *refresh_tokens.Repository
-type RolesRepository = *roles.Repository
-type UsersRepository = *users.Repository
-type UsersRolesRepository = *users_roles.Repository
+type Config struct {
+	User     string        `env:"USER,required"`
+	Password string        `env:"PASSWORD,required"`
+	Host     string        `env:"HOST,required"`
+	Port     int           `env:"PORT,required"`
+	DB       string        `env:"DB,required"`
+	SslMode  string        `env:"SSLMODE" default:"disable"`
+	Timeout  time.Duration `env:"TIMEOUT,required"`
+}
 
 type Repository struct {
 	pool poolx.Pool
-
-	RefreshTokensRepository
-	RolesRepository
-	UsersRepository
-	UsersRolesRepository
+	sb   sq.StatementBuilderType
 }
 
 func New(cfg Config) (*Repository, error) {
@@ -42,11 +41,7 @@ func New(cfg Config) (*Repository, error) {
 
 	return &Repository{
 		pool: p,
-
-		RefreshTokensRepository: refresh_tokens.NewRepository(p),
-		RolesRepository:         roles.NewRepository(p),
-		UsersRepository:         users.NewRepository(p),
-		UsersRolesRepository:    users_roles.NewRepository(p),
+		sb:   sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}, nil
 }
 

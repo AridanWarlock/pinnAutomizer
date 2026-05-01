@@ -45,6 +45,7 @@ func (u *usecase) SolveTask(ctx context.Context, in Input) error {
 	if err := in.Validate(); err != nil {
 		return fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
+	auth := core.MustAuthInfoFromContext(ctx)
 
 	idKey := core.MustIdempotencyKeyFromContext(ctx)
 	ok, err := u.redis.TryLock(ctx, idKey)
@@ -74,7 +75,7 @@ func (u *usecase) SolveTask(ctx context.Context, in Input) error {
 		}
 	}()
 
-	task, err := u.postgres.GetTaskByIDAndUserID(ctx, in.TaskID, in.UserID)
+	task, err := u.postgres.GetTaskByIDAndUserID(ctx, in.TaskID, auth.UserID)
 	if err != nil {
 		return fmt.Errorf("getting task by id and user id: %w", err)
 	}

@@ -134,7 +134,6 @@ func (u *usecase) deleteOldRedisSession(
 		if errors.Is(err, errs.ErrKeyNotFound) {
 			return nil
 		}
-
 		return fmt.Errorf("redis error: %w", err)
 	}
 	return nil

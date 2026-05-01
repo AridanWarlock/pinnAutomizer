@@ -7,12 +7,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/kafka"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis/goRedis"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis/indempotency"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/indempotency"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/config"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/outbox"
@@ -114,7 +114,7 @@ func AppRun(
 	tasksGetHandler := tasksGet.NewHttpHandler(tasksGetUsecase)
 	tasksSolveHandler := tasksSolve.NewHttpHandler(tasksSolveUsecase)
 	// routers
-	apiV1Router := server.NewApiVersionRouter(server.ApiVersion(1))
+	apiV1Router := httpsrv.NewApiVersionRouter(httpsrv.ApiVersion(1))
 	apiV1Router.RegisterRoutes(
 		// tasks
 		tasksCreateHandler.Route(),
@@ -122,11 +122,11 @@ func AppRun(
 		tasksSolveHandler.Route(),
 	)
 	// http server
-	httpServer := server.New(
+	server := httpsrv.NewWithDefaultMiddlewares(
 		cfg.HTTP,
 		log,
 	)
-	httpServer.RegisterApiRouters(apiV1Router)
+	server.RegisterApiRouters(apiV1Router)
 	// httpServer.RegisterSwagger()
 
 	// kafka consumers
@@ -170,5 +170,5 @@ func AppRun(
 		}
 	}()
 
-	return httpServer.Run(ctx)
+	return server.Run(ctx)
 }

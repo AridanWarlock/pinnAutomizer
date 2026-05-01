@@ -3,23 +3,25 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/postgres/poolx"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/postgres/repositories/equations"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/postgres/repositories/events"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/postgres/repositories/tasks"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
+	sq "github.com/Masterminds/squirrel"
 )
 
-type EquationRepository = *equations.Repository
-type EventsRepository = *events.Repository
-type TasksRepository = *tasks.Repository
+type Config struct {
+	User     string        `env:"USER,required"`
+	Password string        `env:"PASSWORD,required"`
+	Host     string        `env:"HOST,required"`
+	Port     int           `env:"PORT,required"`
+	DB       string        `env:"DB,required"`
+	SslMode  string        `env:"SSLMODE" default:"disable"`
+	Timeout  time.Duration `env:"TIMEOUT,required"`
+}
 
 type Repository struct {
 	pool poolx.Pool
-
-	EquationRepository
-	EventsRepository
-	TasksRepository
+	sb   sq.StatementBuilderType
 }
 
 func New(cfg Config) (*Repository, error) {
@@ -39,10 +41,7 @@ func New(cfg Config) (*Repository, error) {
 
 	return &Repository{
 		pool: p,
-
-		EquationRepository: equations.NewRepository(p),
-		EventsRepository:   events.NewRepository(p),
-		TasksRepository:    tasks.NewRepository(p),
+		sb:   sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}, nil
 }
 

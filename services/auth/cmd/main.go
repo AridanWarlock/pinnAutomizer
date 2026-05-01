@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	_ "github.com/AridanWarlock/pinnAutomizer/auth/docs"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/config"
 	authLogin "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/login"
@@ -13,18 +14,18 @@ import (
 	authMe "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/me"
 	authRefresh "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/refresh"
 	authRegister "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/register"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/adapter/redis/goRedis"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/password"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/transport/http/server"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
 	"github.com/rs/zerolog"
 )
 
-// @title		PINN Automizer App
+// @title		PINN Automizer AuthService
 // @version	1.0
-// @host		127.0.0.1:8080
+// @host		:8080
 // @BasePath	/api/v1
 func main() {
 	cfg, err := config.InitConfig()
@@ -106,7 +107,7 @@ func AppRun(
 	authRegisterHandler := authRegister.NewHttpHandler(authRegisterUsecase)
 	authRefreshHandler := authRefresh.NewHttpHandler(authRefreshUsecase)
 	// routers
-	apiV1Router := server.NewApiVersionRouter(server.ApiVersion(1))
+	apiV1Router := httpsrv.NewApiVersionRouter(httpsrv.ApiVersion(1))
 	apiV1Router.RegisterRoutes(
 		// auth
 		authLoginHandler.Route(),
@@ -116,12 +117,12 @@ func AppRun(
 		authRefreshHandler.Route(),
 	)
 	// http server
-	httpServer := server.New(
+	server := httpsrv.NewWithDefaultMiddlewares(
 		cfg.HTTP,
 		log,
 	)
-	httpServer.RegisterApiRouters(apiV1Router)
+	server.RegisterApiRouters(apiV1Router)
 	// httpServer.RegisterSwagger()
 
-	return httpServer.Run(ctx)
+	return server.Run(ctx)
 }

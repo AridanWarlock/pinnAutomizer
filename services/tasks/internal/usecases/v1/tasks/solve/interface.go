@@ -10,7 +10,6 @@ import (
 
 type Input struct {
 	TaskID uuid.UUID `validate:"required,uuid"`
-	UserID uuid.UUID `validate:"required,uuid"`
 
 	Constants map[string]any `validate:"required"`
 

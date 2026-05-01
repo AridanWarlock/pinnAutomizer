@@ -1,0 +1,188 @@
+basePath: /api/v1
+definitions:
+  ErrorResponse:
+    properties:
+      error:
+        type: string
+      message:
+        type: string
+    type: object
+  LoginRequest:
+    properties:
+      login:
+        type: string
+      password:
+        minLength: 5
+        type: string
+    required:
+    - login
+    - password
+    type: object
+  LoginResponse:
+    properties:
+      access_token:
+        type: string
+    type: object
+  MeResponse:
+    properties:
+      id:
+        type: string
+      login:
+        type: string
+    type: object
+  RefreshResponse:
+    properties:
+      access_token:
+        type: string
+    type: object
+  RegisterRequest:
+    properties:
+      login:
+        type: string
+      password:
+        minLength: 5
+        type: string
+      password_confirmed:
+        type: string
+    required:
+    - login
+    - password
+    - password_confirmed
+    type: object
+  RegisterResponse:
+    properties:
+      ID:
+        type: string
+      login:
+        type: string
+    type: object
+host: :8080
+info:
+  contact: {}
+  title: PINN Automizer AuthService
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Вход в систему PINN Automizer
+      parameters:
+      - description: LoginRequest тело запроса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: LoginResponse jwt access токен
+          schema:
+            $ref: '#/definitions/LoginResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      summary: Вход в систему
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Выход из системы PINN Automizer
+      responses:
+        "204":
+          description: Успешный выход из системы
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      summary: Выход из системы
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Информация о пользователе из текущей сессии
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MeResponse информация о пользователе
+          schema:
+            $ref: '#/definitions/MeResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      summary: Информация о пользователе
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      description: Обновление access токена по refresh токену
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: RefreshResponse новый jwt access токен
+          schema:
+            $ref: '#/definitions/RefreshResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      summary: Обновление access токена
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Регистрация в системе PINN Automizer
+      parameters:
+      - description: RegisterRequest тело запроса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: UserResponse новый пользователь
+          schema:
+            $ref: '#/definitions/RegisterResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      summary: Регистрация в системе
+      tags:
+      - auth
+swagger: "2.0"
