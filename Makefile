@@ -2,11 +2,13 @@ include .env
 export
 
 ifeq ($(OS),Windows_NT)
-    PROJECT_ROOT := $(shell cd)
+    PROJECT_ROOT := $(shell pwd -W 2>/dev/null || pwd)
     PROJECT_ROOT := $(subst \,/,$(PROJECT_ROOT))
+    PROJECT_ROOT := $(shell echo $(PROJECT_ROOT) | sed 's|^/c/|C:/|')
 else
     PROJECT_ROOT := $(shell pwd)
 endif
+
 export PROJECT_ROOT
 
 ps:
