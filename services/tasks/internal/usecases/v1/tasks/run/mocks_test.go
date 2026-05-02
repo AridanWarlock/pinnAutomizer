@@ -2,13 +2,14 @@
 // github.com/vektra/mockery
 // template: matryer
 
-package tasksOnTrain
+package tasksRun
 
 import (
 	"context"
 	"sync"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	"github.com/google/uuid"
 )
 
@@ -22,8 +23,8 @@ var _ Usecase = &MockUsecase{}
 //
 //		// make and configure a mocked Usecase
 //		mockedUsecase := &MockUsecase{
-//			UpdateTaskOnTrainFunc: func(ctx context.Context, in Input) error {
-//				panic("mock out the UpdateTaskOnTrain method")
+//			SolveTaskFunc: func(cxt context.Context, in Input) error {
+//				panic("mock out the SolveTask method")
 //			},
 //		}
 //
@@ -32,55 +33,55 @@ var _ Usecase = &MockUsecase{}
 //
 //	}
 type MockUsecase struct {
-	// UpdateTaskOnTrainFunc mocks the UpdateTaskOnTrain method.
-	UpdateTaskOnTrainFunc func(ctx context.Context, in Input) error
+	// SolveTaskFunc mocks the SolveTask method.
+	SolveTaskFunc func(cxt context.Context, in Input) error
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// UpdateTaskOnTrain holds details about calls to the UpdateTaskOnTrain method.
-		UpdateTaskOnTrain []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
+		// SolveTask holds details about calls to the SolveTask method.
+		SolveTask []struct {
+			// Cxt is the cxt argument value.
+			Cxt context.Context
 			// In is the in argument value.
 			In Input
 		}
 	}
-	lockUpdateTaskOnTrain sync.RWMutex
+	lockSolveTask sync.RWMutex
 }
 
-// UpdateTaskOnTrain calls UpdateTaskOnTrainFunc.
-func (mock *MockUsecase) UpdateTaskOnTrain(ctx context.Context, in Input) error {
-	if mock.UpdateTaskOnTrainFunc == nil {
-		panic("MockUsecase.UpdateTaskOnTrainFunc: method is nil but Usecase.UpdateTaskOnTrain was just called")
+// SolveTask calls SolveTaskFunc.
+func (mock *MockUsecase) RunTask(cxt context.Context, in Input) error {
+	if mock.SolveTaskFunc == nil {
+		panic("MockUsecase.SolveTaskFunc: method is nil but Usecase.SolveTask was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Cxt context.Context
 		In  Input
 	}{
-		Ctx: ctx,
+		Cxt: cxt,
 		In:  in,
 	}
-	mock.lockUpdateTaskOnTrain.Lock()
-	mock.calls.UpdateTaskOnTrain = append(mock.calls.UpdateTaskOnTrain, callInfo)
-	mock.lockUpdateTaskOnTrain.Unlock()
-	return mock.UpdateTaskOnTrainFunc(ctx, in)
+	mock.lockSolveTask.Lock()
+	mock.calls.SolveTask = append(mock.calls.SolveTask, callInfo)
+	mock.lockSolveTask.Unlock()
+	return mock.SolveTaskFunc(cxt, in)
 }
 
-// UpdateTaskOnTrainCalls gets all the calls that were made to UpdateTaskOnTrain.
+// SolveTaskCalls gets all the calls that were made to SolveTask.
 // Check the length with:
 //
-//	len(mockedUsecase.UpdateTaskOnTrainCalls())
-func (mock *MockUsecase) UpdateTaskOnTrainCalls() []struct {
-	Ctx context.Context
+//	len(mockedUsecase.SolveTaskCalls())
+func (mock *MockUsecase) SolveTaskCalls() []struct {
+	Cxt context.Context
 	In  Input
 } {
 	var calls []struct {
-		Ctx context.Context
+		Cxt context.Context
 		In  Input
 	}
-	mock.lockUpdateTaskOnTrain.RLock()
-	calls = mock.calls.UpdateTaskOnTrain
-	mock.lockUpdateTaskOnTrain.RUnlock()
+	mock.lockSolveTask.RLock()
+	calls = mock.calls.SolveTask
+	mock.lockSolveTask.RUnlock()
 	return calls
 }
 
@@ -94,8 +95,11 @@ var _ Postgres = &MockPostgres{}
 //
 //		// make and configure a mocked Postgres
 //		mockedPostgres := &MockPostgres{
-//			UpdateTaskStatusByIDFunc: func(ctx context.Context, id uuid.UUID, status string, oldStatus string) error {
-//				panic("mock out the UpdateTaskStatusByID method")
+//			GetTaskByIDAndUserIDFunc: func(ctx context.Context, id uuid.UUID, userID uuid.UUID) (domain.Task, error) {
+//				panic("mock out the GetTaskByIDAndUserID method")
+//			},
+//			PublishEventFunc: func(ctx context.Context, event domain.Event) (domain.Event, error) {
+//				panic("mock out the PublishEvent method")
 //			},
 //		}
 //
@@ -104,67 +108,108 @@ var _ Postgres = &MockPostgres{}
 //
 //	}
 type MockPostgres struct {
-	// UpdateTaskStatusByIDFunc mocks the UpdateTaskStatusByID method.
-	UpdateTaskStatusByIDFunc func(ctx context.Context, id uuid.UUID, status string, oldStatus string) error
+	// GetTaskByIDAndUserIDFunc mocks the GetTaskByIDAndUserID method.
+	GetTaskByIDAndUserIDFunc func(ctx context.Context, id uuid.UUID, userID uuid.UUID) (domain.Task, error)
+
+	// PublishEventFunc mocks the PublishEvent method.
+	PublishEventFunc func(ctx context.Context, event domain.Event) (domain.Event, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// UpdateTaskStatusByID holds details about calls to the UpdateTaskStatusByID method.
-		UpdateTaskStatusByID []struct {
+		// GetTaskByIDAndUserID holds details about calls to the GetTaskByIDAndUserID method.
+		GetTaskByIDAndUserID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
-			// Status is the status argument value.
-			Status string
-			// OldStatus is the oldStatus argument value.
-			OldStatus string
+			// UserID is the userID argument value.
+			UserID uuid.UUID
+		}
+		// PublishEvent holds details about calls to the PublishEvent method.
+		PublishEvent []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Event is the event argument value.
+			Event domain.Event
 		}
 	}
-	lockUpdateTaskStatusByID sync.RWMutex
+	lockGetTaskByIDAndUserID sync.RWMutex
+	lockPublishEvent         sync.RWMutex
 }
 
-// UpdateTaskStatusByID calls UpdateTaskStatusByIDFunc.
-func (mock *MockPostgres) UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status string, oldStatus string) error {
-	if mock.UpdateTaskStatusByIDFunc == nil {
-		panic("MockPostgres.UpdateTaskStatusByIDFunc: method is nil but Postgres.UpdateTaskStatusByID was just called")
+// GetTaskByIDAndUserID calls GetTaskByIDAndUserIDFunc.
+func (mock *MockPostgres) GetTaskByIDAndUserID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (domain.Task, error) {
+	if mock.GetTaskByIDAndUserIDFunc == nil {
+		panic("MockPostgres.GetTaskByIDAndUserIDFunc: method is nil but Postgres.GetTaskByIDAndUserID was just called")
 	}
 	callInfo := struct {
-		Ctx       context.Context
-		ID        uuid.UUID
-		Status    string
-		OldStatus string
+		Ctx    context.Context
+		ID     uuid.UUID
+		UserID uuid.UUID
 	}{
-		Ctx:       ctx,
-		ID:        id,
-		Status:    status,
-		OldStatus: oldStatus,
+		Ctx:    ctx,
+		ID:     id,
+		UserID: userID,
 	}
-	mock.lockUpdateTaskStatusByID.Lock()
-	mock.calls.UpdateTaskStatusByID = append(mock.calls.UpdateTaskStatusByID, callInfo)
-	mock.lockUpdateTaskStatusByID.Unlock()
-	return mock.UpdateTaskStatusByIDFunc(ctx, id, status, oldStatus)
+	mock.lockGetTaskByIDAndUserID.Lock()
+	mock.calls.GetTaskByIDAndUserID = append(mock.calls.GetTaskByIDAndUserID, callInfo)
+	mock.lockGetTaskByIDAndUserID.Unlock()
+	return mock.GetTaskByIDAndUserIDFunc(ctx, id, userID)
 }
 
-// UpdateTaskStatusByIDCalls gets all the calls that were made to UpdateTaskStatusByID.
+// GetTaskByIDAndUserIDCalls gets all the calls that were made to GetTaskByIDAndUserID.
 // Check the length with:
 //
-//	len(mockedPostgres.UpdateTaskStatusByIDCalls())
-func (mock *MockPostgres) UpdateTaskStatusByIDCalls() []struct {
-	Ctx       context.Context
-	ID        uuid.UUID
-	Status    string
-	OldStatus string
+//	len(mockedPostgres.GetTaskByIDAndUserIDCalls())
+func (mock *MockPostgres) GetTaskByIDAndUserIDCalls() []struct {
+	Ctx    context.Context
+	ID     uuid.UUID
+	UserID uuid.UUID
 } {
 	var calls []struct {
-		Ctx       context.Context
-		ID        uuid.UUID
-		Status    string
-		OldStatus string
+		Ctx    context.Context
+		ID     uuid.UUID
+		UserID uuid.UUID
 	}
-	mock.lockUpdateTaskStatusByID.RLock()
-	calls = mock.calls.UpdateTaskStatusByID
-	mock.lockUpdateTaskStatusByID.RUnlock()
+	mock.lockGetTaskByIDAndUserID.RLock()
+	calls = mock.calls.GetTaskByIDAndUserID
+	mock.lockGetTaskByIDAndUserID.RUnlock()
+	return calls
+}
+
+// PublishEvent calls PublishEventFunc.
+func (mock *MockPostgres) PublishEvent(ctx context.Context, event domain.Event) (domain.Event, error) {
+	if mock.PublishEventFunc == nil {
+		panic("MockPostgres.PublishEventFunc: method is nil but Postgres.PublishEvent was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Event domain.Event
+	}{
+		Ctx:   ctx,
+		Event: event,
+	}
+	mock.lockPublishEvent.Lock()
+	mock.calls.PublishEvent = append(mock.calls.PublishEvent, callInfo)
+	mock.lockPublishEvent.Unlock()
+	return mock.PublishEventFunc(ctx, event)
+}
+
+// PublishEventCalls gets all the calls that were made to PublishEvent.
+// Check the length with:
+//
+//	len(mockedPostgres.PublishEventCalls())
+func (mock *MockPostgres) PublishEventCalls() []struct {
+	Ctx   context.Context
+	Event domain.Event
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Event domain.Event
+	}
+	mock.lockPublishEvent.RLock()
+	calls = mock.calls.PublishEvent
+	mock.lockPublishEvent.RUnlock()
 	return calls
 }
 

@@ -5,16 +5,15 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-
-	"github.com/google/uuid"
 )
 
 type Input struct {
-	Name         string `validate:"required"`
-	Description  string
-	Constants    map[string]any
-	UserID       uuid.UUID `validate:"required,uuid"`
-	EquationType string    `validate:"required,oneof=heat wave"`
+	Name        string `validate:"required"`
+	Description *string
+
+	Mode domain.TaskMode
+
+	Files []domain.TaskFile
 }
 
 func (i Input) Validate() error {
@@ -22,8 +21,7 @@ func (i Input) Validate() error {
 }
 
 type Output struct {
-	Task     domain.Task     `json:"task"`
-	Equation domain.Equation `json:"equation"`
+	Task domain.Task `json:"task"`
 }
 
 type Usecase interface {

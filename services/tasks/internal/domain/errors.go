@@ -3,5 +3,6 @@ package domain
 import "errors"
 
 var (
-	ErrTaskNotTrained = errors.New("task not trained")
+	ErrTaskAlreadyStarted = errors.New("task already started")
+	ErrInvalidTaskMode    = errors.New("invalid task mode")
 )

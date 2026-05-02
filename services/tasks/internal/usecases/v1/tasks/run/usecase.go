@@ -1,4 +1,4 @@
-package tasksSolve
+package tasksRun
 
 import (
 	"context"
@@ -14,7 +14,10 @@ import (
 
 type Postgres interface {
 	GetTaskByIDAndUserID(ctx context.Context, id, userID uuid.UUID) (domain.Task, error)
+	UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status domain.TaskStatus) error
 	PublishEvent(ctx context.Context, event domain.Event) (domain.Event, error)
+
+	InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error
 }
 
 type Redis interface {
@@ -39,7 +42,7 @@ func New(
 	}
 }
 
-func (u *usecase) SolveTask(ctx context.Context, in Input) error {
+func (u *usecase) RunTask(ctx context.Context, in Input) error {
 	log := logger.FromContext(ctx)
 
 	if err := in.Validate(); err != nil {
@@ -75,22 +78,11 @@ func (u *usecase) SolveTask(ctx context.Context, in Input) error {
 		}
 	}()
 
-	task, err := u.postgres.GetTaskByIDAndUserID(ctx, in.TaskID, auth.UserID)
+	err = u.postgres.InTransaction(ctx, func(ctx context.Context) error {
+		return u.createAndPublishEvent(ctx, in.TaskID, auth.UserID)
+	})
 	if err != nil {
-		return fmt.Errorf("getting task by id and user id: %w", err)
-	}
-	if task.Status != domain.TaskStatusDone {
-		return domain.ErrTaskNotTrained
-	}
-
-	event, err := u.createSolveTaskEvent(task, in.Constants)
-	if err != nil {
-		return fmt.Errorf("create solve task event: %w", err)
-	}
-
-	_, err = u.postgres.PublishEvent(ctx, event)
-	if err != nil {
-		return fmt.Errorf("publish event in postgres: %w", err)
+		return err
 	}
 
 	success = true
@@ -102,17 +94,43 @@ func (u *usecase) SolveTask(ctx context.Context, in Input) error {
 	return nil
 }
 
-func (u *usecase) createSolveTaskEvent(task domain.Task, solveConstants map[string]any) (domain.Event, error) {
-	msg := domain.SolveTaskMessage{
-		TaskID:    task.ID,
-		ModelPath: task.ResultsPath,
-		Constants: solveConstants,
+func (u *usecase) createAndPublishEvent(ctx context.Context, taskID, userID uuid.UUID) error {
+	task, err := u.postgres.GetTaskByIDAndUserID(ctx, taskID, userID)
+	if err != nil {
+		return fmt.Errorf("getting task by id and user id: %w", err)
+	}
+	if task.IsStarted() {
+		return domain.ErrTaskAlreadyStarted
+	}
+
+	err = u.postgres.UpdateTaskStatusByID(ctx, taskID, domain.TaskStatusRunning)
+	if err != nil {
+		return fmt.Errorf("update task status in postgres: %w", err)
+	}
+
+	event, err := u.createRunTaskEvent(task)
+	if err != nil {
+		return fmt.Errorf("create solve task event: %w", err)
+	}
+
+	_, err = u.postgres.PublishEvent(ctx, event)
+	if err != nil {
+		return fmt.Errorf("publish event in postgres: %w", err)
+	}
+
+	return nil
+}
+
+func (u *usecase) createRunTaskEvent(task domain.Task) (domain.Event, error) {
+	msg, err := domain.NewRunTaskMessage(task)
+	if err != nil {
+		return domain.Event{}, fmt.Errorf("create run task message: %w", err)
 	}
 
 	jsonMsg, err := json.Marshal(msg)
 	if err != nil {
-		return domain.Event{}, fmt.Errorf("marshal solve task message: %w", err)
+		return domain.Event{}, fmt.Errorf("marshal run task message: %w", err)
 	}
 
-	return domain.NewEvent("to-solve", jsonMsg), nil
+	return domain.NewEvent("tasks.on.run", jsonMsg), nil
 }

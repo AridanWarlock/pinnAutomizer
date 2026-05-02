@@ -1,4 +1,4 @@
-package tasksOnTrain
+package tasksAfterRun
 
 import (
 	"context"
@@ -12,7 +12,8 @@ import (
 )
 
 type Postgres interface {
-	UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status, oldStatus string) error
+	UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status domain.TaskStatus) error
+	UpdateTaskStatusAndErrorByID(ctx context.Context, id uuid.UUID, status domain.TaskStatus, errorMsg string) error
 }
 
 type Redis interface {
@@ -37,7 +38,7 @@ func New(
 	}
 }
 
-func (u *usecase) UpdateTaskOnTrain(ctx context.Context, in Input) error {
+func (u *usecase) UpdateTaskAfterTrain(ctx context.Context, in Input) error {
 	log := logger.FromContext(ctx)
 
 	if err := in.Validate(); err != nil {
@@ -70,12 +71,12 @@ func (u *usecase) UpdateTaskOnTrain(ctx context.Context, in Input) error {
 		}
 	}()
 
-	err = u.postgres.UpdateTaskStatusByID(
-		ctx,
-		in.ID,
-		string(domain.TaskStatusTraining),
-		string(domain.TaskStatusCreated),
-	)
+	if in.Error == nil {
+		err = u.postgres.UpdateTaskStatusByID(ctx, in.ID, domain.TaskStatusDone)
+	} else {
+		err = u.postgres.UpdateTaskStatusAndErrorByID(ctx, in.ID, domain.TaskStatusError, *in.Error)
+	}
+
 	if err != nil {
 		return fmt.Errorf("update task status: %w", err)
 	}

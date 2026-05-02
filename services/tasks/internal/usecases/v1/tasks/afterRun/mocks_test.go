@@ -2,7 +2,7 @@
 // github.com/vektra/mockery
 // template: matryer
 
-package tasksAfterTrain
+package tasksAfterRun
 
 import (
 	"context"

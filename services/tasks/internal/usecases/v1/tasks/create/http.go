@@ -1,32 +1,37 @@
 package tasksCreate
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/httpin"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpout"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	"github.com/google/uuid"
 )
 
-type Request struct {
-	Name         string         `json:"name" example:"Теплопроводность стержня"`
-	Description  string         `json:"description" example:"Теплопроводность железного стержня"`
-	Constants    map[string]any `json:"constants"`
-	EquationType string         `json:"equation_type" example:"heat"`
-} //	@name	CreateTaskRequest
+const maxUploadSize = 200 << 20 // 200 MB
+
+type TaskRequest struct {
+	Name        string  `json:"name" example:"Теплопроводность стержня"`
+	Description *string `json:"description,omitempty" example:"Теплопроводность железного стержня"`
+
+	Mode string `json:"mode" example:"train"`
+}
 
 type Response struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
-	Description string    `json:"description"`
+	Description *string   `json:"description,omitempty"`
 
-	Status    string         `json:"status"`
-	Constants map[string]any `json:"constants"`
+	Mode string `json:"mode"`
 
-	EquationType string `json:"equation_type"`
+	Status string `json:"status"`
 
 	CreatedAt time.Time `json:"created_at"`
 } //	@name	CreateTaskResponse
@@ -67,19 +72,70 @@ func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(ctx)
 	rh := httpout.NewHandler(w, log)
 
-	var req Request
-	if err := httpin.DecodeAndValidate(w, r, &req); err != nil {
-		rh.ErrorResponse(err, "failed to decode and validate HTTP request")
+	jsonStr := strings.TrimSpace(r.FormValue("data"))
+	if jsonStr == "" {
+		rh.ErrorResponse(errs.ErrInvalidArgument, "missing 'data' field with JSON metadata")
 		return
 	}
 
+	var taskReq TaskRequest
+	if err := json.Unmarshal([]byte(jsonStr), &taskReq); err != nil {
+		rh.ErrorResponse(
+			fmt.Errorf(
+				"%w: invalid JSON in 'data' field: %v",
+				errs.ErrInvalidArgument,
+				err,
+			),
+			"failed to decode and validate HTTP request",
+		)
+
+		return
+	}
+
+	mode, err := domain.NewTaskMode(taskReq.Mode)
+	if err != nil {
+		rh.ErrorResponse(
+			fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err),
+			"failed to decode and validate HTTP request",
+		)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		rh.ErrorResponse(
+			fmt.Errorf("%w: failed to parse multipart form: %v", errs.ErrInvalidArgument, err),
+			"request body must be multipart/form-data",
+		)
+		return
+	}
+	defer func() {
+		if err := r.MultipartForm.RemoveAll(); err != nil {
+			log.Err(err).Msg("remove multipart error")
+		}
+	}()
+
+	files, err := h.collectFiles(r, mode)
+	if err != nil {
+		rh.ErrorResponse(
+			err,
+			"failed to collect files from multipart/form-data",
+		)
+		return
+	}
+	defer func() {
+		for _, file := range files {
+			_ = file.File.Close()
+		}
+	}()
+
 	in := Input{
-		Name: req.Name,
+		Name:        taskReq.Name,
+		Description: taskReq.Description,
 
-		Description: req.Description,
-		Constants:   req.Constants,
+		Mode: mode,
 
-		EquationType: req.EquationType,
+		Files: files,
 	}
 
 	out, err := h.usecase.CreateTask(ctx, in)
@@ -94,11 +150,35 @@ func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		ID:          task.ID,
 		Name:        task.Name,
 		Description: task.Description,
-		Status:      string(task.Status),
 
-		Constants:    task.Constants,
-		EquationType: out.Equation.Type,
-		CreatedAt:    task.CreatedAt,
+		Mode: string(task.Mode),
+
+		Status: string(task.Status),
+
+		CreatedAt: task.CreatedAt,
 	}
 	rh.JsonResponse(res, http.StatusCreated)
+}
+
+func (h *HttpHandler) collectFiles(r *http.Request, mode domain.TaskMode) ([]domain.TaskFile, error) {
+	var files []domain.TaskFile
+
+	for _, filename := range mode.RequiredFiles() {
+		file, _, err := r.FormFile(filename)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"%w: failed to get requred file=%s: %v",
+				errs.ErrInvalidArgument,
+				filename,
+				err,
+			)
+		}
+
+		files = append(files, domain.TaskFile{
+			Name: filename,
+			File: file,
+		})
+	}
+
+	return files, nil
 }

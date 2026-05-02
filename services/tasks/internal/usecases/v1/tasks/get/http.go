@@ -14,12 +14,12 @@ import (
 type taskDto struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
-	Description string    `json:"description"`
+	Description *string   `json:"description,omitempty"`
 
-	Status    string         `json:"status"`
-	Constants map[string]any `json:"constants"`
+	Mode string `json:"mode"`
 
-	EquationType string `json:"equation_type"`
+	Status string  `json:"status"`
+	Error  *string `json:"error,omitempty"`
 
 	CreatedAt time.Time `json:"created_at"`
 } // @name TaskDTO
@@ -83,19 +83,21 @@ func (h *HttpHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tasks := out.TasksToEquation
+	tasks := out.Tasks
 	taskModels := make([]taskDto, 0, len(tasks))
 
-	for task, equation := range tasks {
+	for _, task := range tasks {
 		taskModel := taskDto{
 			ID:          task.ID,
 			Name:        task.Name,
 			Description: task.Description,
-			Status:      string(task.Status),
 
-			Constants:    task.Constants,
-			EquationType: equation.Type,
-			CreatedAt:    task.CreatedAt,
+			Mode: string(task.Mode),
+
+			Status: string(task.Status),
+			Error:  task.Error,
+
+			CreatedAt: task.CreatedAt,
 		}
 
 		taskModels = append(taskModels, taskModel)

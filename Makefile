@@ -24,6 +24,12 @@ tasks-env-up:
 tasks-env-down:
 	@docker compose down pinn-postgres-tasks redis kafka
 
+solver-env-up:
+	@docker compose up -d kafka
+
+solver-env-down:
+	@docker compose down kafka
+
 env-cleanup:
 	@read -p "Очистить все volume файлы окружения? Опасность утери данных. [y/n]: " ans; \
 	if [ !"$$ans" = "y" ]; then \
@@ -133,3 +139,6 @@ tasks-run:
 
 tasks-shutdown:
 	@docker compose down pinn-tasks
+
+solver-run:
+	@docker compose up --build pinn-solver

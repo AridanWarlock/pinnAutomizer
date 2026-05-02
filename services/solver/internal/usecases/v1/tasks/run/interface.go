@@ -1,15 +1,14 @@
-package tasksOnTrain
+package tasksRun
 
 import (
 	"context"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
-
 	"github.com/google/uuid"
 )
 
 type Input struct {
-	ID uuid.UUID `validate:"required,uuid"`
+	TaskID uuid.UUID `validate:"required,uuid"`
 }
 
 func (i Input) Validate() error {
@@ -17,5 +16,5 @@ func (i Input) Validate() error {
 }
 
 type Usecase interface {
-	UpdateTaskOnTrain(ctx context.Context, in Input) error
+	RunTask(ctx context.Context, in Input) error
 }

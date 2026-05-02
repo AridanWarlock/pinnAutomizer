@@ -13,14 +13,14 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/indempotency"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/filestore"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/config"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/outbox"
-	tasksAfterTrain "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/afterTrain"
+	tasksAfterRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/afterRun"
 	tasksCreate "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/create"
 	tasksGet "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/get"
-	tasksOnTrain "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/onTrain"
-	tasksSolve "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/solve"
+	tasksRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/run"
 	"github.com/rs/zerolog"
 )
 
@@ -83,7 +83,7 @@ func AppRun(
 	redisAdapter := redis.NewRedis(redisClient)
 	redisIdempotencyStore := indempotency.NewStore(redisAdapter, time.Hour, 3*time.Minute)
 	// kafka producer
-	producer := kafka.NewWriter(cfg.KafkaWriter)
+	producer := kafka.NewWriter(cfg.KafkaWriter, log)
 	defer func() {
 		if err := producer.Close(); err != nil {
 			log.Error().Err(err).Msg("kafka producer shutdown error")
@@ -99,27 +99,28 @@ func AppRun(
 		log.Info().Msg("outbox writer shutdown gracefully")
 	}()
 	log.Info().Msg("outbox worker started")
+	// file store
+	fileStore := filestore.NewFileStore()
 
 	// usecases
 	// tasks
-	tasksCreateUsecase := tasksCreate.New(postgresAdapter, redisIdempotencyStore)
+	tasksCreateUsecase := tasksCreate.New(postgresAdapter, fileStore)
 	tasksGetUsecase := tasksGet.New(postgresAdapter)
-	tasksSolveUsecase := tasksSolve.New(postgresAdapter, redisIdempotencyStore)
-	tasksAfterTrainUsecase := tasksAfterTrain.New(postgresAdapter, redisIdempotencyStore)
-	tasksOnTrainUsecase := tasksOnTrain.New(postgresAdapter, redisIdempotencyStore)
+	tasksRunUsecase := tasksRun.New(postgresAdapter, redisIdempotencyStore)
+	tasksAfterTrainUsecase := tasksAfterRun.New(postgresAdapter, redisIdempotencyStore)
 
 	// http handlers
 	// tasks
 	tasksCreateHandler := tasksCreate.NewHttpHandler(tasksCreateUsecase)
 	tasksGetHandler := tasksGet.NewHttpHandler(tasksGetUsecase)
-	tasksSolveHandler := tasksSolve.NewHttpHandler(tasksSolveUsecase)
+	tasksRunHandler := tasksRun.NewHttpHandler(tasksRunUsecase)
 	// routers
 	apiV1Router := httpsrv.NewApiVersionRouter(httpsrv.ApiVersion(1))
 	apiV1Router.RegisterRoutes(
 		// tasks
 		tasksCreateHandler.Route(),
 		tasksGetHandler.Route(),
-		tasksSolveHandler.Route(),
+		tasksRunHandler.Route(),
 	)
 	// http server
 	server := httpsrv.NewWithDefaultMiddlewares(
@@ -130,42 +131,22 @@ func AppRun(
 	// httpServer.RegisterSwagger()
 
 	// kafka consumers
-	// tasks
-	tasksOnTrainConsumer := tasksOnTrain.NewConsumer(tasksOnTrainUsecase, log)
-	tasksAfterTrainConsumer := tasksAfterTrain.NewConsumer(tasksAfterTrainUsecase, log)
-	// tasks-on-train
-	tasksOnTrainConsumeAdapter, err := kafka.NewReader(
-		cfg.KafkaReader,
-		"tasks.on.train",
-		kafka.StrategyAtLeastOnce,
-		log,
-		kafka.WithWriter(producer),
-	)
-	if err != nil {
-		return fmt.Errorf("tasks.on.train reader init: %w", err)
-	}
-	go func() {
-		err := tasksOnTrainConsumeAdapter.Run(ctx, tasksOnTrainConsumer.HandleMessage)
-		if err != nil {
-			log.Error().Err(err).Msg("tasks.on.train consume error")
-			return
-		}
-	}()
-	// tasks-after-train
+	// tasks-after-run
+	tasksAfterTrainConsumer := tasksAfterRun.NewConsumer(tasksAfterTrainUsecase, log)
 	tasksAfterTrainConsumeAdapter, err := kafka.NewReader(
 		cfg.KafkaReader,
-		"tasks.after.train",
+		"tasks.after.run",
 		kafka.StrategyAtLeastOnce,
 		log,
 		kafka.WithWriter(producer),
 	)
 	if err != nil {
-		return fmt.Errorf("tasks.after.train reader init: %w", err)
+		return fmt.Errorf("tasks.after.run reader init: %w", err)
 	}
 	go func() {
 		err := tasksAfterTrainConsumeAdapter.Run(ctx, tasksAfterTrainConsumer.HandleMessage)
 		if err != nil {
-			log.Error().Err(err).Msg("tasks.after.train consume error")
+			log.Error().Err(err).Msg("tasks.after.run consume error")
 			return
 		}
 	}()

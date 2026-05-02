@@ -155,6 +155,9 @@ services:
       - REDIS_POOL_TIMEOUT=${REDIS_POOL_TIMEOUT}
     volumes:
       - ${PROJECT_ROOT}/out/tasks/logs:/app/out/logs
+      # PINN data
+      - ${PROJECT_ROOT}/out/pinn/tasks/data:/tasks_data
+      - ${PROJECT_ROOT}/out/pinn/tasks/output:/tasks_output
     deploy:
       restart_policy:
         condition: on-failure
@@ -192,6 +195,36 @@ services:
     command: tcp-listen:${TASKS_POSTGRES_PORT},fork,reuseaddr tcp-connect:pinn-postgres-tasks:${TASKS_POSTGRES_PORT}
     ports:
       - "127.0.0.1:${TASKS_POSTGRES_PORT}:${TASKS_POSTGRES_PORT}"
+
+  pinn-solver:
+    build:
+      context: ${PROJECT_ROOT}
+      dockerfile: ${PROJECT_ROOT}/services/solver/cmd/Dockerfile
+    container_name: pinn-solver
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT}
+      # Logger
+      - LOGGER_ENVIRONMENT=${LOGGER_ENVIRONMENT}
+      - LOGGER_LEVEL=${LOGGER_LEVEL}
+      - LOGGER_FOLDER=/app/out/logs
+      # Kafka
+      - KAFKA_WRITER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_READER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_READER_GROUP_ID=pinn-automizer
+      # PINN runner
+      - PINN_RUNNER_IMAGE=pinn-runner-image:latest
+      - PINN_RUNNER_TIMEOUT=30m
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PROJECT_ROOT}/out/solver/logs:/app/out/logs
+      - ${PROJECT_ROOT}/out/pinn/tasks/data:/tasks_data
+      - ${PROJECT_ROOT}/out/pinn/tasks/output:/tasks_output
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
 
   swagger:
     build:

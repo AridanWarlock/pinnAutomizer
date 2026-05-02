@@ -8,6 +8,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/consumer"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/segmentio"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/rs/zerolog"
 )
 
@@ -83,6 +84,8 @@ func (r *Reader) Run(
 	ctx context.Context,
 	handler Handler,
 ) error {
+	ctx = logger.WithContext(ctx, r.log)
+
 	switch r.strategy {
 	case StrategyAtLeastOnce:
 		return r.runAtLeastOnce(ctx, handler)

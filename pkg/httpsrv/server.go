@@ -62,7 +62,7 @@ func (s *Server) RegisterApiRouters(routers ...*ApiVersionRouter) {
 
 func (s *Server) RegisterHandlers(handlers ...HttpHandler) {
 	for _, handler := range handlers {
-		s.mux.Handle(handler.Pattern, handler.Handler)
+		s.mux.Handle(handler.Handle())
 	}
 }
 

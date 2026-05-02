@@ -17,7 +17,7 @@ func (i Input) Validate() error {
 }
 
 type Output struct {
-	TasksToEquation map[*domain.Task]domain.Equation `json:"tasks_to_equation"`
+	Tasks []domain.Task
 }
 
 type Usecase interface {
