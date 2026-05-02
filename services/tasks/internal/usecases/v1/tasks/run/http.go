@@ -1,19 +1,17 @@
-package tasksSolve
+package tasksRun
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpin"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpout"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/google/uuid"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 )
-
-type Request struct {
-	TaskID    uuid.UUID      `json:"task_id"`
-	Constants map[string]any `json:"constants"`
-} // @name SolveTaskRequest
 
 type HttpHandler struct {
 	usecase Usecase
@@ -27,13 +25,13 @@ func NewHttpHandler(usecase Usecase) *HttpHandler {
 
 func (h *HttpHandler) Route() httpsrv.Route {
 	return httpsrv.Route{
-		Method:  http.MethodGet,
-		Path:    "/tasks/{id}/solve",
-		Handler: h.SolveTask,
+		Method:  http.MethodPost,
+		Path:    "/tasks/{id}/run",
+		Handler: h.RunTask,
 	}
 }
 
-// SolveTask 			godoc
+// RunTask 			godoc
 //
 //		@Summary		Отправить задачу на исполнение
 //		@Description	Отправить PINN задачу на исполнение
@@ -44,25 +42,28 @@ func (h *HttpHandler) Route() httpsrv.Route {
 //		@Failure		400		{object}	httpout.ErrorResponse	"Bad request"
 //		@Failure		500		{object}	httpout.ErrorResponse	"Internal server error"
 //		@Router			/tasks/{id}/solve 	[post]
-func (h *HttpHandler) SolveTask(w http.ResponseWriter, r *http.Request) {
+func (h *HttpHandler) RunTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 	rh := httpout.NewHandler(w, log)
 
-	var req Request
-	if err := httpin.DecodeAndValidate(w, r, &req); err != nil {
+	taskID, err := httpin.PathUuid(r, "id")
+	if err != nil {
 		rh.ErrorResponse(err, "failed to decode and validate HTTP request")
 		return
 	}
 
 	in := Input{
-		TaskID:    req.TaskID,
-		Constants: req.Constants,
+		TaskID: taskID,
 	}
 
-	err := h.usecase.SolveTask(ctx, in)
+	err = h.usecase.RunTask(ctx, in)
 	if err != nil {
-		rh.ErrorResponse(err, "failed to solve task")
+		if errors.Is(err, domain.ErrTaskAlreadyStarted) {
+			err = fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
+		}
+
+		rh.ErrorResponse(err, "failed to start train task")
 		return
 	}
 

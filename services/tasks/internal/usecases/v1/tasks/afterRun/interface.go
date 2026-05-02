@@ -1,4 +1,4 @@
-package tasksSolve
+package tasksAfterRun
 
 import (
 	"context"
@@ -9,11 +9,8 @@ import (
 )
 
 type Input struct {
-	TaskID uuid.UUID `validate:"required,uuid"`
-
-	Constants map[string]any `validate:"required"`
-
-	IdempotencyKey string `validate:"required"`
+	ID    uuid.UUID `validate:"required,uuid"`
+	Error *string
 }
 
 func (i Input) Validate() error {
@@ -21,5 +18,5 @@ func (i Input) Validate() error {
 }
 
 type Usecase interface {
-	SolveTask(cxt context.Context, in Input) error
+	UpdateTaskAfterTrain(ctx context.Context, in Input) error
 }

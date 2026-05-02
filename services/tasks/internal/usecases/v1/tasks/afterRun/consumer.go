@@ -1,4 +1,4 @@
-package tasksAfterTrain
+package tasksAfterRun
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 
 type Message struct {
 	TaskID uuid.UUID `json:"task_id"`
+	Error  *string   `json:"error,omitempty"`
 }
 
 type Consumer struct {
@@ -34,7 +35,8 @@ func (c *Consumer) HandleMessage(ctx context.Context, msg core.KafkaMessage) err
 	}
 
 	input := Input{
-		ID: message.TaskID,
+		ID:    message.TaskID,
+		Error: message.Error,
 	}
 
 	err := c.usecase.UpdateTaskAfterTrain(ctx, input)

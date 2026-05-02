@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
@@ -11,50 +12,51 @@ import (
 type TaskStatus string
 
 const (
-	TaskStatusCreated  TaskStatus = "created"
-	TaskStatusTraining TaskStatus = "training"
-	TaskStatusDone     TaskStatus = "done"
+	TaskStatusCreated TaskStatus = "created"
+	TaskStatusRunning TaskStatus = "running"
+	TaskStatusDone    TaskStatus = "done"
+	TaskStatusError   TaskStatus = "error"
 )
 
 type Task struct {
 	ID          uuid.UUID `validate:"required,uuid" json:"id"`
 	Name        string    `validate:"required" json:"name"`
-	Description string
+	Description *string   `json:"description,omitempty"`
 
-	Status    TaskStatus     `validate:"required,oneof=created training done" json:"status"`
-	Constants map[string]any `validate:"required" json:"constants"`
+	Mode TaskMode `validate:"required,oneof=train retrain predict" json:"mode"`
 
-	TrainingDataPath string `json:"training_data_path"`
-	ResultsPath      string `json:"results_path"`
+	Status TaskStatus `validate:"required,oneof=created running error done" json:"status"`
+	Error  *string    `json:"error,omitempty"`
 
-	UserID     uuid.UUID `validate:"required,uuid" json:"user_id"`
-	EquationID uuid.UUID `validate:"required,uuid" json:"equation_id"`
+	DataPath   string `json:"data_path"`
+	OutputPath string `json:"output_path"`
+
+	UserID uuid.UUID `validate:"required,uuid" json:"user_id"`
 
 	CreatedAt time.Time `validate:"required" json:"created_at"`
 }
 
 func NewTask(
 	name string,
-	description string,
-	status TaskStatus,
-	constants map[string]any,
 	userID uuid.UUID,
-	equationID uuid.UUID,
+	mode TaskMode,
+	description *string,
 ) (Task, error) {
+	id := uuid.New()
+
 	t := Task{
-		ID:          uuid.New(),
+		ID:          id,
 		Name:        name,
 		Description: description,
 
-		Status:    status,
-		Constants: constants,
+		Mode: mode,
 
-		TrainingDataPath: "training/" + userID.String(),
-		ResultsPath:      "",
+		Status: TaskStatusCreated,
 
-		UserID:     userID,
-		EquationID: equationID,
+		DataPath:   fmt.Sprintf("/tasks_data/%s/", id.String()),
+		OutputPath: fmt.Sprintf("/tasks_output/%s/", id.String()),
 
+		UserID:    userID,
 		CreatedAt: time.Now(),
 	}
 
@@ -62,6 +64,10 @@ func NewTask(
 		return Task{}, err
 	}
 	return t, nil
+}
+
+func (t Task) IsStarted() bool {
+	return t.Status != TaskStatusCreated
 }
 
 func (t Task) Validate() error {

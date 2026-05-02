@@ -74,6 +74,7 @@ func AppRun(
 		cfg.HTTP,
 		log,
 		middleware.Cors(),
+		middleware.CleanTrailingSlash(),
 		httpmv.RequestID(),
 		httpmv.Logger(log),
 		httpmv.TraceID(),
@@ -88,13 +89,22 @@ func AppRun(
 	}
 	tasksProxy, err := proxy.NewServiceProxy(cfg.App.TasksAddr)
 	if err != nil {
-		return fmt.Errorf("create auth proxy: %w", err)
+		return fmt.Errorf("create tasks proxy: %w", err)
 	}
 
 	httpServer.RegisterHandlers(
 		httpsrv.HttpHandler{
+			Pattern: "/api/v1/auth",
+			Handler: authProxy,
+		},
+		httpsrv.HttpHandler{
 			Pattern: "/api/v1/auth/",
 			Handler: authProxy,
+		},
+
+		httpsrv.HttpHandler{
+			Pattern: "/api/v1/tasks",
+			Handler: tasksProxy,
 		},
 		httpsrv.HttpHandler{
 			Pattern: "/api/v1/tasks/",

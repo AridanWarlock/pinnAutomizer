@@ -3,8 +3,6 @@ package tasksGet
 import (
 	"context"
 	"fmt"
-	"maps"
-	"slices"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/pagination"
@@ -17,7 +15,6 @@ import (
 
 type Postgres interface {
 	GetTasksByUserID(ctx context.Context, userID uuid.UUID, opts pagination.Options) ([]domain.Task, error)
-	GetEquationsByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.Equation, error)
 }
 
 type usecase struct {
@@ -44,25 +41,5 @@ func (u *usecase) GetTasks(ctx context.Context, in Input) (Output, error) {
 		return Output{}, fmt.Errorf("getting tasks by id from postgres: %w", err)
 	}
 
-	equationIDs := make(map[uuid.UUID]struct{})
-	for _, task := range tasks {
-		equationIDs[task.EquationID] = struct{}{}
-	}
-
-	equations, err := u.postgres.GetEquationsByIDs(ctx, slices.Collect(maps.Keys(equationIDs)))
-	if err != nil {
-		return Output{}, fmt.Errorf("getting equations from postgres: %w", err)
-	}
-
-	equationIDsToEquation := make(map[uuid.UUID]domain.Equation, len(equations))
-	for _, equation := range equations {
-		equationIDsToEquation[equation.ID] = equation
-	}
-
-	taskToEquations := make(map[*domain.Task]domain.Equation, len(tasks))
-	for _, task := range tasks {
-		taskToEquations[&task] = equationIDsToEquation[task.EquationID]
-	}
-
-	return Output{TasksToEquation: taskToEquations}, nil
+	return Output{Tasks: tasks}, nil
 }

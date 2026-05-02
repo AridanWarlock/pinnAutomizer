@@ -62,7 +62,7 @@ func (r *Repository) DeleteEventsByIDs(ctx context.Context, ids []uuid.UUID) err
 
 	query := r.sb.
 		Delete(EventsTable).
-		Where(sq.Eq{EquationsID: ids})
+		Where(sq.Eq{EventsID: ids})
 
 	tag, err := r.pool.Execx(ctx, query)
 	if err != nil {

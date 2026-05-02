@@ -1,16 +1,5 @@
 package postgres
 
-const EquationsTable = "equations"
-const (
-	EquationsID   = "id"
-	EquationsType = "type"
-)
-
-var EquationsColumns = []string{
-	EquationsID,
-	EquationsType,
-}
-
 const EventsTable = "events"
 const (
 	EventsID        = "id"
@@ -28,28 +17,28 @@ var EventsColumns = []string{
 
 const TasksTable = "tasks"
 const (
-	TasksID               = "id"
-	TasksName             = "name"
-	TasksDescription      = "description"
-	TasksStatus           = "status"
-	TasksConstants        = "constants"
-	TasksTrainingDataPath = "training_data_path"
-	TasksResultsPath      = "results_path"
-	TasksUserId           = "user_id"
-	TasksEquationId       = "equation_id"
-	TasksCreatedAt        = "created_at"
+	TasksID          = "id"
+	TasksName        = "name"
+	TasksDescription = "description"
+	TasksMode        = "mode"
+	TasksStatus      = "status"
+	TasksError       = "error"
+	TasksDataPath    = "data_path"
+	TasksOutputPath  = "output_path"
+	TasksUserId      = "user_id"
+	TasksCreatedAt   = "created_at"
 )
 
 var TasksColumns = []string{
 	TasksID,
 	TasksName,
 	TasksDescription,
+	TasksMode,
 	TasksStatus,
-	TasksConstants,
-	TasksTrainingDataPath,
-	TasksResultsPath,
+	TasksError,
+	TasksDataPath,
+	TasksOutputPath,
 	TasksUserId,
-	TasksEquationId,
 	TasksCreatedAt,
 }
 

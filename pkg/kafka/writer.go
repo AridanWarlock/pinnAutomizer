@@ -5,17 +5,20 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/segmentio"
+	"github.com/rs/zerolog"
 )
 
 type Writer struct {
 	writer *segmentio.Writer
+	log    zerolog.Logger
 }
 
-func NewWriter(cfg WriterConfig) *Writer {
+func NewWriter(cfg WriterConfig, log zerolog.Logger) *Writer {
 	return &Writer{
 		writer: segmentio.NewWriter(segmentio.WriterConfig{
 			Broker: cfg.Broker,
 		}),
+		log: log,
 	}
 }
 

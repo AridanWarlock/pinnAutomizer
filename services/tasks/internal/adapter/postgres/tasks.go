@@ -120,11 +120,32 @@ func (r *Repository) GetTaskByIDAndUserID(
 	return ToTaskModel(outRow), nil
 }
 
-func (r *Repository) UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status, oldStatus string) error {
+func (r *Repository) UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status domain.TaskStatus) error {
 	query := r.sb.
 		Update(TasksTable).
 		Set(TasksStatus, status).
-		Where(sq.Eq{TasksID: id, TasksStatus: oldStatus})
+		Where(sq.Eq{TasksID: id})
+
+	tag, err := r.pool.Execx(ctx, query)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf(
+			"task with id=%v: %w",
+			id,
+			errs.ErrNotFound,
+		)
+	}
+	return nil
+}
+
+func (r *Repository) UpdateTaskStatusAndErrorByID(ctx context.Context, id uuid.UUID, status domain.TaskStatus, errorMsg string) error {
+	query := r.sb.
+		Update(TasksTable).
+		Set(TasksStatus, status).
+		Set(TasksError, errorMsg).
+		Where(sq.Eq{TasksID: id})
 
 	tag, err := r.pool.Execx(ctx, query)
 	if err != nil {
