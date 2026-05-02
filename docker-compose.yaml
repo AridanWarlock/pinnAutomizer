@@ -213,6 +213,8 @@ services:
       - KAFKA_READER_GROUP_ID=pinn-automizer
       # PINN runner
       - PINN_RUNNER_IMAGE=pinn-runner-image:latest
+      - PINN_RUNNER_TASKS_DATA_VOLUME=tasks_data
+      - PINN_RUNNER_TASKS_OUTPUT_VOLUME=tasks_output
       - PINN_RUNNER_TIMEOUT=30m
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
