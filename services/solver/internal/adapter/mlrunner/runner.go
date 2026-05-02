@@ -16,9 +16,9 @@ import (
 type PinnRunner struct {
 	cli *client.Client
 
-	pinnImage         string
-	tasksDataVolume   string
-	tasksOutputVolume string
+	pinnImage          string
+	hostTasksDataDir   string
+	hostTasksOutputDir string
 
 	timeout time.Duration
 
@@ -34,9 +34,9 @@ func NewPinnRunner(cfg Config) (*PinnRunner, error) {
 	return &PinnRunner{
 		cli: cli,
 
-		pinnImage:         cfg.Image,
-		tasksDataVolume:   cfg.TasksDataVolume,
-		tasksOutputVolume: cfg.TasksOutputVolume,
+		pinnImage:          cfg.Image,
+		hostTasksDataDir:   cfg.HostTasksDataDir,
+		hostTasksOutputDir: cfg.HostTasksOutputDir,
 
 		timeout: cfg.Timeout,
 
@@ -75,18 +75,8 @@ func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []stri
 		Cmd:   command,
 	}
 
-	dataVolume, err := r.cli.VolumeInspect(ctx, "tasks_data", client.VolumeInspectOptions{})
-	if err != nil {
-		return 0, fmt.Errorf("failed to inspect tasks_data volume: %w", err)
-	}
-
-	outputVolume, err := r.cli.VolumeInspect(ctx, "tasks_output", client.VolumeInspectOptions{})
-	if err != nil {
-		return 0, fmt.Errorf("failed to inspect tasks_output volume: %w", err)
-	}
-
-	hostDataPath := filepath.Join(dataVolume.Volume.Mountpoint, task.TaskID.String())
-	hostOutputPath := filepath.Join(outputVolume.Volume.Mountpoint, task.TaskID.String())
+	hostDataPath := filepath.Join(r.hostTasksDataDir, task.TaskID.String())
+	hostOutputPath := filepath.Join(r.hostTasksOutputDir, task.TaskID.String())
 
 	mounts := []mount.Mount{
 		{
@@ -94,12 +84,18 @@ func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []stri
 			Source:   hostDataPath,
 			Target:   "/task_data",
 			ReadOnly: true,
+			BindOptions: &mount.BindOptions{
+				Propagation: mount.PropagationRPrivate,
+			},
 		},
 		{
 			Type:     mount.TypeBind,
 			Source:   hostOutputPath,
 			Target:   "/task_output",
 			ReadOnly: false,
+			BindOptions: &mount.BindOptions{
+				Propagation: mount.PropagationRPrivate,
+			},
 		},
 	}
 
