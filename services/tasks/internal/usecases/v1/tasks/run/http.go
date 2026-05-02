@@ -25,9 +25,10 @@ func NewHttpHandler(usecase Usecase) *HttpHandler {
 
 func (h *HttpHandler) Route() httpsrv.Route {
 	return httpsrv.Route{
-		Method:  http.MethodPost,
-		Path:    "/tasks/{id}/run",
-		Handler: h.RunTask,
+		Method:             http.MethodPost,
+		Path:               "/tasks/{id}/run",
+		Handler:            h.RunTask,
+		NeedIdempotencyKey: true,
 	}
 }
 
@@ -41,7 +42,7 @@ func (h *HttpHandler) Route() httpsrv.Route {
 //		@Success		204		"Задача успешно отправлена в очередь"
 //		@Failure		400		{object}	httpout.ErrorResponse	"Bad request"
 //		@Failure		500		{object}	httpout.ErrorResponse	"Internal server error"
-//		@Router			/tasks/{id}/solve 	[post]
+//		@Router			/tasks/{id}/run 	[post]
 func (h *HttpHandler) RunTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)

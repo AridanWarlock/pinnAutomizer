@@ -7,22 +7,26 @@ import (
 )
 
 type Route struct {
-	Method      string
-	Path        string
-	Handler     http.HandlerFunc
-	Middlewares []httpmv.Middleware
-	IsPublic    bool
+	Method             string
+	Path               string
+	Handler            http.HandlerFunc
+	Middlewares        []httpmv.Middleware
+	IsPublic           bool
+	NeedIdempotencyKey bool
 }
 
 func (r Route) WithMiddleware() http.Handler {
-	if r.IsPublic {
-		return httpmv.ChainMiddleware(
-			r.Handler,
-			r.Middlewares...,
-		)
+	middlewares := r.Middlewares
+
+	if r.NeedIdempotencyKey {
+		middlewares = append(middlewares, httpmv.IdKey())
 	}
+	if !r.IsPublic {
+		middlewares = append(middlewares, httpmv.AuthInfo())
+	}
+
 	return httpmv.ChainMiddleware(
 		r.Handler,
-		append(r.Middlewares, httpmv.AuthInfo())...,
+		middlewares...,
 	)
 }
