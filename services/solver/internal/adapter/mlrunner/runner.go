@@ -1,6 +1,7 @@
 package mlrunner
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"path/filepath"
@@ -73,6 +74,7 @@ func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []stri
 	containerConfig := &container.Config{
 		Image: r.pinnImage,
 		Cmd:   command,
+		Tty:   false,
 	}
 
 	hostDataPath := filepath.Join(r.hostTasksDataDir, task.TaskID.String())
@@ -114,7 +116,7 @@ func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []stri
 		Resources: container.Resources{
 			DeviceRequests: []container.DeviceRequest{deviceRequest},
 		},
-		AutoRemove:     true,
+		AutoRemove:     false,
 		ReadonlyRootfs: true,
 		SecurityOpt: []string{
 			"no-new-privileges:true",
@@ -132,6 +134,43 @@ func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []stri
 	if err != nil {
 		return 0, fmt.Errorf("failed to create container: %w", err)
 	}
+
+	logOptions := client.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true, // Следить за логами в реальном времени
+		Since:      "",   // Все логи с начала
+		Timestamps: true, // Добавить временные метки
+	}
+
+	// Создаём каналы для передачи вывода
+	stdoutCh := make(chan string, 100)
+	stderrCh := make(chan string, 100)
+	errCh := make(chan error, 2)
+
+	// Запускаем горутину для чтения логов
+	logsReader, err := r.cli.ContainerLogs(ctx, resp.ID, logOptions)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get container logs: %w", err)
+	}
+	defer logsReader.Close()
+
+	// Читаем логи в фоне
+	go func() {
+		scanner := bufio.NewScanner(logsReader)
+		for scanner.Scan() {
+			line := scanner.Text()
+			// Docker logs возвращает строки с префиксами (01 для stdout, 02 для stderr)
+			// Можно разобрать, но проще использовать отдельный метод
+			fmt.Printf("[CONTAINER LOG] %s\n", line)
+			stdoutCh <- line
+		}
+		if err := scanner.Err(); err != nil {
+			errCh <- err
+		}
+		close(stdoutCh)
+		close(stderrCh)
+	}()
 
 	_, err = r.cli.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{})
 	if err != nil {
