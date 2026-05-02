@@ -3,6 +3,7 @@ package mlrunner
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -74,24 +75,31 @@ func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []stri
 		Cmd:   command,
 	}
 
+	dataVolume, err := r.cli.VolumeInspect(ctx, "tasks_data", client.VolumeInspectOptions{})
+	if err != nil {
+		return 0, fmt.Errorf("failed to inspect tasks_data volume: %w", err)
+	}
+
+	outputVolume, err := r.cli.VolumeInspect(ctx, "tasks_output", client.VolumeInspectOptions{})
+	if err != nil {
+		return 0, fmt.Errorf("failed to inspect tasks_output volume: %w", err)
+	}
+
+	hostDataPath := filepath.Join(dataVolume.Volume.Mountpoint, task.TaskID.String())
+	hostOutputPath := filepath.Join(outputVolume.Volume.Mountpoint, task.TaskID.String())
+
 	mounts := []mount.Mount{
 		{
-			Type:     mount.TypeVolume,
-			Source:   "tasks_data",
+			Type:     mount.TypeBind,
+			Source:   hostDataPath,
 			Target:   "/task_data",
 			ReadOnly: true,
-			VolumeOptions: &mount.VolumeOptions{
-				Subpath: task.TaskID.String(),
-			},
 		},
 		{
-			Type:     mount.TypeVolume,
-			Source:   "tasks_output",
+			Type:     mount.TypeBind,
+			Source:   hostOutputPath,
 			Target:   "/task_output",
 			ReadOnly: false,
-			VolumeOptions: &mount.VolumeOptions{
-				Subpath: task.TaskID.String(),
-			},
 		},
 	}
 
