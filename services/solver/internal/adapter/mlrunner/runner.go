@@ -3,7 +3,6 @@ package mlrunner
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -16,7 +15,9 @@ import (
 type PinnRunner struct {
 	cli *client.Client
 
-	pinnImage string
+	pinnImage         string
+	tasksDataVolume   string
+	tasksOutputVolume string
 
 	timeout time.Duration
 
@@ -32,7 +33,9 @@ func NewPinnRunner(cfg Config) (*PinnRunner, error) {
 	return &PinnRunner{
 		cli: cli,
 
-		pinnImage: cfg.Image,
+		pinnImage:         cfg.Image,
+		tasksDataVolume:   cfg.TasksDataVolume,
+		tasksOutputVolume: cfg.TasksOutputVolume,
 
 		timeout: cfg.Timeout,
 
@@ -73,16 +76,22 @@ func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []stri
 
 	mounts := []mount.Mount{
 		{
-			Type:     mount.TypeBind,
-			Source:   filepath.Join("/tasks_data", task.TaskID.String()),
+			Type:     mount.TypeVolume,
+			Source:   "tasks_data",
 			Target:   "/task_data",
 			ReadOnly: true,
+			VolumeOptions: &mount.VolumeOptions{
+				Subpath: task.TaskID.String(),
+			},
 		},
 		{
-			Type:     mount.TypeBind,
-			Source:   filepath.Join("/tasks_output", task.TaskID.String()),
+			Type:     mount.TypeVolume,
+			Source:   "tasks_output",
 			Target:   "/task_output",
 			ReadOnly: false,
+			VolumeOptions: &mount.VolumeOptions{
+				Subpath: task.TaskID.String(),
+			},
 		},
 	}
 

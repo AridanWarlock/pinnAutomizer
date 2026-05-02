@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	sq "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 )
 
 func (r *Repository) GetAvailableEvents(ctx context.Context, batchSize int) ([]domain.Event, error) {
@@ -57,25 +57,25 @@ func (r *Repository) PublishEvent(ctx context.Context, event domain.Event) (doma
 	return ToEventModel(outRow), nil
 }
 
-func (r *Repository) DeleteEventsByIDs(ctx context.Context, ids []uuid.UUID) error {
+func (r *Repository) DeleteEventsByIdKeys(ctx context.Context, idKeys []core.IdempotencyKey) error {
 	log := logger.FromContext(ctx)
 
 	query := r.sb.
 		Delete(EventsTable).
-		Where(sq.Eq{EventsID: ids})
+		Where(sq.Eq{EventsIdKey: idKeys})
 
 	tag, err := r.pool.Execx(ctx, query)
 	if err != nil {
 		return err
 	}
 
-	expected := len(ids)
+	expected := len(idKeys)
 	actual := tag.RowsAffected()
 
 	if actual < expected {
 		log.Info().Int("deleted_count", actual).
 			Int("requested_count", expected).
-			Interface("ids", ids).
+			Interface("id_keys", idKeys).
 			Msg("delete events by id")
 	}
 

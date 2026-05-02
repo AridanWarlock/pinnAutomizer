@@ -2,14 +2,14 @@ package postgres
 
 const EventsTable = "events"
 const (
-	EventsID        = "id"
+	EventsIdKey     = "id_key"
 	EventsTopic     = "topic"
 	EventsData      = "data"
 	EventsCreatedAt = "created_at"
 )
 
 var EventsColumns = []string{
-	EventsID,
+	EventsIdKey,
 	EventsTopic,
 	EventsData,
 	EventsCreatedAt,

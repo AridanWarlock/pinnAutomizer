@@ -10,7 +10,6 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	"github.com/rs/zerolog"
 
-	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -21,7 +20,7 @@ const (
 
 type Postgres interface {
 	GetAvailableEvents(ctx context.Context, batchSize int) ([]domain.Event, error)
-	DeleteEventsByIDs(ctx context.Context, ids []uuid.UUID) error
+	DeleteEventsByIdKeys(ctx context.Context, idKeys []core.IdempotencyKey) error
 	InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error
 }
 
@@ -89,29 +88,29 @@ func (w *Worker) getAndPublishEvents(ctx context.Context) error {
 			Topic: event.Topic,
 			Value: event.Data,
 			Headers: map[string]string{
-				HeaderIdempotencyKey: event.ID.String(),
+				HeaderIdempotencyKey: event.IdKey.String(),
 			},
 		})
 	}
 
-	var deliveredEvents []uuid.UUID
+	var deliveredEvents []core.IdempotencyKey
 
 	switch err := w.writer.WriteMessages(ctx, msgs...).(type) {
 	case nil:
 		for _, event := range events {
-			deliveredEvents = append(deliveredEvents, event.ID)
+			deliveredEvents = append(deliveredEvents, event.IdKey)
 		}
 	case kafka.WriteErrors:
 		for i, event := range events {
 			if err[i] == nil {
-				deliveredEvents = append(deliveredEvents, event.ID)
+				deliveredEvents = append(deliveredEvents, event.IdKey)
 			}
 		}
 	default:
 		return fmt.Errorf("write messages to kafka: %w", err)
 	}
 
-	if err = w.postgres.DeleteEventsByIDs(ctx, deliveredEvents); err != nil {
+	if err = w.postgres.DeleteEventsByIdKeys(ctx, deliveredEvents); err != nil {
 		return fmt.Errorf("deleting sent events from postgres: %w", err)
 	}
 

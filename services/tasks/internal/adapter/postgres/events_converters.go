@@ -3,12 +3,12 @@ package postgres
 import (
 	"time"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-	"github.com/google/uuid"
 )
 
 type EventRow struct {
-	ID uuid.UUID `db:"id"`
+	IdKey core.IdempotencyKey `db:"id_key"`
 
 	Topic string `db:"topic"`
 	Data  []byte `db:"data"`
@@ -18,7 +18,7 @@ type EventRow struct {
 
 func (e EventRow) Values() []any {
 	return []any{
-		e.ID,
+		e.IdKey,
 		e.Topic,
 		e.Data,
 		e.CrestedAt,
@@ -27,7 +27,7 @@ func (e EventRow) Values() []any {
 
 func ToEventModel(r EventRow) domain.Event {
 	return domain.Event{
-		ID:        r.ID,
+		IdKey:     r.IdKey,
 		Topic:     r.Topic,
 		Data:      r.Data,
 		CreatedAt: r.CrestedAt,
@@ -36,7 +36,7 @@ func ToEventModel(r EventRow) domain.Event {
 
 func FromEventModel(e domain.Event) EventRow {
 	return EventRow{
-		ID:        e.ID,
+		IdKey:     e.IdKey,
 		Topic:     e.Topic,
 		Data:      e.Data,
 		CrestedAt: e.CreatedAt,

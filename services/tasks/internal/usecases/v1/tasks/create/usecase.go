@@ -2,7 +2,6 @@ package tasksCreate
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
@@ -79,29 +78,5 @@ func (u *usecase) createAndPublishTask(
 		return domain.Task{}, fmt.Errorf("store files: %w", err)
 	}
 
-	event, err := u.createTaskTrainEvent(task)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("create task train event in postgres: %w", err)
-	}
-
-	_, err = u.postgres.PublishEvent(ctx, event)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("publish event in postgres: %w", err)
-	}
-
 	return task, nil
-}
-
-func (u *usecase) createTaskTrainEvent(task domain.Task) (domain.Event, error) {
-	msg := domain.TrainMessage{
-		TaskID: task.ID,
-		Mode:   task.Mode,
-	}
-
-	jsonMsg, err := json.Marshal(msg)
-	if err != nil {
-		return domain.Event{}, fmt.Errorf("marshal train message: %w", err)
-	}
-
-	return domain.NewEvent("tasks.on.run", jsonMsg), nil
 }

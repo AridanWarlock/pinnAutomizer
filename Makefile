@@ -1,7 +1,13 @@
 include .env
 export
 
-export PROJECT_ROOT=$(shell pwd)
+ifeq ($(OS),Windows_NT)
+    PROJECT_ROOT := $(shell cd)
+    PROJECT_ROOT := $(subst \,/,$(PROJECT_ROOT))
+else
+    PROJECT_ROOT := $(shell pwd)
+endif
+export PROJECT_ROOT
 
 ps:
 	@docker ps

@@ -79,7 +79,7 @@ func (u *usecase) RunTask(ctx context.Context, in Input) error {
 	}()
 
 	err = u.postgres.InTransaction(ctx, func(ctx context.Context) error {
-		return u.createAndPublishEvent(ctx, in.TaskID, auth.UserID)
+		return u.createAndPublishEvent(ctx, in.TaskID, auth.UserID, idKey)
 	})
 	if err != nil {
 		return err
@@ -94,7 +94,11 @@ func (u *usecase) RunTask(ctx context.Context, in Input) error {
 	return nil
 }
 
-func (u *usecase) createAndPublishEvent(ctx context.Context, taskID, userID uuid.UUID) error {
+func (u *usecase) createAndPublishEvent(
+	ctx context.Context,
+	taskID, userID uuid.UUID,
+	idKey core.IdempotencyKey,
+) error {
 	task, err := u.postgres.GetTaskByIDAndUserID(ctx, taskID, userID)
 	if err != nil {
 		return fmt.Errorf("getting task by id and user id: %w", err)
@@ -108,7 +112,7 @@ func (u *usecase) createAndPublishEvent(ctx context.Context, taskID, userID uuid
 		return fmt.Errorf("update task status in postgres: %w", err)
 	}
 
-	event, err := u.createRunTaskEvent(task)
+	event, err := u.createRunTaskEvent(task, idKey)
 	if err != nil {
 		return fmt.Errorf("create solve task event: %w", err)
 	}
@@ -121,7 +125,7 @@ func (u *usecase) createAndPublishEvent(ctx context.Context, taskID, userID uuid
 	return nil
 }
 
-func (u *usecase) createRunTaskEvent(task domain.Task) (domain.Event, error) {
+func (u *usecase) createRunTaskEvent(task domain.Task, idKey core.IdempotencyKey) (domain.Event, error) {
 	msg, err := domain.NewRunTaskMessage(task)
 	if err != nil {
 		return domain.Event{}, fmt.Errorf("create run task message: %w", err)
@@ -132,5 +136,10 @@ func (u *usecase) createRunTaskEvent(task domain.Task) (domain.Event, error) {
 		return domain.Event{}, fmt.Errorf("marshal run task message: %w", err)
 	}
 
-	return domain.NewEvent("tasks.on.run", jsonMsg), nil
+	event, err := domain.NewEvent(idKey, "tasks.on.run", jsonMsg)
+	if err != nil {
+		return domain.Event{}, fmt.Errorf("create event: %w", err)
+	}
+
+	return event, nil
 }

@@ -156,8 +156,8 @@ services:
     volumes:
       - ${PROJECT_ROOT}/out/tasks/logs:/app/out/logs
       # PINN data
-      - ${PROJECT_ROOT}/out/pinn/tasks/data:/tasks_data
-      - ${PROJECT_ROOT}/out/pinn/tasks/output:/tasks_output
+      - tasks_data:/tasks_data
+      - tasks_output:/tasks_output
     deploy:
       restart_policy:
         condition: on-failure
@@ -217,8 +217,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${PROJECT_ROOT}/out/solver/logs:/app/out/logs
-      - ${PROJECT_ROOT}/out/pinn/tasks/data:/tasks_data
-      - ${PROJECT_ROOT}/out/pinn/tasks/output:/tasks_output
+      - tasks_data:/tasks_data
+      - tasks_output:/tasks_output
     deploy:
       restart_policy:
         condition: on-failure
@@ -285,3 +285,18 @@ services:
     environment:
       - KAFKA_CLUSTERS_0_NAME=local
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9094
+
+
+volumes:
+  tasks_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PROJECT_ROOT}/out/pinn/tasks/data
+      o: bind
+  tasks_output:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PROJECT_ROOT}/out/pinn/tasks/output
+      o: bind

@@ -26,6 +26,10 @@ func (k IdempotencyKey) ToRedisKey() string {
 	return string("idemp:" + k)
 }
 
+func (k IdempotencyKey) String() string {
+	return string(k)
+}
+
 func (k IdempotencyKey) WithContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, idempotencyKeyKey{}, k)
 }
