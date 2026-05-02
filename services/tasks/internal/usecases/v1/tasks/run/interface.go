@@ -10,8 +10,6 @@ import (
 
 type Input struct {
 	TaskID uuid.UUID `validate:"required,uuid"`
-
-	IdempotencyKey string `validate:"required"`
 }
 
 func (i Input) Validate() error {
