@@ -21,6 +21,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/outbox"
 	tasksAfterRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/afterRun"
 	tasksCreate "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/create"
+	tasksDelete "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/delete"
 	tasksGet "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/get"
 	tasksPlot "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/plot"
 	tasksResults "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/results"
@@ -118,6 +119,7 @@ func AppRun(
 	tasksResultsUsecase := tasksResults.New(postgresAdapter, zip)
 	tasksRunUsecase := tasksRun.New(postgresAdapter, redisIdempotencyStore)
 	tasksAfterTrainUsecase := tasksAfterRun.New(postgresAdapter, redisIdempotencyStore)
+	tasksDeleteUsecase := tasksDelete.New(postgresAdapter)
 
 	// http handlers
 	// tasks
@@ -126,6 +128,8 @@ func AppRun(
 	tasksPlotHandler := tasksPlot.NewHttpHandler(tasksPlotUsecase)
 	tasksResultHandler := tasksResults.NewHttpHandler(tasksResultsUsecase)
 	tasksRunHandler := tasksRun.NewHttpHandler(tasksRunUsecase)
+	tasksDeleteHandler := tasksDelete.NewHttpHandler(tasksDeleteUsecase)
+
 	// routers
 	apiV1Router := httpsrv.NewApiVersionRouter(httpsrv.ApiVersion(1))
 	apiV1Router.RegisterRoutes(
@@ -135,6 +139,7 @@ func AppRun(
 		tasksPlotHandler.Route(),
 		tasksResultHandler.Route(),
 		tasksRunHandler.Route(),
+		tasksDeleteHandler.Route(),
 	)
 	// http server
 	server := httpsrv.NewWithDefaultMiddlewares(

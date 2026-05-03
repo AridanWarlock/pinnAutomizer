@@ -1,32 +1,15 @@
-package tasksGet
+package tasksDelete
 
 import (
+	"fmt"
 	"net/http"
-	"time"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpin"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpout"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/google/uuid"
 )
-
-type taskDto struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description,omitempty"`
-
-	Mode string `json:"mode"`
-
-	Status string  `json:"status"`
-	Error  *string `json:"error,omitempty"`
-
-	CreatedAt time.Time `json:"created_at"`
-} // @name TaskDTO
-
-type Response struct {
-	Tasks []taskDto `json:"tasks"`
-} // @name GetTasksResponse
 
 type HttpHandler struct {
 	usecase Usecase
@@ -40,71 +23,50 @@ func NewHttpHandler(usecase Usecase) *HttpHandler {
 
 func (h *HttpHandler) Route() httpsrv.Route {
 	return httpsrv.Route{
-		Method:   http.MethodGet,
-		Path:     "/tasks",
-		Handler:  h.GetTasks,
+		Method:   http.MethodDelete,
+		Path:     "/tasks/{id}",
+		Handler:  h.DeleteTask,
 		IsPublic: false,
 	}
 }
 
-// GetTasks 			godoc
+// DeleteTask 			godoc
 //
 //		@Summary		Получить статус задач
 //		@Description	Получить статус  PINN задач по id
 //		@Tags			tasks
 //		@Accept			json
 //		@Produce		json
-//	 @Param          limit   query     int     false  "Количество записей"  default(100) minimum(1) maximum(100)
-//	 @Param          offset  query     int     false  "Смещение"            default(0)   minimum(0)
-//	 @Param          sort    query     string  false  "Поле сортировки"     Enums(created_at, name) default(created_at)
-//	 @Param          order   query     string  false  "Направление сортировки"         Enums(asc, desc) default(desc)
+//	 	@Param          limit   query     int     false  "Количество записей"  default(100) minimum(1) maximum(100)
+//	 	@Param          offset  query     int     false  "Смещение"            default(0)   minimum(0)
+//	 	@Param          sort    query     string  false  "Поле сортировки"     Enums(created_at, name) default(created_at)
+//	 	@Param          order   query     string  false  "Направление сортировки"         Enums(asc, desc) default(desc)
 //		@Success		200		{object}	Response					"GetTasksResponse информация о задачах"
 //		@Failure		400		{object}	httpout.ErrorResponse	"Bad request"
 //		@Failure		500		{object}	httpout.ErrorResponse	"Internal server error"
 //		@Router			/tasks 	[get]
-func (h *HttpHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
+func (h *HttpHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 	rh := httpout.NewHandler(w, log)
 
-	options, err := httpin.ParsePaginationOptions(r)
+	taskID, err := httpin.PathUuid(r, "id")
 	if err != nil {
-		rh.ErrorResponse(err, "failed to decode and validate HTTP request")
-		return
+		rh.ErrorResponse(
+			fmt.Errorf("%w: not valid task id in url", errs.ErrInvalidArgument),
+			"failed to parse task id from url",
+		)
 	}
 
 	in := Input{
-		Pagination: options,
+		TaskID: taskID,
 	}
 
-	out, err := h.usecase.GetTasks(ctx, in)
+	err = h.usecase.DeleteTask(ctx, in)
 	if err != nil {
 		rh.ErrorResponse(err, "failed to get tasks info")
 		return
 	}
 
-	tasks := out.Tasks
-	taskModels := make([]taskDto, 0, len(tasks))
-
-	for _, task := range tasks {
-		taskModel := taskDto{
-			ID:          task.ID,
-			Name:        task.Name,
-			Description: task.Description,
-
-			Mode: string(task.Mode),
-
-			Status: string(task.Status),
-			Error:  task.Error,
-
-			CreatedAt: task.CreatedAt,
-		}
-
-		taskModels = append(taskModels, taskModel)
-	}
-
-	res := Response{
-		Tasks: taskModels,
-	}
-	rh.JsonResponse(res, http.StatusOK)
+	rh.EmptyResponse(http.StatusNoContent)
 }

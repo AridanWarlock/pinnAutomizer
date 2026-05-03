@@ -75,8 +75,12 @@ func (t Task) IsEnded() bool {
 	case TaskStatusError, TaskStatusDone:
 		return true
 	}
-	
+
 	return false
+}
+
+func (t Task) IsRunning() bool {
+	return t.Status == TaskStatusRunning
 }
 
 func (t Task) Validate() error {
