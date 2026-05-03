@@ -42,6 +42,20 @@ func (r *Repository) GetTaskByID(ctx context.Context, id uuid.UUID) (domain.Task
 	return ToTaskModel(outRow), nil
 }
 
+func (r *Repository) GetTaskByIDAndUserID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (domain.Task, error) {
+	query := r.sb.
+		Select(TasksColumns...).
+		From(TasksTable).
+		Where(sq.Eq{TasksID: id, TasksUserId: userID})
+
+	var outRow TaskRow
+	if err := r.pool.Getx(ctx, &outRow, query); err != nil {
+		return domain.Task{}, err
+	}
+
+	return ToTaskModel(outRow), nil
+}
+
 func (r *Repository) GetTasksByUserID(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -101,23 +115,6 @@ func (r *Repository) GetTasksByIDs(
 		tasks[i] = ToTaskModel(row)
 	}
 	return tasks, nil
-}
-
-func (r *Repository) GetTaskByIDAndUserID(
-	ctx context.Context,
-	id uuid.UUID,
-	userID uuid.UUID,
-) (domain.Task, error) {
-	query := r.sb.
-		Select(TasksColumns...).
-		From(TasksTable).
-		Where(sq.Eq{TasksID: id, TasksUserId: userID})
-
-	var outRow TaskRow
-	if err := r.pool.Getx(ctx, &outRow, query); err != nil {
-		return domain.Task{}, err
-	}
-	return ToTaskModel(outRow), nil
 }
 
 func (r *Repository) UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status domain.TaskStatus) error {

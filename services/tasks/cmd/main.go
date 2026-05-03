@@ -14,12 +14,16 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/indempotency"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/filestore"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/filewriter"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/postgres"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/zipper"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/config"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/outbox"
 	tasksAfterRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/afterRun"
 	tasksCreate "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/create"
 	tasksGet "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/get"
+	tasksPlot "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/plot"
+	tasksResults "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/results"
 	tasksRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/run"
 	"github.com/rs/zerolog"
 )
@@ -101,11 +105,17 @@ func AppRun(
 	log.Info().Msg("outbox worker started")
 	// file store
 	fileStore := filestore.NewFileStore()
+	// zipper
+	zip := zipper.NewZipper()
+	// file writer
+	fileWriter := filewriter.NewFileWriter()
 
 	// usecases
 	// tasks
 	tasksCreateUsecase := tasksCreate.New(postgresAdapter, fileStore)
 	tasksGetUsecase := tasksGet.New(postgresAdapter)
+	tasksPlotUsecase := tasksPlot.New(postgresAdapter, fileWriter)
+	tasksResultsUsecase := tasksResults.New(postgresAdapter, zip)
 	tasksRunUsecase := tasksRun.New(postgresAdapter, redisIdempotencyStore)
 	tasksAfterTrainUsecase := tasksAfterRun.New(postgresAdapter, redisIdempotencyStore)
 
@@ -113,6 +123,8 @@ func AppRun(
 	// tasks
 	tasksCreateHandler := tasksCreate.NewHttpHandler(tasksCreateUsecase)
 	tasksGetHandler := tasksGet.NewHttpHandler(tasksGetUsecase)
+	tasksPlotHandler := tasksPlot.NewHttpHandler(tasksPlotUsecase)
+	tasksResultHandler := tasksResults.NewHttpHandler(tasksResultsUsecase)
 	tasksRunHandler := tasksRun.NewHttpHandler(tasksRunUsecase)
 	// routers
 	apiV1Router := httpsrv.NewApiVersionRouter(httpsrv.ApiVersion(1))
@@ -120,6 +132,8 @@ func AppRun(
 		// tasks
 		tasksCreateHandler.Route(),
 		tasksGetHandler.Route(),
+		tasksPlotHandler.Route(),
+		tasksResultHandler.Route(),
 		tasksRunHandler.Route(),
 	)
 	// http server
