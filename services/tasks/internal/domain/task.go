@@ -70,6 +70,15 @@ func (t Task) IsStarted() bool {
 	return t.Status != TaskStatusCreated
 }
 
+func (t Task) IsEnded() bool {
+	switch t.Status {
+	case TaskStatusError, TaskStatusDone:
+		return true
+	}
+	
+	return false
+}
+
 func (t Task) Validate() error {
 	return validate.V.Struct(t)
 }
