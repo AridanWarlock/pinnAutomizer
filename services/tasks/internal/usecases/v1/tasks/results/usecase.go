@@ -52,7 +52,17 @@ func (u *usecase) DownloadTaskResults(ctx context.Context, in Input) error {
 		return fmt.Errorf("%w: task in progress", errs.ErrInvalidArgument)
 	}
 
-	if err := u.zipper.ZipFiles(task.OutputPath, in.Writer); err != nil {
+	var dir string
+	switch in.DownloadType {
+	case DownloadTypeData:
+		dir = task.DataPath
+	case DownloadTypeOutput:
+		dir = task.OutputPath
+	default:
+		panic(fmt.Sprintf("unexpected download type %s", in.DownloadType))
+	}
+
+	if err := u.zipper.ZipFiles(dir, in.Writer); err != nil {
 		return fmt.Errorf("zip output files: %w", err)
 	}
 
