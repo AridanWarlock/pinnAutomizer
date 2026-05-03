@@ -157,3 +157,25 @@ func (r *Repository) UpdateTaskStatusAndErrorByID(ctx context.Context, id uuid.U
 	}
 	return nil
 }
+
+func (r *Repository) DeleteTaskByIDAndUserID(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
+	query := r.sb.
+		Delete(TasksTable).
+		Where(sq.Eq{
+			TasksID:     id,
+			TasksUserId: userID,
+		})
+
+	tag, err := r.pool.Execx(ctx, query)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf(
+			"task with id=%v: %w",
+			id,
+			errs.ErrNotFound,
+		)
+	}
+	return nil
+}
