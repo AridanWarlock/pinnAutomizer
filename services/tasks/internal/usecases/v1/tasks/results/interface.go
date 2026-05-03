@@ -8,9 +8,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type DownloadType string
+
+const (
+	DownloadTypeOutput DownloadType = "output"
+	DownloadTypeData   DownloadType = "data"
+)
+
 type Input struct {
-	TaskID uuid.UUID `validate:"required,uuid"`
-	Writer io.Writer `validate:"required"`
+	TaskID       uuid.UUID    `validate:"required,uuid"`
+	Writer       io.Writer    `validate:"required"`
+	DownloadType DownloadType `validate:"required,oneof=output data"`
 }
 
 func (i Input) Validate() error {

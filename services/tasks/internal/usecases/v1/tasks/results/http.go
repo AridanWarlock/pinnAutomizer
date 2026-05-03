@@ -58,8 +58,9 @@ func (h *HttpHandler) DownloadTaskResults(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Disposition", "attachment; filename=\"results.zip\"")
 
 	in := Input{
-		TaskID: taskID,
-		Writer: w,
+		TaskID:       taskID,
+		Writer:       w,
+		DownloadType: DownloadType(r.URL.Query().Get("type")),
 	}
 
 	err = h.usecase.DownloadTaskResults(ctx, in)
