@@ -1,9 +1,10 @@
 package mlrunner
 
 import (
-	"bufio"
 	"context"
 	"fmt"
+	"github.com/rs/zerolog"
+	"io"
 	"path/filepath"
 	"sync"
 	"time"
@@ -24,9 +25,11 @@ type PinnRunner struct {
 	timeout time.Duration
 
 	mx sync.Mutex
+
+	log zerolog.Logger
 }
 
-func NewPinnRunner(cfg Config) (*PinnRunner, error) {
+func NewPinnRunner(cfg Config, log zerolog.Logger) (*PinnRunner, error) {
 	cli, err := client.New(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("create docker client: %w", err)
@@ -42,16 +45,21 @@ func NewPinnRunner(cfg Config) (*PinnRunner, error) {
 		timeout: cfg.Timeout,
 
 		mx: sync.Mutex{},
+
+		log: log,
 	}, nil
 }
 
 func (r *PinnRunner) Run(ctx context.Context, task domain.MlTask) (int, error) {
-	args := fmt.Sprintf("mod=%s", task.Mode)
+	ctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+
+	args := fmt.Sprintf("--mod=%s", task.Mode)
 
 	switch task.Mode {
 	case domain.MlTaskModeTrain, domain.MlTaskModeRetrain:
 	case domain.MlTaskModePredict:
-		args += fmt.Sprintf("checkpoint=%s", task.CheckpointFile)
+		args += fmt.Sprintf("--checkpoint=%s", task.CheckpointFile)
 	default:
 		return 0, domain.ErrInvalidMLTaskMode
 	}
@@ -71,10 +79,83 @@ func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []stri
 	}
 	defer r.mx.Unlock()
 
+	createOpts := r.setupContainer(task, command)
+	resp, err := r.cli.ContainerCreate(ctx, createOpts)
+	if err != nil {
+		return 0, fmt.Errorf("create container: %w", err)
+	}
+
+	go func() {
+		time.Sleep(1 * time.Second) // Даем контейнеру время запуститься
+		logs, _ := r.cli.ContainerLogs(ctx, resp.ID, client.ContainerLogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Follow:     true,
+		})
+		if logs != nil {
+			defer logs.Close()
+			io.Copy(r.log, logs)
+		}
+	}()
+
+	_, err = r.cli.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{})
+	if err != nil {
+		return 0, fmt.Errorf("failed to start container: %w", err)
+	}
+
+	wait := r.cli.ContainerWait(
+		ctx,
+		resp.ID,
+		client.ContainerWaitOptions{Condition: container.WaitConditionNotRunning},
+	)
+
+	select {
+	case err := <-wait.Error:
+		return -1, fmt.Errorf("run container: %w", err)
+	case res := <-wait.Result:
+		code := int(res.StatusCode)
+		if code != 0 {
+			return code, fmt.Errorf("run container: %v", res.Error)
+		}
+
+		return 0, nil
+	}
+}
+
+func (r *PinnRunner) setupContainer(task domain.MlTask, command []string) client.ContainerCreateOptions {
+	env := []string{
+		// Python
+		"PYTHONUNBUFFERED=1",
+		"PYTHONHASHSEED=42",
+		// Временные директории
+		"TMPDIR=/tmp",
+		"TEMP=/tmp",
+		"TMP=/tmp",
+		// Matplotlib
+		"MPLCONFIGDIR=/tmp/matplotlib",
+		"XDG_CACHE_HOME=/tmp/cache",
+		// Torch/Lightning
+		"TORCH_HOME=/tmp/torch",
+		"TORCH_EXTENSIONS_DIR=/tmp/torch_extensions",
+		// Lightning
+		"LIGHTNING_CACHE_DIR=/tmp/lightning_cache",
+		// Hugging Face
+		"HF_HOME=/tmp/huggingface",
+		"TRANSFORMERS_CACHE=/tmp/transformers",
+		"HUGGINGFACE_HUB_CACHE=/tmp/huggingface",
+		// TorchMetrics
+		"TORCHMETRICS_CACHE_DIR=/tmp/torchmetrics",
+		// Conda/Pip
+		"PIP_CACHE_DIR=/tmp/pip_cache",
+		"CONDA_PKGS_DIRS=/tmp/conda_pkgs",
+	}
+
 	containerConfig := &container.Config{
 		Image: r.pinnImage,
 		Cmd:   command,
 		Tty:   false,
+
+		Env: env,
 	}
 
 	hostDataPath := filepath.Join(r.hostTasksDataDir, task.TaskID.String())
@@ -97,6 +178,62 @@ func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []stri
 			ReadOnly: false,
 			BindOptions: &mount.BindOptions{
 				Propagation: mount.PropagationRPrivate,
+			},
+		},
+		{
+			Type:   mount.TypeTmpfs,
+			Target: "/tmp",
+			TmpfsOptions: &mount.TmpfsOptions{
+				SizeBytes: 1024 * 1024 * 1024, // 1 GB
+				Mode:      0777,
+			},
+		},
+		{
+			Type:   mount.TypeTmpfs,
+			Target: "/var/tmp",
+			TmpfsOptions: &mount.TmpfsOptions{
+				SizeBytes: 512 * 1024 * 1024, // 512 MB
+				Mode:      0777,
+			},
+		},
+		{
+			Type:   mount.TypeTmpfs,
+			Target: "/usr/tmp",
+			TmpfsOptions: &mount.TmpfsOptions{
+				SizeBytes: 512 * 1024 * 1024,
+				Mode:      0777,
+			},
+		},
+		{
+			Type:   mount.TypeTmpfs,
+			Target: "/root/.cache",
+			TmpfsOptions: &mount.TmpfsOptions{
+				SizeBytes: 1024 * 1024 * 1024, // 1 GB
+				Mode:      0777,
+			},
+		},
+		{
+			Type:   mount.TypeTmpfs,
+			Target: "/root/.config",
+			TmpfsOptions: &mount.TmpfsOptions{
+				SizeBytes: 100 * 1024 * 1024, // 100 MB
+				Mode:      0777,
+			},
+		},
+		{
+			Type:   mount.TypeTmpfs,
+			Target: "/root/.torch",
+			TmpfsOptions: &mount.TmpfsOptions{
+				SizeBytes: 512 * 1024 * 1024,
+				Mode:      0777,
+			},
+		},
+		{
+			Type:   mount.TypeTmpfs,
+			Target: "/dev/shm",
+			TmpfsOptions: &mount.TmpfsOptions{
+				SizeBytes: 1024 * 1024 * 1024, // 1 GB для shared memory
+				Mode:      0777,
 			},
 		},
 	}
@@ -130,73 +267,7 @@ func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []stri
 		Name:       fmt.Sprintf("pinn-solver-%s-%d", task.TaskID, time.Now().Unix()),
 	}
 
-	resp, err := r.cli.ContainerCreate(ctx, createOptions)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create container: %w", err)
-	}
-
-	logOptions := client.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     true, // Следить за логами в реальном времени
-		Since:      "",   // Все логи с начала
-		Timestamps: true, // Добавить временные метки
-	}
-
-	// Создаём каналы для передачи вывода
-	stdoutCh := make(chan string, 100)
-	stderrCh := make(chan string, 100)
-	errCh := make(chan error, 2)
-
-	// Запускаем горутину для чтения логов
-	logsReader, err := r.cli.ContainerLogs(ctx, resp.ID, logOptions)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get container logs: %w", err)
-	}
-	defer logsReader.Close()
-
-	// Читаем логи в фоне
-	go func() {
-		scanner := bufio.NewScanner(logsReader)
-		for scanner.Scan() {
-			line := scanner.Text()
-			// Docker logs возвращает строки с префиксами (01 для stdout, 02 для stderr)
-			// Можно разобрать, но проще использовать отдельный метод
-			fmt.Printf("[CONTAINER LOG] %s\n", line)
-			stdoutCh <- line
-		}
-		if err := scanner.Err(); err != nil {
-			errCh <- err
-		}
-		close(stdoutCh)
-		close(stderrCh)
-	}()
-
-	_, err = r.cli.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{})
-	if err != nil {
-		return 0, fmt.Errorf("failed to start container: %w", err)
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, r.timeout)
-	defer cancel()
-
-	wait := r.cli.ContainerWait(
-		ctx,
-		resp.ID,
-		client.ContainerWaitOptions{Condition: container.WaitConditionNotRunning},
-	)
-
-	select {
-	case err := <-wait.Error:
-		return -1, fmt.Errorf("run container: %w", err)
-	case res := <-wait.Result:
-		code := int(res.StatusCode)
-		if code != 0 {
-			return code, fmt.Errorf("run container: %s", res.Error)
-		}
-
-		return 0, nil
-	}
+	return createOptions
 }
 
 func (r *PinnRunner) Close() error {

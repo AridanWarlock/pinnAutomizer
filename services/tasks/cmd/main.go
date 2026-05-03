@@ -149,6 +149,7 @@ func AppRun(
 			log.Error().Err(err).Msg("tasks.after.run consume error")
 			return
 		}
+		log.Error().Err(err).Msg("tasks.after.run consume closed")
 	}()
 
 	return server.Run(ctx)

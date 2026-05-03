@@ -95,6 +95,7 @@ func (c *AtLeastOnceConsumer) consumeTopic(
 	reader AtLeastOnceReader,
 	handler Handler,
 ) error {
+	c.log.Debug().Str("topic", reader.GetTopic()).Msg("start consuming kafka topic")
 	for {
 		err := c.fetchAndHandle(ctx, reader, handler)
 		if err != nil {
@@ -117,6 +118,7 @@ func (c *AtLeastOnceConsumer) fetchAndHandle(ctx context.Context,
 		return err
 	}
 
+	c.log.Debug().Str("value", string(msg.Value)).Msg("handle kafka message")
 	err = handler(ctx, msg)
 	if err != nil {
 		if err = c.handleError(ctx, msg, err); err != nil {

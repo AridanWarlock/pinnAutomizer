@@ -30,6 +30,7 @@ func main() {
 	log.Info().Msg("logger configured")
 
 	err = AppRun(cfg, log)
+	//err = test(cfg, log)
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +48,7 @@ func AppRun(
 
 	// adapters
 	// pinn runner
-	runner, err := mlrunner.NewPinnRunner(cfg.PinnRunner)
+	runner, err := mlrunner.NewPinnRunner(cfg.PinnRunner, log)
 	if err != nil {
 		return fmt.Errorf("start pinn runner: %w", err)
 	}

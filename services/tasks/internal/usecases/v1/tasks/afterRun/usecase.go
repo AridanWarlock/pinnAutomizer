@@ -71,10 +71,12 @@ func (u *usecase) UpdateTaskAfterTrain(ctx context.Context, in Input) error {
 		}
 	}()
 
-	if in.Error == nil {
-		err = u.postgres.UpdateTaskStatusByID(ctx, in.ID, domain.TaskStatusDone)
-	} else {
+	log.Info().Msg("updating task after train")
+	if in.Error != nil {
+		log.Debug().Str("error", *in.Error).Msg("task failed train with err")
 		err = u.postgres.UpdateTaskStatusAndErrorByID(ctx, in.ID, domain.TaskStatusError, *in.Error)
+	} else {
+		err = u.postgres.UpdateTaskStatusByID(ctx, in.ID, domain.TaskStatusDone)
 	}
 
 	if err != nil {
