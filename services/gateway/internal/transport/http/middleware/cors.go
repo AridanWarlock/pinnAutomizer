@@ -10,8 +10,9 @@ import (
 
 func Cors() httpmv.Middleware {
 	allowedOrigins := map[string]struct{}{
-		"http://localhost:8080": {},
-		"http://0.0.0.0:8080":   {},
+		"http://localhost:8080":                      {},
+		"http://front.pinnauthomizer.netcraze.link":  {},
+		"https://front.pinnauthomizer.netcraze.link": {},
 	}
 
 	allowedMethods := strings.Join([]string{
