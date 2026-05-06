@@ -25,10 +25,8 @@ func NewWriter(cfg WriterConfig, log zerolog.Logger) *Writer {
 func (w *Writer) WriteMessages(ctx context.Context, msgs ...core.KafkaMessage) error {
 	messages := make([]segmentio.Message, len(msgs))
 	for i, msg := range msgs {
-		messages[i] = segmentio.NewMessage(
+		messages[i] = segmentio.NewProduceMessage(
 			msg.Topic,
-			msg.Partition,
-			msg.Offset,
 			msg.Key,
 			msg.Value,
 			msg.Headers,

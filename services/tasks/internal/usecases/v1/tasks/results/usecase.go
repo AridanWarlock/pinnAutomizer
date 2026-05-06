@@ -48,15 +48,14 @@ func (u *usecase) DownloadTaskResults(ctx context.Context, in Input) error {
 		return fmt.Errorf("getting tasks by id from postgres: %w", err)
 	}
 
-	if !task.IsEnded() {
-		return fmt.Errorf("%w: task in progress", errs.ErrInvalidArgument)
-	}
-
 	var dir string
 	switch in.DownloadType {
 	case DownloadTypeData:
 		dir = task.DataPath
 	case DownloadTypeOutput:
+		if !task.IsEnded() {
+			return fmt.Errorf("%w: task in progress", errs.ErrInvalidArgument)
+		}
 		dir = task.OutputPath
 	default:
 		panic(fmt.Sprintf("unexpected download type %s", in.DownloadType))

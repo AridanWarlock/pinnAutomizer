@@ -23,7 +23,7 @@ var _ Usecase = &MockUsecase{}
 //		// make and configure a mocked Usecase
 //		mockedUsecase := &MockUsecase{
 //			UpdateTaskAfterTrainFunc: func(ctx context.Context, in Input) error {
-//				panic("mock out the UpdateTaskAfterTrain method")
+//				panic("mock out the UpdateTaskOnRun method")
 //			},
 //		}
 //
@@ -49,9 +49,9 @@ type MockUsecase struct {
 }
 
 // UpdateTaskAfterTrain calls UpdateTaskAfterTrainFunc.
-func (mock *MockUsecase) UpdateTaskAfterTrain(ctx context.Context, in Input) error {
+func (mock *MockUsecase) UpdateTaskAfterRun(ctx context.Context, in Input) error {
 	if mock.UpdateTaskAfterTrainFunc == nil {
-		panic("MockUsecase.UpdateTaskAfterTrainFunc: method is nil but Usecase.UpdateTaskAfterTrain was just called")
+		panic("MockUsecase.UpdateTaskAfterTrainFunc: method is nil but Usecase.UpdateTaskOnRun was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context

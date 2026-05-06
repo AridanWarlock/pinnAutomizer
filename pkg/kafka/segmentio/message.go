@@ -16,7 +16,7 @@ type Message struct {
 	Headers Headers
 }
 
-func NewMessage(
+func NewConsumeMessage(
 	topic string,
 	partition int,
 	offset int64,
@@ -34,20 +34,34 @@ func NewMessage(
 	}
 }
 
+func NewProduceMessage(
+	topic string,
+	key []byte,
+	value []byte,
+	headers Headers,
+) Message {
+	return Message{
+		Topic:   topic,
+		Key:     key,
+		Value:   value,
+		Headers: headers,
+	}
+}
+
 func NewMessageFromKafka(msg kafka.Message) Message {
 	headers := make(map[string]string, len(msg.Headers))
 	for _, header := range msg.Headers {
 		headers[header.Key] = string(header.Value)
 	}
 
-	return NewMessage(
-		msg.Topic,
-		msg.Partition,
-		msg.Offset,
-		msg.Key,
-		msg.Value,
-		headers,
-	)
+	return Message{
+		Topic:     msg.Topic,
+		Partition: msg.Partition,
+		Offset:    msg.Offset,
+		Key:       msg.Key,
+		Value:     msg.Value,
+		Headers:   headers,
+	}
 }
 
 func (m Message) ToKafkaMessage() kafka.Message {

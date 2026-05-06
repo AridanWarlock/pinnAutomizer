@@ -9,6 +9,7 @@ import (
 
 type Input struct {
 	TaskID uuid.UUID `validate:"required,uuid"`
+	Mode   string    `validate:"required"`
 }
 
 func (i Input) Validate() error {

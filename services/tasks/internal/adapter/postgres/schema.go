@@ -25,6 +25,7 @@ const (
 	TasksError       = "error"
 	TasksDataPath    = "data_path"
 	TasksOutputPath  = "output_path"
+	TasksPlotPath    = "plot_path"
 	TasksUserId      = "user_id"
 	TasksCreatedAt   = "created_at"
 )
@@ -38,6 +39,7 @@ var TasksColumns = []string{
 	TasksError,
 	TasksDataPath,
 	TasksOutputPath,
+	TasksPlotPath,
 	TasksUserId,
 	TasksCreatedAt,
 }

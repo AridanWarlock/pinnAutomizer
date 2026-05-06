@@ -1,4 +1,4 @@
-package tasksAfterRun
+package tasksOnRun
 
 import (
 	"context"
@@ -9,8 +9,7 @@ import (
 )
 
 type Input struct {
-	ID    uuid.UUID `validate:"required,uuid"`
-	Error *string
+	ID uuid.UUID `validate:"required,uuid"`
 }
 
 func (i Input) Validate() error {
@@ -18,5 +17,5 @@ func (i Input) Validate() error {
 }
 
 type Usecase interface {
-	UpdateTaskAfterRun(ctx context.Context, in Input) error
+	UpdateTaskOnRun(ctx context.Context, in Input) error
 }

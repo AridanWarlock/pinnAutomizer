@@ -59,7 +59,7 @@ func (r *Repository) GetTaskByIDAndUserID(ctx context.Context, id uuid.UUID, use
 func (r *Repository) GetTasksByUserID(
 	ctx context.Context,
 	userID uuid.UUID,
-	opts pagination.Options,
+	opts *pagination.Options,
 ) ([]domain.Task, error) {
 	q := r.sb.Select(TasksColumns...).
 		From(TasksTable).
@@ -94,6 +94,19 @@ func (r *Repository) GetTasksByUserID(
 	return tasks, nil
 }
 
+func (r *Repository) GetTasksCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	q := r.sb.
+		Select("COUNT(*)").
+		From(TasksTable).
+		Where(sq.Eq{TasksUserId: userID})
+
+	var count int
+	if err := r.pool.Getx(ctx, &count, q); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (r *Repository) GetTasksByIDs(
 	ctx context.Context,
 	ids []uuid.UUID,
@@ -117,32 +130,32 @@ func (r *Repository) GetTasksByIDs(
 	return tasks, nil
 }
 
-func (r *Repository) UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status domain.TaskStatus) error {
+func (r *Repository) UpdateTask(ctx context.Context, task domain.Task) (domain.Task, error) {
 	query := r.sb.
 		Update(TasksTable).
-		Set(TasksStatus, status).
-		Where(sq.Eq{TasksID: id})
+		Set(TasksName, task.Name).
+		Set(TasksDescription, task.Description).
+		Set(TasksStatus, task.Status).
+		Set(TasksError, task.Error).
+		Set(TasksPlotPath, task.PlotPath).
+		Where(sq.Eq{TasksID: task.ID}).
+		Suffix("RETURNING " + strings.Join(TasksColumns, ","))
 
-	tag, err := r.pool.Execx(ctx, query)
-	if err != nil {
-		return err
+	var outRow TaskRow
+	if err := r.pool.Getx(ctx, &outRow, query); err != nil {
+		return domain.Task{}, err
 	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf(
-			"task with id=%v: %w",
-			id,
-			errs.ErrNotFound,
-		)
-	}
-	return nil
+	return ToTaskModel(outRow), nil
 }
 
-func (r *Repository) UpdateTaskStatusAndErrorByID(ctx context.Context, id uuid.UUID, status domain.TaskStatus, errorMsg string) error {
+func (r *Repository) UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, newStatus, oldStatus domain.TaskStatus) error {
 	query := r.sb.
 		Update(TasksTable).
-		Set(TasksStatus, status).
-		Set(TasksError, errorMsg).
-		Where(sq.Eq{TasksID: id})
+		Set(TasksStatus, newStatus).
+		Where(sq.Eq{
+			TasksID:     id,
+			TasksStatus: oldStatus,
+		})
 
 	tag, err := r.pool.Execx(ctx, query)
 	if err != nil {
@@ -150,8 +163,9 @@ func (r *Repository) UpdateTaskStatusAndErrorByID(ctx context.Context, id uuid.U
 	}
 	if tag.RowsAffected() == 0 {
 		return fmt.Errorf(
-			"task with id=%v: %w",
+			"task with id=%v and status=%v: %w",
 			id,
+			oldStatus,
 			errs.ErrNotFound,
 		)
 	}

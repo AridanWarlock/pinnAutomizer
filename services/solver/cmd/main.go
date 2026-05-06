@@ -71,9 +71,9 @@ func AppRun(
 	}()
 	log.Info().Msg("kafka producer connected")
 	// kafka reader
-	onRunReader, err := kafka.NewReader(
+	runQueueReader, err := kafka.NewReader(
 		cfg.KafkaReader,
-		"tasks.on.run",
+		"tasks.run.queue",
 		kafka.StrategyAtMostOnce,
 		log,
 	)
@@ -88,7 +88,7 @@ func AppRun(
 	// consumers
 	runConsumer := tasksRun.NewConsumer(runUsecase, writer)
 	go func() {
-		err = onRunReader.Run(ctx, runConsumer.HandleMessage)
+		err = runQueueReader.Run(ctx, runConsumer.HandleMessage)
 		if err != nil {
 			log.Error().Err(err).Msg("on run error")
 		}

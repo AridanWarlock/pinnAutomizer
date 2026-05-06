@@ -14,7 +14,8 @@ import (
 )
 
 type Postgres interface {
-	GetTasksByUserID(ctx context.Context, userID uuid.UUID, opts pagination.Options) ([]domain.Task, error)
+	GetTasksByUserID(ctx context.Context, userID uuid.UUID, opts *pagination.Options) ([]domain.Task, error)
+	GetTasksCount(ctx context.Context, userID uuid.UUID) (int, error)
 }
 
 type usecase struct {
@@ -41,5 +42,14 @@ func (u *usecase) GetTasks(ctx context.Context, in Input) (Output, error) {
 		return Output{}, fmt.Errorf("getting tasks by id from postgres: %w", err)
 	}
 
-	return Output{Tasks: tasks}, nil
+	total, err := u.postgres.GetTasksCount(ctx, auth.UserID)
+	if err != nil {
+		log.Error().Err(err).Msg("usecase: postgres.GetTasksCount")
+		return Output{}, fmt.Errorf("getting tasks count: %w", err)
+	}
+
+	return Output{
+		Tasks: tasks,
+		Total: total,
+	}, nil
 }

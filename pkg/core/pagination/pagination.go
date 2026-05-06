@@ -19,17 +19,17 @@ type Options struct {
 	sort   []SortField `validate:"dive,required"`
 }
 
-func NewOptions(opts ...Option) (Options, error) {
+func NewOptions(opts ...Option) (*Options, error) {
 	var o Options
 	for _, opt := range opts {
 		opt(&o)
 	}
 
 	if err := o.Validate(); err != nil {
-		return Options{}, err
+		return nil, err
 	}
 
-	return o, nil
+	return &o, nil
 }
 
 func (p *Options) Limit() *int {

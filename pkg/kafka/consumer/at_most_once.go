@@ -47,6 +47,7 @@ func (c *AtMostOnceConsumer) consume(
 ) error {
 	for {
 		msg, err := reader.ReadMessage(ctx)
+		c.log.Debug().Str("topic", msg.Topic).Msg("at most once: read message")
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				return nil

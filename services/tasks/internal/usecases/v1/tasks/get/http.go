@@ -1,31 +1,17 @@
 package tasksGet
 
 import (
-	"net/http"
-	"time"
-
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpin"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpout"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/google/uuid"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks"
+	"net/http"
 )
 
-type taskDto struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description,omitempty"`
-
-	Mode string `json:"mode"`
-
-	Status string  `json:"status"`
-	Error  *string `json:"error,omitempty"`
-
-	CreatedAt time.Time `json:"created_at"`
-} // @name TaskDTO
-
 type Response struct {
-	Tasks []taskDto `json:"tasks"`
+	Tasks []tasks.TaskDto `json:"tasks"`
+	Total int             `json:"total"`
 } // @name GetTasksResponse
 
 type HttpHandler struct {
@@ -83,28 +69,14 @@ func (h *HttpHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tasks := out.Tasks
-	taskModels := make([]taskDto, 0, len(tasks))
-
-	for _, task := range tasks {
-		taskModel := taskDto{
-			ID:          task.ID,
-			Name:        task.Name,
-			Description: task.Description,
-
-			Mode: string(task.Mode),
-
-			Status: string(task.Status),
-			Error:  task.Error,
-
-			CreatedAt: task.CreatedAt,
-		}
-
-		taskModels = append(taskModels, taskModel)
+	taskModels := make([]tasks.TaskDto, 0, len(out.Tasks))
+	for _, task := range out.Tasks {
+		taskModels = append(taskModels, tasks.ToDto(task))
 	}
 
 	res := Response{
 		Tasks: taskModels,
+		Total: out.Total,
 	}
 	rh.JsonResponse(res, http.StatusOK)
 }

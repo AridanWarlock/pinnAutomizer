@@ -17,8 +17,9 @@ type TaskRow struct {
 	Status domain.TaskStatus `db:"status"`
 	Error  *string           `db:"error"`
 
-	DataPath   string `db:"data_path"`
-	OutputPath string `db:"output_path"`
+	DataPath   string  `db:"data_path"`
+	OutputPath string  `db:"output_path"`
+	PlotPath   *string `db:"plot_path"`
 
 	UserID    uuid.UUID `db:"user_id"`
 	CreatedAt time.Time `db:"created_at"`
@@ -37,6 +38,7 @@ func (r TaskRow) Values() []any {
 
 		r.DataPath,
 		r.OutputPath,
+		r.PlotPath,
 
 		r.UserID,
 		r.CreatedAt,
@@ -56,6 +58,7 @@ func ToTaskModel(r TaskRow) domain.Task {
 
 		DataPath:   r.DataPath,
 		OutputPath: r.OutputPath,
+		PlotPath:   r.PlotPath,
 
 		UserID:    r.UserID,
 		CreatedAt: r.CreatedAt,
@@ -75,6 +78,7 @@ func FromTaskModel(t domain.Task) TaskRow {
 
 		DataPath:   t.DataPath,
 		OutputPath: t.OutputPath,
+		PlotPath:   t.PlotPath,
 
 		UserID:    t.UserID,
 		CreatedAt: t.CreatedAt,

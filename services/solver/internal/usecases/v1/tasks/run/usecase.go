@@ -29,8 +29,7 @@ func (u *usecase) RunTask(ctx context.Context, in Input) error {
 
 	task, err := domain.NewMlTask(
 		in.TaskID,
-		domain.MlTaskModeTrain,
-		nil,
+		in.Mode,
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)

@@ -23,10 +23,12 @@ type Reader struct {
 
 func NewReader(cfg ReaderConfig, topic string, maxBytes int) *Reader {
 	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:  []string{cfg.Broker},
-		GroupID:  cfg.GroupID,
-		Topic:    topic,
-		MaxBytes: maxBytes,
+		Brokers:        []string{cfg.Broker},
+		GroupID:        cfg.GroupID,
+		Topic:          topic,
+		StartOffset:    kafka.FirstOffset,
+		MaxBytes:       maxBytes,
+		CommitInterval: 0,
 	})
 
 	r := &Reader{

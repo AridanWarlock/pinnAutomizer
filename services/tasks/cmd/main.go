@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/fileservice"
+	tasksOnRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/onRun"
 	"os/signal"
 	"syscall"
 	"time"
@@ -64,7 +66,7 @@ func AppRun(
 
 	// adapters
 	// postgres
-	postgresAdapter, err := postgres.New(cfg.Postgres)
+	postgresAdapter, err := postgres.New(cfg.Postgres, log)
 	if err != nil {
 		return fmt.Errorf("postgres connect: %w", err)
 	}
@@ -110,6 +112,8 @@ func AppRun(
 	zip := zipper.NewZipper()
 	// file writer
 	fileWriter := filewriter.NewFileWriter()
+	// file service
+	fileService := fileservice.NewFileService()
 
 	// usecases
 	// tasks
@@ -118,8 +122,9 @@ func AppRun(
 	tasksPlotUsecase := tasksPlot.New(postgresAdapter, fileWriter)
 	tasksResultsUsecase := tasksResults.New(postgresAdapter, zip)
 	tasksRunUsecase := tasksRun.New(postgresAdapter, redisIdempotencyStore)
-	tasksAfterTrainUsecase := tasksAfterRun.New(postgresAdapter, redisIdempotencyStore)
-	tasksDeleteUsecase := tasksDelete.New(postgresAdapter)
+	tasksAfterRunUsecase := tasksAfterRun.New(postgresAdapter, fileService)
+	tasksOnRunUsecase := tasksOnRun.New(postgresAdapter)
+	tasksDeleteUsecase := tasksDelete.New(postgresAdapter, fileService)
 
 	// http handlers
 	// tasks
@@ -150,9 +155,29 @@ func AppRun(
 	// httpServer.RegisterSwagger()
 
 	// kafka consumers
+	// tasks-on-run
+	tasksOnRunConsumer := tasksOnRun.NewConsumer(tasksOnRunUsecase, log)
+	tasksOnRunConsumeAdapter, err := kafka.NewReader(
+		cfg.KafkaReader,
+		"tasks.on.run",
+		kafka.StrategyAtLeastOnce,
+		log,
+		kafka.WithWriter(producer),
+	)
+	if err != nil {
+		return fmt.Errorf("tasks.on.run reader init: %w", err)
+	}
+	go func() {
+		err := tasksOnRunConsumeAdapter.Run(ctx, tasksOnRunConsumer.HandleMessage)
+		if err != nil {
+			log.Error().Err(err).Msg("tasks.on.run consume error")
+			return
+		}
+		log.Error().Err(err).Msg("tasks.on.run consume closed")
+	}()
 	// tasks-after-run
-	tasksAfterTrainConsumer := tasksAfterRun.NewConsumer(tasksAfterTrainUsecase, log)
-	tasksAfterTrainConsumeAdapter, err := kafka.NewReader(
+	tasksAfterRunConsumer := tasksAfterRun.NewConsumer(tasksAfterRunUsecase, log)
+	tasksAfterRunConsumeAdapter, err := kafka.NewReader(
 		cfg.KafkaReader,
 		"tasks.after.run",
 		kafka.StrategyAtLeastOnce,
@@ -163,7 +188,7 @@ func AppRun(
 		return fmt.Errorf("tasks.after.run reader init: %w", err)
 	}
 	go func() {
-		err := tasksAfterTrainConsumeAdapter.Run(ctx, tasksAfterTrainConsumer.HandleMessage)
+		err := tasksAfterRunConsumeAdapter.Run(ctx, tasksAfterRunConsumer.HandleMessage)
 		if err != nil {
 			log.Error().Err(err).Msg("tasks.after.run consume error")
 			return

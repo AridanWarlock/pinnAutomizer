@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"path/filepath"
-
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	"github.com/rs/zerolog/log"
+	"io"
 
 	"github.com/google/uuid"
 )
@@ -53,15 +51,16 @@ func (u *usecase) DownloadTaskPlot(ctx context.Context, in Input) error {
 	if !task.IsEnded() {
 		return fmt.Errorf("%w: task in progress", errs.ErrInvalidArgument)
 	}
+	if task.PlotPath == nil {
+		return fmt.Errorf("%w: task without plot", errs.ErrInvalidArgument)
+	}
 
-	plotPath := filepath.Join(task.OutputPath, "fig.png")
-
-	if err := u.fileWriter.Write(plotPath, in.Writer); err != nil {
+	if err := u.fileWriter.Write(*task.PlotPath, in.Writer); err != nil {
 		if errors.Is(err, errs.ErrNotExists) {
 			return fmt.Errorf("%w: plot file not found: %v", errs.ErrInvalidArgument, err)
 		}
 
-		return fmt.Errorf("write png plot file: %w", err)
+		return fmt.Errorf("write pdf plot file: %w", err)
 	}
 
 	return nil

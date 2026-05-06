@@ -9,7 +9,7 @@ import (
 )
 
 type Input struct {
-	Pagination pagination.Options
+	Pagination *pagination.Options
 }
 
 func (i Input) Validate() error {
@@ -18,6 +18,7 @@ func (i Input) Validate() error {
 
 type Output struct {
 	Tasks []domain.Task
+	Total int
 }
 
 type Usecase interface {

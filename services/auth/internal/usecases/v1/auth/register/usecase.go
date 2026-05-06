@@ -3,6 +3,7 @@ package authRegister
 import (
 	"context"
 	"fmt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
@@ -13,7 +14,8 @@ type Postgres interface {
 	GetRoleByTitle(ctx context.Context, title string) (core.Role, error)
 	CreateUser(ctx context.Context, user domain.User) (domain.User, error)
 	CreateUsersRolesBatch(ctx context.Context, usersRoles []domain.UsersRoles) ([]domain.UsersRoles, error)
-	InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error
+
+	poolx.TxManager
 }
 
 type PasswordHasher interface {

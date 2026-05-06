@@ -14,6 +14,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type TxManager interface {
+	InTransaction(ctx context.Context, inTx func(context.Context) error) error
+}
+
 type txKey struct{}
 
 func toSqlErr(err error) error {

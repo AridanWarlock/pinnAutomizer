@@ -11,6 +11,28 @@ endif
 
 export PROJECT_ROOT
 
+.PHONY: ps \
+	kafka \
+	gateway-env-up gateway-env-down \
+	auth-env-up auth-env-down \
+	tasks-env-up tasks-env-down \
+	solver-env-up solver-env-down \
+	env-cleanup \
+	auth-postgres-port-forward auth-postgres-port-close \
+	tasks-postgres-port-forward tasks-postgres-port-close \
+	kafka-ui-up kafka-ui-down \
+	auth-goose-create auth-goose-up \
+	tasks-goose-create tasks-goose-up \
+	swagger-gen swagger-fmt \
+	mockery \
+	gateway-run gateway-shutdown \
+	auth-run auth-shutdown \
+	tasks-run tasks-shutdown \
+	solver-run solver-shutdown
+
+kafka:
+	@docker compose up kafka-init
+
 ps:
 	@docker ps
 
@@ -21,19 +43,19 @@ gateway-env-down:
 	@docker compose down redis
 
 auth-env-up:
-	@docker compose up -d pinn-postgres-auth redis kafka
+	@docker compose up -d pinn-postgres-auth redis
 
 auth-env-down:
-	@docker compose down pinn-postgres-auth redis kafka
+	@docker compose down pinn-postgres-auth redis
 
 tasks-env-up:
-	@docker compose up -d pinn-postgres-tasks redis kafka
+	@docker compose up -d pinn-postgres-tasks redis kafka-init
 
 tasks-env-down:
 	@docker compose down pinn-postgres-tasks redis kafka
 
 solver-env-up:
-	@docker compose up -d kafka
+	@docker compose up -d kafka-init
 
 solver-env-down:
 	@docker compose down kafka
@@ -150,3 +172,6 @@ tasks-shutdown:
 
 solver-run:
 	@docker compose up --build pinn-solver
+
+solver-shutdown:
+	@docker compose down pinn-solver

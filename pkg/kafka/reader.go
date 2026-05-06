@@ -148,7 +148,7 @@ func (r *Reader) runAtLeastOnce(
 			return fmt.Errorf("get idempotency key from headers: %w", err)
 		}
 
-		message := core.NewKafkaMessage(
+		message := core.NewConsumeKafkaMessage(
 			msg.Topic,
 			msg.Partition,
 			msg.Offset,
@@ -188,7 +188,7 @@ func (r *Reader) runAtMostOnce(
 	}()
 
 	handlerFunc := func(ctx context.Context, msg segmentio.Message) error {
-		message := core.NewKafkaMessage(
+		message := core.NewConsumeKafkaMessage(
 			msg.Topic,
 			msg.Partition,
 			msg.Offset,

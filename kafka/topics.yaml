@@ -1,0 +1,17 @@
+topics:
+  - name: tasks.run.queue
+    partitions: 1
+
+  - name: tasks.on.run
+    partitions: 1
+  - name: tasks.on.run.retry
+    partitions: 1
+  - name: tasks.on.run.dlq
+    partitions: 1
+
+  - name: tasks.after.run
+    partitions: 1
+  - name: tasks.after.run.retry
+    partitions: 1
+  - name: tasks.after.run.dlq
+    partitions: 1

@@ -17,7 +17,7 @@ type KafkaMessage struct {
 	Headers KafkaHeaders
 }
 
-func NewKafkaMessage(
+func NewConsumeKafkaMessage(
 	topic string,
 	partition int,
 	offset int64,
@@ -32,5 +32,19 @@ func NewKafkaMessage(
 		Key:       key,
 		Value:     value,
 		Headers:   headers,
+	}
+}
+
+func NewProduceKafkaMessage(
+	topic string,
+	key []byte,
+	value []byte,
+	headers KafkaHeaders,
+) KafkaMessage {
+	return KafkaMessage{
+		Topic:   topic,
+		Key:     key,
+		Value:   value,
+		Headers: headers,
 	}
 }

@@ -9,14 +9,14 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
 
-func ParsePaginationOptions(r *http.Request) (pagination.Options, error) {
+func ParsePaginationOptions(r *http.Request) (*pagination.Options, error) {
 	limit, err := QueryInt(r, "limit")
 	if err != nil {
-		return pagination.Options{}, err
+		return nil, err
 	}
 	offset, err := QueryInt(r, "offset")
 	if err != nil {
-		return pagination.Options{}, err
+		return nil, err
 	}
 	field := r.URL.Query().Get("sort")
 
@@ -27,25 +27,25 @@ func ParsePaginationOptions(r *http.Request) (pagination.Options, error) {
 	case "ASC":
 		dir = "ASC"
 	default:
-		return pagination.Options{}, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"invalid order: expected=[ASC, DESC] actual=%s",
 			orderStr,
 		)
 	}
 
-	opt := pagination.Option(func(opts *pagination.Options) {
-		pagination.WithLimit(limit)
-		pagination.WithOffset(offset)
+	opt := []pagination.Option{
+		pagination.WithLimit(limit),
+		pagination.WithOffset(offset),
 
 		pagination.WithSortFields(pagination.SortField{
 			Name:      field,
 			Direction: dir,
-		})
-	})
+		}),
+	}
 
-	opts, err := pagination.NewOptions(opt)
+	opts, err := pagination.NewOptions(opt...)
 	if err != nil {
-		return pagination.Options{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
+		return nil, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 	return opts, nil
 }

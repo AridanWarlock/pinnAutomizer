@@ -3,6 +3,7 @@ package tasksCreate
 import (
 	"context"
 	"fmt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
@@ -12,7 +13,7 @@ import (
 type Postgres interface {
 	CreateTask(ctx context.Context, task domain.Task) (domain.Task, error)
 	PublishEvent(ctx context.Context, event domain.Event) (domain.Event, error)
-	InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error
+	poolx.TxManager
 }
 
 type TaskFileStore interface {

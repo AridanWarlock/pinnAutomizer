@@ -117,6 +117,7 @@ func (c *AtLeastOnceConsumer) fetchAndHandle(ctx context.Context,
 		c.log.Error().Err(err).Msg("kafka_consumer: reader.FetchMessage")
 		return err
 	}
+	c.log.Debug().Str("topic", msg.Topic).Msg("at least once: read message")
 
 	c.log.Debug().Str("value", string(msg.Value)).Msg("handle kafka message")
 	err = handler(ctx, msg)

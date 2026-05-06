@@ -142,7 +142,7 @@ services:
       # Kafka
       - KAFKA_WRITER_BROKER=kafka:${KAFKA_PORT}
       - KAFKA_READER_BROKER=kafka:${KAFKA_PORT}
-      - KAFKA_READER_GROUP_ID=pinn-automizer
+      - KAFKA_READER_GROUP_ID=pinn-tasks-services
       # Redis
       - REDIS_ADDR=redis:${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -210,7 +210,7 @@ services:
       # Kafka
       - KAFKA_WRITER_BROKER=kafka:${KAFKA_PORT}
       - KAFKA_READER_BROKER=kafka:${KAFKA_PORT}
-      - KAFKA_READER_GROUP_ID=pinn-automizer
+      - KAFKA_READER_GROUP_ID=pinn-solver-services
       # PINN runner
       - PINN_RUNNER_IMAGE=pinn-runner-image:latest
       - PINN_RUNNER_HOST_TASKS_DATA_DIR=${PROJECT_ROOT}/out/pinn/tasks/data
@@ -272,10 +272,30 @@ services:
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
       - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
       - CLUSTER_ID="qt8ne_I6S6u_Tlh8p6x0og"
-      # Logs
       - KAFKA_LOG_DIRS=/var/lib/kafka/data
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=false
     volumes:
       - ${PROJECT_ROOT}/out/kafka:/var/lib/kafka/data
+    user: "1000:1000"
+    healthcheck:
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  kafka-init:
+    image: apache/kafka:4.1.2
+    container_name: pinn-env-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ${PROJECT_ROOT}/kafka/topics.yaml:/kafka/topics.yaml:ro
+      - ${PROJECT_ROOT}/kafka/init.sh:/kafka/init.sh:ro
+    entrypoint: [ "/bin/bash", "/kafka/init.sh" ]
+    restart: "no"
 
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2

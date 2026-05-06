@@ -3,16 +3,15 @@ package tasksCreate
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpout"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-	"github.com/google/uuid"
 )
 
 const maxUploadSize = 200 << 20 // 200 MB
@@ -25,15 +24,7 @@ type TaskRequest struct {
 }
 
 type Response struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description,omitempty"`
-
-	Mode string `json:"mode"`
-
-	Status string `json:"status"`
-
-	CreatedAt time.Time `json:"created_at"`
+	tasks.TaskDto
 } //	@name	CreateTaskResponse
 
 type HttpHandler struct {
@@ -147,15 +138,7 @@ func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	task := out.Task
 
 	res := Response{
-		ID:          task.ID,
-		Name:        task.Name,
-		Description: task.Description,
-
-		Mode: string(task.Mode),
-
-		Status: string(task.Status),
-
-		CreatedAt: task.CreatedAt,
+		TaskDto: tasks.ToDto(task),
 	}
 	rh.JsonResponse(res, http.StatusCreated)
 }

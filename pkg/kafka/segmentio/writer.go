@@ -14,8 +14,7 @@ type Writer struct {
 func NewWriter(cfg WriterConfig) *Writer {
 	return &Writer{
 		writer: &kafka.Writer{
-			Addr:     kafka.TCP(cfg.Broker),
-			Balancer: &kafka.LeastBytes{},
+			Addr: kafka.TCP(cfg.Broker),
 
 			RequiredAcks: kafka.RequireAll,
 			MaxAttempts:  5,

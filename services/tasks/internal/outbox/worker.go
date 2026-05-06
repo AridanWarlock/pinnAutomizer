@@ -3,6 +3,7 @@ package outbox
 import (
 	"context"
 	"fmt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
@@ -21,7 +22,7 @@ const (
 type Postgres interface {
 	GetAvailableEvents(ctx context.Context, batchSize int) ([]domain.Event, error)
 	DeleteEventsByIdKeys(ctx context.Context, idKeys []core.IdempotencyKey) error
-	InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error
+	poolx.TxManager
 }
 
 type Writer interface {

@@ -3,6 +3,7 @@ package mlrunner
 import (
 	"context"
 	"fmt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/rs/zerolog"
 	"io"
 	"path/filepath"
@@ -51,18 +52,14 @@ func NewPinnRunner(cfg Config, log zerolog.Logger) (*PinnRunner, error) {
 }
 
 func (r *PinnRunner) Run(ctx context.Context, task domain.MlTask) (int, error) {
+	if err := task.Validate(); err != nil {
+		return 0, fmt.Errorf("%w: validate task: %w", errs.ErrInvalidArgument, err)
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 
 	args := fmt.Sprintf("--mod=%s", task.Mode)
-
-	switch task.Mode {
-	case domain.MlTaskModeTrain, domain.MlTaskModeRetrain:
-	case domain.MlTaskModePredict:
-		args += fmt.Sprintf("--checkpoint=%s", task.CheckpointFile)
-	default:
-		return 0, domain.ErrInvalidMLTaskMode
-	}
 
 	command := []string{
 		"python",
@@ -253,7 +250,7 @@ func (r *PinnRunner) setupContainer(task domain.MlTask, command []string) client
 		Resources: container.Resources{
 			DeviceRequests: []container.DeviceRequest{deviceRequest},
 		},
-		AutoRemove:     false,
+		AutoRemove:     true,
 		ReadonlyRootfs: true,
 		SecurityOpt: []string{
 			"no-new-privileges:true",

@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"github.com/rs/zerolog"
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
@@ -22,9 +23,11 @@ type Config struct {
 type Repository struct {
 	pool poolx.Pool
 	sb   sq.StatementBuilderType
+
+	log zerolog.Logger
 }
 
-func New(cfg Config) (*Repository, error) {
+func New(cfg Config, log zerolog.Logger) (*Repository, error) {
 	p, err := poolx.New(poolx.Config{
 		User:     cfg.User,
 		Password: cfg.Password,
@@ -42,6 +45,8 @@ func New(cfg Config) (*Repository, error) {
 	return &Repository{
 		pool: p,
 		sb:   sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
+
+		log: log,
 	}, nil
 }
 

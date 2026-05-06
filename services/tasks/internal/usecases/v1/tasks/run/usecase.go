@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
@@ -14,10 +15,10 @@ import (
 
 type Postgres interface {
 	GetTaskByIDAndUserID(ctx context.Context, id, userID uuid.UUID) (domain.Task, error)
-	UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status domain.TaskStatus) error
+	UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, newStatus, oldStatus domain.TaskStatus) error
 	PublishEvent(ctx context.Context, event domain.Event) (domain.Event, error)
 
-	InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error
+	poolx.TxManager
 }
 
 type Redis interface {
@@ -107,7 +108,7 @@ func (u *usecase) createAndPublishEvent(
 		return domain.ErrTaskAlreadyStarted
 	}
 
-	err = u.postgres.UpdateTaskStatusByID(ctx, taskID, domain.TaskStatusRunning)
+	err = u.postgres.UpdateTaskStatusByID(ctx, taskID, domain.TaskStatusInQueue, domain.TaskStatusCreated)
 	if err != nil {
 		return fmt.Errorf("update task status in postgres: %w", err)
 	}
@@ -136,7 +137,7 @@ func (u *usecase) createRunTaskEvent(task domain.Task, idKey core.IdempotencyKey
 		return domain.Event{}, fmt.Errorf("marshal run task message: %w", err)
 	}
 
-	event, err := domain.NewEvent(idKey, "tasks.on.run", jsonMsg)
+	event, err := domain.NewEvent(idKey, "tasks.run.queue", jsonMsg)
 	if err != nil {
 		return domain.Event{}, fmt.Errorf("create event: %w", err)
 	}

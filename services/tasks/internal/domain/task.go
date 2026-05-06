@@ -13,6 +13,7 @@ type TaskStatus string
 
 const (
 	TaskStatusCreated TaskStatus = "created"
+	TaskStatusInQueue TaskStatus = "in_queue"
 	TaskStatusRunning TaskStatus = "running"
 	TaskStatusDone    TaskStatus = "done"
 	TaskStatusError   TaskStatus = "error"
@@ -25,11 +26,12 @@ type Task struct {
 
 	Mode TaskMode `validate:"required,oneof=train retrain predict" json:"mode"`
 
-	Status TaskStatus `validate:"required,oneof=created running error done" json:"status"`
+	Status TaskStatus `validate:"required,oneof=created in_queue running error done" json:"status"`
 	Error  *string    `json:"error,omitempty"`
 
-	DataPath   string `json:"data_path"`
-	OutputPath string `json:"output_path"`
+	DataPath   string  `json:"data_path"`
+	OutputPath string  `json:"output_path"`
+	PlotPath   *string `json:"plot_path,omitempty"`
 
 	UserID uuid.UUID `validate:"required,uuid" json:"user_id"`
 
@@ -55,6 +57,7 @@ func NewTask(
 
 		DataPath:   fmt.Sprintf("/tasks_data/%s/", id.String()),
 		OutputPath: fmt.Sprintf("/tasks_output/%s/", id.String()),
+		PlotPath:   nil,
 
 		UserID:    userID,
 		CreatedAt: time.Now(),
@@ -77,6 +80,10 @@ func (t Task) IsEnded() bool {
 	}
 
 	return false
+}
+
+func (t Task) InQueue() bool {
+	return t.Status == TaskStatusInQueue
 }
 
 func (t Task) IsRunning() bool {
