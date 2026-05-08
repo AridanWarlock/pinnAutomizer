@@ -3,12 +3,13 @@ package mlrunner
 import (
 	"context"
 	"fmt"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
-	"github.com/rs/zerolog"
 	"io"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	"github.com/rs/zerolog"
 
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 	"github.com/moby/moby/api/types/container"
@@ -235,20 +236,25 @@ func (r *PinnRunner) setupContainer(task domain.MlTask, command []string) client
 		},
 	}
 
-	deviceRequest := container.DeviceRequest{
-		Driver: "nvidia",
-		Count:  1,
-		Capabilities: [][]string{
-			{"gpu"},
-			{"compute", "utility"},
-		},
+	var deviceRequests []container.DeviceRequest
+	switch task.Mode {
+	case domain.MlTaskModeTrain, domain.MlTaskModeRetrain:
+		deviceRequests = append(deviceRequests, container.DeviceRequest{
+			Driver: "nvidia",
+			Count:  1,
+			Capabilities: [][]string{
+				{"gpu"},
+				{"compute", "utility"},
+			},
+		})
+	case domain.MlTaskModePredict:
 	}
 
 	hostConfig := &container.HostConfig{
 		NetworkMode: "none",
 		Mounts:      mounts,
 		Resources: container.Resources{
-			DeviceRequests: []container.DeviceRequest{deviceRequest},
+			DeviceRequests: deviceRequests,
 		},
 		AutoRemove:     true,
 		ReadonlyRootfs: true,

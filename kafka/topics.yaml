@@ -1,6 +1,8 @@
 topics:
   - name: tasks.run.queue
     partitions: 1
+  - name: tasks.predict.queue
+    partitions: 1
 
   - name: tasks.on.run
     partitions: 1

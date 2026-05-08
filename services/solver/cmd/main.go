@@ -30,7 +30,6 @@ func main() {
 	log.Info().Msg("logger configured")
 
 	err = AppRun(cfg, log)
-	//err = test(cfg, log)
 	if err != nil {
 		panic(err)
 	}
@@ -80,9 +79,18 @@ func AppRun(
 	if err != nil {
 		return fmt.Errorf("start on run kafka reader: %w", err)
 	}
+	predictQueueReader, err := kafka.NewReader(
+		cfg.KafkaReader,
+		"tasks.predict.queue",
+		kafka.StrategyAtMostOnce,
+		log,
+	)
+	if err != nil {
+		return fmt.Errorf("start on run kafka reader: %w", err)
+	}
 
 	// usecases
-	// solve
+	// tasks
 	runUsecase := tasksRun.New(runner)
 
 	// consumers
@@ -90,7 +98,13 @@ func AppRun(
 	go func() {
 		err = runQueueReader.Run(ctx, runConsumer.HandleMessage)
 		if err != nil {
-			log.Error().Err(err).Msg("on run error")
+			log.Error().Err(err).Msg("run queue error")
+		}
+	}()
+	go func() {
+		err = predictQueueReader.Run(ctx, runConsumer.HandleMessage)
+		if err != nil {
+			log.Error().Err(err).Msg("predict queue error")
 		}
 	}()
 

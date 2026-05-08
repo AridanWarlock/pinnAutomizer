@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
@@ -137,7 +138,17 @@ func (u *usecase) createRunTaskEvent(task domain.Task, idKey core.IdempotencyKey
 		return domain.Event{}, fmt.Errorf("marshal run task message: %w", err)
 	}
 
-	event, err := domain.NewEvent(idKey, "tasks.run.queue", jsonMsg)
+	var topic string
+	switch task.Mode {
+	case domain.TaskModeTrain, domain.TaskModeRetrain:
+		topic = "tasks.run.queue"
+	case domain.TaskModePredict:
+		topic = "tasks.predict.queue"
+	default:
+		return domain.Event{}, fmt.Errorf("unexpected task mode: %s", task.Mode)
+	}
+
+	event, err := domain.NewEvent(idKey, topic, jsonMsg)
 	if err != nil {
 		return domain.Event{}, fmt.Errorf("create event: %w", err)
 	}
