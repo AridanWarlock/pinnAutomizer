@@ -22,9 +22,6 @@ func NewWriter(cfg WriterConfig) *Writer {
 			Async:        false,
 			BatchSize:    100,
 			BatchTimeout: 10 * time.Millisecond,
-
-			WriteTimeout: 10 * time.Second,
-			ReadTimeout:  10 * time.Second,
 		},
 	}
 }

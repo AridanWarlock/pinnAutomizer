@@ -9,6 +9,7 @@ import (
 	_ "github.com/AridanWarlock/pinnAutomizer/auth/docs"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/config"
+	authCompromised "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/compromised"
 	authLogin "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/login"
 	authLogout "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/logout"
 	authMe "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/me"
@@ -16,6 +17,7 @@ import (
 	authRegister "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/register"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/password"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
@@ -98,7 +100,25 @@ func AppRun(
 	authMeUsecase := authMe.New(postgresAdapter)
 	authRegisterUsecase := authRegister.New(postgresAdapter, hasher)
 	authRefreshUsecase := authRefresh.New(postgresAdapter, redisAdapter, accessTokenGenerator)
+	authCompromisedUsecase := authCompromised.New(postgresAdapter, redisAdapter)
 
+	// consumers
+	authCompromisedConsumer := authCompromised.NewConsumer(authCompromisedUsecase)
+	authCompromisedReader, err := kafka.NewReader(
+		cfg.KafkaReader,
+		"auth.session.compromised",
+		kafka.StrategyAtMostOnce,
+		log,
+	)
+	if err != nil {
+		return fmt.Errorf("kafka init auth.session.compromised: %w", err)
+	}
+	go func() {
+		err := authCompromisedReader.Run(ctx, authCompromisedConsumer.HandleMessage)
+		if err != nil {
+			log.Err(err).Msg("kafka handle auth.session.compromised")
+		}
+	}()
 	// http handlers
 	// auth
 	authLoginHandler := authLogin.NewHttpHandler(authLoginUsecase)

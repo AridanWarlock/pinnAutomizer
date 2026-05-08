@@ -37,16 +37,16 @@ ps:
 	@docker ps
 
 gateway-env-up:
-	@docker compose up -d redis
+	@docker compose up -d redis kafka
 
 gateway-env-down:
-	@docker compose down redis
+	@docker compose down redis kafka
 
 auth-env-up:
-	@docker compose up -d pinn-postgres-auth redis
+	@docker compose up -d pinn-postgres-auth redis kafka
 
 auth-env-down:
-	@docker compose down pinn-postgres-auth redis
+	@docker compose down pinn-postgres-auth redis kafka
 
 tasks-env-up:
 	@docker compose up -d pinn-postgres-tasks redis kafka-init

@@ -19,6 +19,8 @@ services:
       - LOGGER_FOLDER=/app/out/logs
       # Tokens
       - JWT_SECRET=${JWT_SECRET}
+      # Kafka
+      - KAFKA_WRITER_BROKER=kafka:${KAFKA_PORT}
       # Redis
       - REDIS_ADDR=redis:${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -65,6 +67,9 @@ services:
       - POSTGRES_TIMEOUT=${AUTH_POSTGRES_TIMEOUT}
       # Tokens
       - JWT_SECRET=${JWT_SECRET}
+      # Kafka
+      - KAFKA_READER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_READER_GROUP_ID=pinn-auth-services
       # Redis
       - REDIS_ADDR=redis:${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -87,7 +92,7 @@ services:
   pinn-postgres-auth:
     image: postgres:18.1-alpine
     container_name: pinn-postgres-auth
-    command: ["postgres", "-c", "port=${AUTH_POSTGRES_PORT}"]
+    command: [ "postgres", "-c", "port=${AUTH_POSTGRES_PORT}" ]
     environment:
       POSTGRES_USER: ${AUTH_POSTGRES_USER}
       POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
@@ -168,7 +173,7 @@ services:
   pinn-postgres-tasks:
     image: postgres:18.1-bookworm
     container_name: pinn-postgres-tasks
-    command: ["postgres", "-c", "port=${TASKS_POSTGRES_PORT}"]
+    command: [ "postgres", "-c", "port=${TASKS_POSTGRES_PORT}" ]
     environment:
       POSTGRES_USER: ${TASKS_POSTGRES_USER}
       POSTGRES_PASSWORD: ${TASKS_POSTGRES_PASSWORD}
@@ -238,8 +243,8 @@ services:
         COPY --from=builder /go/bin/swag /usr/local/bin/swag
         WORKDIR /code
         ENTRYPOINT ["swag"]
-#    volumes:
-#      - ${PROJECT_ROOT}:/code
+  #    volumes:
+  #      - ${PROJECT_ROOT}:/code
 
   mockery:
     image: vektra/mockery:3.7
