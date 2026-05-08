@@ -3,6 +3,8 @@ package tasksCreate
 import (
 	"context"
 	"fmt"
+	"os"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
@@ -17,7 +19,8 @@ type Postgres interface {
 }
 
 type TaskFileStore interface {
-	Store(task domain.Task, files []domain.TaskFile) error
+	MkdirAll(name string, perm os.FileMode) error
+	Store(dir string, files []domain.TaskFile) error
 }
 
 type usecase struct {
@@ -74,7 +77,16 @@ func (u *usecase) createAndPublishTask(
 		return domain.Task{}, fmt.Errorf("create task in postgres: %w", err)
 	}
 
-	err = u.fileStore.Store(task, in.Files)
+	err = u.fileStore.MkdirAll(task.DataPath, 0755)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("create task data dir: %w", err)
+	}
+	err = u.fileStore.MkdirAll(task.OutputPath, 0755)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("create task out dir: %w", err)
+	}
+
+	err = u.fileStore.Store(task.DataPath, in.Files)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("store files: %w", err)
 	}
