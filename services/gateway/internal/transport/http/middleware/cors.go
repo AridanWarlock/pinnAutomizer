@@ -10,7 +10,6 @@ import (
 
 func Cors() httpmv.Middleware {
 	allowedOrigins := map[string]struct{}{
-		"http://localhost:3000":                         {},
 		"https://front.pinnautomizer.netcraze.link":     {},
 		"https://dev-front.pinnautomizer.netcraze.link": {},
 	}
