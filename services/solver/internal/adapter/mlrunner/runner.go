@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
@@ -26,8 +25,6 @@ type PinnRunner struct {
 
 	timeout time.Duration
 
-	mx sync.Mutex
-
 	log zerolog.Logger
 }
 
@@ -45,8 +42,6 @@ func NewPinnRunner(cfg Config, log zerolog.Logger) (*PinnRunner, error) {
 		hostTasksOutputDir: cfg.HostTasksOutputDir,
 
 		timeout: cfg.Timeout,
-
-		mx: sync.Mutex{},
 
 		log: log,
 	}, nil
@@ -72,11 +67,6 @@ func (r *PinnRunner) Run(ctx context.Context, task domain.MlTask) (int, error) {
 }
 
 func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []string) (int, error) {
-	if !r.mx.TryLock() {
-		return 0, domain.ErrPinnBusy
-	}
-	defer r.mx.Unlock()
-
 	createOpts := r.setupContainer(task, command)
 	resp, err := r.cli.ContainerCreate(ctx, createOpts)
 	if err != nil {

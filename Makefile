@@ -175,3 +175,9 @@ solver-run:
 
 solver-shutdown:
 	@docker compose down pinn-solver
+
+deploy:
+	@docker compose up -d --build
+
+undeploy:
+	@docker compose down
