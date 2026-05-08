@@ -1,5 +1,7 @@
 package domain
 
+import "fmt"
+
 type TaskMode string
 
 const (
@@ -17,16 +19,14 @@ func NewTaskMode(mode string) (TaskMode, error) {
 }
 
 func (m TaskMode) RequiredFiles() []string {
-	base := []string{"config.yaml", "functions.py"}
+	base := []string{"data.mat", "config.yaml", "functions.py"}
 	switch m {
 	case TaskModeTrain:
 		return append(base, "data.mat")
-	case TaskModePredict:
+	case TaskModePredict, TaskModeRetrain:
 		return append(base, "checkpoint.ckpt")
-	case TaskModeRetrain:
-		return append(base, "data.mat", "checkpoint.ckpt")
 	default:
-		return nil
+		panic(fmt.Sprintf("unexpected task mode: %s", m))
 	}
 }
 

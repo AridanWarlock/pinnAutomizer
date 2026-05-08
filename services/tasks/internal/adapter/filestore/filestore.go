@@ -16,14 +16,18 @@ func NewFileStore() *FileStore {
 	return &FileStore{}
 }
 
-func (s *FileStore) Store(task domain.Task, files []domain.TaskFile) error {
-	err := os.MkdirAll(filepath.Dir(task.DataPath), 0755)
+func (s *FileStore) MkdirAll(name string, perm os.FileMode) error {
+	return os.MkdirAll(name, perm)
+}
+
+func (s *FileStore) Store(dir string, files []domain.TaskFile) error {
+	err := s.MkdirAll(dir, 0755)
 	if err != nil {
 		return fmt.Errorf("failed to create task data dir: %w", err)
 	}
 
 	for _, file := range files {
-		if err := s.storeFile(task, file); err != nil {
+		if err := s.storeFile(dir, file); err != nil {
 			return err
 		}
 	}
@@ -31,8 +35,8 @@ func (s *FileStore) Store(task domain.Task, files []domain.TaskFile) error {
 	return nil
 }
 
-func (s *FileStore) storeFile(task domain.Task, file domain.TaskFile) error {
-	dstPath := filepath.Join(task.DataPath, file.Name)
+func (s *FileStore) storeFile(dir string, file domain.TaskFile) error {
+	dstPath := filepath.Join(dir, file.Name)
 
 	dst, err := os.Create(dstPath)
 	if err != nil {
