@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/segmentio/kafka-go"
@@ -27,6 +28,7 @@ func NewReader(cfg ReaderConfig, topic string, maxBytes int) *Reader {
 		GroupID:        cfg.GroupID,
 		Topic:          topic,
 		StartOffset:    kafka.FirstOffset,
+		MaxWait:        10 * time.Millisecond,
 		MaxBytes:       maxBytes,
 		CommitInterval: 0,
 	})

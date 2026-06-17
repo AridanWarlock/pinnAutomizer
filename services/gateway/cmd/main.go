@@ -14,6 +14,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpmv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
@@ -50,6 +51,16 @@ func AppRun(
 	defer cancel()
 
 	// adapters
+	// kafka writer
+	writer := kafka.NewWriter(cfg.KafkaWriter, log)
+	defer func() {
+		err := writer.Close()
+		if err != nil {
+			log.Error().Err(err).Msg("shutdown kafka writer error")
+			return
+		}
+		log.Info().Msg("writer closed gracefully")
+	}()
 	// redis
 	redisClient, err := goRedis.New(cfg.Redis)
 	if err != nil {
@@ -80,7 +91,12 @@ func AppRun(
 		httpmv.TraceID(),
 		httpmv.Recover(),
 		middleware.AuditInfo(),
-		middleware.Auth(cacheAside, accessTokenGenerator),
+		middleware.Auth(
+			cacheAside,
+			accessTokenGenerator,
+			writer,
+			"auth.session.compromised",
+		),
 	)
 
 	authProxy, err := proxy.NewServiceProxy(cfg.App.AuthAddr)

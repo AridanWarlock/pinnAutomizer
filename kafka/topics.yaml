@@ -1,4 +1,7 @@
 topics:
+  - name: auth.session.compromised
+    partitions: 1
+
   - name: tasks.run.queue
     partitions: 1
   - name: tasks.predict.queue

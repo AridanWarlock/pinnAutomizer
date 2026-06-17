@@ -107,3 +107,19 @@ func (r *Repository) RotateRefreshToken(
 	}
 	return nil
 }
+
+func (r *Repository) DeleteSessionByJti(ctx context.Context, jti core.Jti) error {
+	q := r.sb.Delete(RefreshTokensTable).
+		Where(sq.Eq{
+			RefreshTokensJti: uuid.UUID(jti),
+		})
+
+	tag, err := r.pool.Execx(ctx, q)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return errs.ErrNotFound
+	}
+	return nil
+}

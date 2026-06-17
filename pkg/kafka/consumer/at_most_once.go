@@ -58,6 +58,7 @@ func (c *AtMostOnceConsumer) consume(
 		}
 
 		err = handler(ctx, msg)
+		c.log.Debug().Str("topic", msg.Topic).Msg("at most once: handled message")
 		if err != nil {
 			c.log.Warn().Err(err).Msg("handle message error")
 		}
