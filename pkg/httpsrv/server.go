@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpmv"
 	"github.com/rs/zerolog"
@@ -77,7 +78,7 @@ func (s *Server) Run(ctx context.Context) error {
 		IdleTimeout:  s.cfg.IdleTimeout,
 	}
 
-	ch := make(chan error)
+	ch := make(chan error, 1)
 
 	go func() {
 		defer close(ch)
@@ -99,16 +100,22 @@ func (s *Server) Run(ctx context.Context) error {
 	case <-ctx.Done():
 		s.log.Warn().Msg("shutdown HTTP server...")
 
-		shutdownCtx, cancel := context.WithTimeout(ctx, s.cfg.ShutdownTimeout)
-		defer cancel()
-
-		if err := server.Shutdown(shutdownCtx); err != nil {
-			_ = server.Close()
+		if err := shutdownServer(ctx, server, s.cfg.ShutdownTimeout); err != nil {
 			return fmt.Errorf("shutdown HTTP server: %w", err)
 		}
 
 		s.log.Warn().Msg("HTTP server shutdown gracefully")
 	}
 
+	return nil
+}
+
+func shutdownServer(ctx context.Context, server *http.Server, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		_ = server.Close()
+		return err
+	}
 	return nil
 }

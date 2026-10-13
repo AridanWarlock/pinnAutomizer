@@ -34,6 +34,7 @@ type Worker struct {
 	writer   Writer
 
 	stop context.CancelFunc
+	done chan struct{}
 	log  zerolog.Logger
 }
 
@@ -45,12 +46,14 @@ func NewWorker(postgres Postgres, writer Writer, log zerolog.Logger) *Worker {
 		writer:   writer,
 		postgres: postgres,
 		stop:     stop,
+		done:     make(chan struct{}),
 		log:      log.With().Str("component", "outbox worker").Logger(),
 	}
 
 	go func() {
-		defer w.Close()
+		defer close(w.done)
 		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
 
 		for {
 			select {
@@ -120,4 +123,5 @@ func (w *Worker) getAndPublishEvents(ctx context.Context) error {
 
 func (w *Worker) Close() {
 	w.stop()
+	<-w.done
 }

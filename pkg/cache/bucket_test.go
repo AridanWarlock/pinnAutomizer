@@ -1,23 +1,31 @@
 package cache
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestBucket_Cleanup(t *testing.T) {
-	cleanupInterval := 5 * time.Millisecond
+	b := newBucket(time.Hour)
+	defer b.close()
+	b.set("expired", 1, -time.Second)
+	b.set("active", 2, time.Hour)
+	b.cleanup()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	assert.NotContains(t, b.data, "expired")
+	assert.Contains(t, b.data, "active")
+}
 
-	bucket := newBucket(cleanupInterval)
-	bucket.set("key1", 1, time.Millisecond)
-
-	// expires, but exists
-	<-time.After(3 * time.Millisecond)
-	assert.Len(t, bucket.data, 1)
-
-	// cleaned up
-	<-time.After(3 * time.Millisecond)
-	assert.Len(t, bucket.data, 0)
+func TestBucket_BackgroundCleanup(t *testing.T) {
+	b := newBucket(time.Millisecond)
+	defer b.close()
+	b.set("expired", 1, -time.Second)
+	assert.Eventually(t, func() bool {
+		b.mu.RLock()
+		defer b.mu.RUnlock()
+		_, ok := b.data["expired"]
+		return !ok
+	}, time.Second, time.Millisecond)
 }

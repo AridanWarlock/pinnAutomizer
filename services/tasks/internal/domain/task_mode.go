@@ -22,7 +22,7 @@ func (m TaskMode) RequiredFiles() []string {
 	base := []string{"data.mat", "config.yaml", "functions.py"}
 	switch m {
 	case TaskModeTrain:
-		return append(base, "data.mat")
+		return base
 	case TaskModePredict, TaskModeRetrain:
 		return append(base, "checkpoint.ckpt")
 	default:

@@ -18,6 +18,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/lifecycle"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/password"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
@@ -113,12 +114,7 @@ func AppRun(
 	if err != nil {
 		return fmt.Errorf("kafka init auth.session.compromised: %w", err)
 	}
-	go func() {
-		err := authCompromisedReader.Run(ctx, authCompromisedConsumer.HandleMessage)
-		if err != nil {
-			log.Err(err).Msg("kafka handle auth.session.compromised")
-		}
-	}()
+
 	// http handlers
 	// auth
 	authLoginHandler := authLogin.NewHttpHandler(authLoginUsecase)
@@ -144,5 +140,10 @@ func AppRun(
 	server.RegisterApiRouters(apiV1Router)
 	// httpServer.RegisterSwagger()
 
-	return server.Run(ctx)
+	return lifecycle.Run(ctx,
+		lifecycle.Worker{Name: "http server", Run: server.Run},
+		lifecycle.Worker{Name: "auth.session.compromised", Run: func(ctx context.Context) error {
+			return authCompromisedReader.Run(ctx, authCompromisedConsumer.HandleMessage)
+		}},
+	)
 }

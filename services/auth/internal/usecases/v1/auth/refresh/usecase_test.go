@@ -147,6 +147,7 @@ func TestUsecase_Refresh(t *testing.T) {
 				f.postgres.GetRefreshTokenByHashFunc = func(ctx context.Context, hash string) (domain.RefreshToken, error) {
 					return domainfixtures.NewRefreshToken(func(refresh *domain.RefreshToken) {
 						refresh.ExpiresAt = fixedNow.Add(-time.Minute)
+						refresh.Audit = fixedAuditInfo
 					}), nil
 				}
 			},

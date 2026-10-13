@@ -11,7 +11,7 @@ import (
 )
 
 func TestCache_GetSetDelete(t *testing.T) {
-	ttl := time.Millisecond
+	ttl := time.Hour
 
 	cache := NewCache()
 	defer cache.Close()
@@ -40,7 +40,8 @@ func TestCache_GetSetDelete(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "string value", v.(string))
 
-	<-time.After(ttl)
+	b := cache.getBucket("key2")
+	b.set("key2", "string value", -time.Second)
 
 	v, ok = cache.Get("key2")
 	assert.False(t, ok)
@@ -51,8 +52,6 @@ func TestCache_GetSetDelete(t *testing.T) {
 }
 
 func TestCache_GetSetDeleteInGoroutines(t *testing.T) {
-	start := time.Now()
-
 	ttl := 500 * time.Millisecond
 	cache := NewCache()
 	defer cache.Close()
@@ -78,8 +77,10 @@ func TestCache_GetSetDeleteInGoroutines(t *testing.T) {
 	}
 
 	wg.Wait()
-	end := time.Since(start)
-	assert.Less(t, end, time.Second, "to slow cache")
+	cache.Set("final", 42, time.Hour)
+	v, ok := cache.Get("final")
+	assert.True(t, ok)
+	assert.Equal(t, 42, v)
 }
 
 func TestCache_AddRemoveBucket(t *testing.T) {

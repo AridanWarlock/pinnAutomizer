@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/lifecycle"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/adapter/mlrunner"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/config"
@@ -95,21 +96,12 @@ func AppRun(
 
 	// consumers
 	runConsumer := tasksRun.NewConsumer(runUsecase, writer)
-	go func() {
-		err = runQueueReader.Run(ctx, runConsumer.HandleMessage)
-		if err != nil {
-			log.Error().Err(err).Msg("run queue error")
-		}
-	}()
-	go func() {
-		err = predictQueueReader.Run(ctx, runConsumer.HandleMessage)
-		if err != nil {
-			log.Error().Err(err).Msg("predict queue error")
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		return nil
-	}
+	return lifecycle.Run(ctx,
+		lifecycle.Worker{Name: "tasks.run.queue", Run: func(ctx context.Context) error {
+			return runQueueReader.Run(ctx, runConsumer.HandleMessage)
+		}},
+		lifecycle.Worker{Name: "tasks.predict.queue", Run: func(ctx context.Context) error {
+			return predictQueueReader.Run(ctx, runConsumer.HandleMessage)
+		}},
+	)
 }

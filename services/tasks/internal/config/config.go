@@ -6,7 +6,6 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/postgres"
 	"github.com/caarlos0/env/v11"
 )
@@ -20,7 +19,6 @@ type Config struct {
 	HTTP        httpsrv.Config     `envPrefix:"HTTP_"`
 	Log         logger.Config      `envPrefix:"LOGGER_"`
 	Postgres    postgres.Config    `envPrefix:"POSTGRES_"`
-	Redis       goRedis.Config     `envPrefix:"REDIS_"`
 	KafkaWriter kafka.WriterConfig `envPrefix:"KAFKA_WRITER_"`
 	KafkaReader kafka.ReaderConfig `envPrefix:"KAFKA_READER_"`
 }

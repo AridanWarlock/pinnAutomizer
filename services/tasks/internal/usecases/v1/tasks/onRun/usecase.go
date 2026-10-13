@@ -12,7 +12,7 @@ import (
 )
 
 type Postgres interface {
-	GetTaskByID(ctx context.Context, id uuid.UUID) (domain.Task, error)
+	GetTaskByIDForUpdate(ctx context.Context, id uuid.UUID) (domain.Task, error)
 	UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, newStatus, oldStatus domain.TaskStatus) error
 
 	poolx.TxManager
@@ -50,17 +50,17 @@ func (u *usecase) UpdateTaskOnRun(ctx context.Context, in Input) error {
 }
 
 func (u *usecase) updateTaskStatusIfNeeded(ctx context.Context, in Input) error {
-	task, err := u.postgres.GetTaskByID(ctx, in.ID)
+	task, err := u.postgres.GetTaskByIDForUpdate(ctx, in.ID)
 	if err != nil {
 		return fmt.Errorf("get task from postgres: %w", err)
 	}
 
-	if task.IsEnded() {
-		return nil
+	changed, err := task.MarkRunning()
+	if err != nil {
+		return fmt.Errorf("%w: %v", errs.ErrConflict, err)
 	}
-
-	if !task.InQueue() {
-		return fmt.Errorf("task update status not from queue")
+	if !changed {
+		return nil
 	}
 
 	err = u.postgres.UpdateTaskStatusByID(ctx, in.ID, domain.TaskStatusRunning, domain.TaskStatusInQueue)
