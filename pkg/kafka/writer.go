@@ -3,9 +3,10 @@ package kafka
 import (
 	"context"
 
+	"github.com/rs/zerolog"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/segmentio"
-	"github.com/rs/zerolog"
 )
 
 type Writer struct {

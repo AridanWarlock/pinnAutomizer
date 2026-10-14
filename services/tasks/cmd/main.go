@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/fileservice"
-	tasksOnRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/onRun"
 	"os/signal"
 	"syscall"
+
+	"github.com/rs/zerolog"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/lifecycle"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/fileservice"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/filestore"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/filewriter"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/postgres"
@@ -22,10 +23,10 @@ import (
 	tasksCreate "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/create"
 	tasksDelete "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/delete"
 	tasksGet "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/get"
+	tasksOnRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/onRun"
 	tasksPlot "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/plot"
 	tasksResults "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/results"
 	tasksRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/run"
-	"github.com/rs/zerolog"
 )
 
 // @title		PINN Automizer App

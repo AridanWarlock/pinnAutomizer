@@ -6,13 +6,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/lifecycle"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/adapter/mlrunner"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/config"
 	tasksRun "github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/run"
-	"github.com/rs/zerolog"
 )
 
 // @title		PINN Automizer SolverService

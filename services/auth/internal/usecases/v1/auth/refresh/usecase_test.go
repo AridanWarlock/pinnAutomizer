@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain/domainfixtures"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
@@ -13,8 +16,6 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestUsecase_Refresh(t *testing.T) {

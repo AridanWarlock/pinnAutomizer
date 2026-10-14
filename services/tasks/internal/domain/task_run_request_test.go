@@ -4,11 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
 
 func TestNewTaskRunRequestValidatesKey(t *testing.T) {

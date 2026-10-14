@@ -6,6 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog"
+
 	_ "github.com/AridanWarlock/pinnAutomizer/auth/docs"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/config"
@@ -23,7 +25,6 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/password"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
-	"github.com/rs/zerolog"
 )
 
 // @title		PINN Automizer AuthService

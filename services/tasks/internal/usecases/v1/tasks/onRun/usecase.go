@@ -3,12 +3,13 @@ package tasksOnRun
 import (
 	"context"
 	"fmt"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
+
+	"github.com/google/uuid"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-	"github.com/google/uuid"
 )
 
 type Postgres interface {

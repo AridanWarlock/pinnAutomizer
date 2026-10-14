@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/pagination"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-	"github.com/rs/zerolog/log"
-
-	"github.com/google/uuid"
 )
 
 type Postgres interface {

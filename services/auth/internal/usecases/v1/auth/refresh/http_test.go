@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHttpHandler_Refresh(t *testing.T) {

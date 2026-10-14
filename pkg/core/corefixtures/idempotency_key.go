@@ -1,8 +1,9 @@
 package corefixtures
 
 import (
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 )
 
 func NewIdempotencyKey() core.IdempotencyKey {

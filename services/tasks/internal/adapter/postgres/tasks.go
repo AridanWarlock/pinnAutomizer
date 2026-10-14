@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/pagination"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-	sq "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 )
 
 func (r *Repository) CreateTask(ctx context.Context, task domain.Task) (domain.Task, error) {

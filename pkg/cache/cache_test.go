@@ -34,7 +34,7 @@ func TestCache_GetSetDelete(t *testing.T) {
 
 	v, ok = cache.Get("key1")
 	assert.False(t, ok)
-	assert.Equal(t, nil, nil)
+	assert.Nil(t, v)
 
 	v, ok = cache.Get("key2")
 	assert.True(t, ok)
@@ -45,10 +45,10 @@ func TestCache_GetSetDelete(t *testing.T) {
 
 	v, ok = cache.Get("key2")
 	assert.False(t, ok)
-	assert.Equal(t, nil, nil)
+	assert.Nil(t, v)
 	v, ok = cache.Get("long ttl")
 	assert.True(t, ok)
-	assert.Equal(t, nil, nil)
+	assert.Nil(t, v)
 }
 
 func TestCache_GetSetDeleteInGoroutines(t *testing.T) {

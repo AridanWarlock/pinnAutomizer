@@ -6,6 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog"
+
 	"github.com/AridanWarlock/pinnAutomizer/gateway/internal/config"
 	"github.com/AridanWarlock/pinnAutomizer/gateway/internal/transport/http/middleware"
 	"github.com/AridanWarlock/pinnAutomizer/gateway/internal/transport/http/proxy"
@@ -18,7 +20,6 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
-	"github.com/rs/zerolog"
 )
 
 func main() {

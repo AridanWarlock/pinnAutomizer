@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/httpmv"
 	"github.com/rs/zerolog"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/httpmv"
 )
 
 type Server struct {

@@ -3,10 +3,11 @@ package config
 import (
 	"fmt"
 
+	"github.com/caarlos0/env/v11"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/adapter/mlrunner"
-	"github.com/caarlos0/env/v11"
 )
 
 type App struct {

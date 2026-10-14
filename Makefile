@@ -1,5 +1,9 @@
+QUALITY_TARGETS := tools-install fmt fmt-check lint test test-race check
+# Quality checks do not depend on local service credentials.
+ifneq ($(filter-out $(QUALITY_TARGETS),$(or $(MAKECMDGOALS),kafka)),)
 include .env
 export
+endif
 
 ifeq ($(OS),Windows_NT)
     PROJECT_ROOT := $(shell pwd -W 2>/dev/null || pwd)
@@ -181,3 +185,25 @@ deploy:
 
 undeploy:
 	@docker compose down
+
+.PHONY: $(QUALITY_TARGETS)
+tools-install:
+	@python3 scripts/quality.py install
+
+fmt:
+	@python3 scripts/quality.py fmt
+
+fmt-check:
+	@python3 scripts/quality.py fmt-check
+
+lint:
+	@python3 scripts/quality.py lint
+
+test:
+	@python3 scripts/quality.py test $(TEST_ARGS)
+
+test-race:
+	@python3 scripts/quality.py test -race $(if $(TEST_ARGS),$(TEST_ARGS),./pkg/... ./services/auth/... ./services/tasks/... ./services/solver/... ./services/gateway/...)
+
+check:
+	@python3 scripts/quality.py check

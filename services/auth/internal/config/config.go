@@ -3,13 +3,14 @@ package config
 import (
 	"fmt"
 
+	"github.com/caarlos0/env/v11"
+
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
-	"github.com/caarlos0/env/v11"
 )
 
 type App struct {

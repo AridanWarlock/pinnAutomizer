@@ -4,8 +4,9 @@ import (
 	"context"
 	"io"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
 
 type Input struct {

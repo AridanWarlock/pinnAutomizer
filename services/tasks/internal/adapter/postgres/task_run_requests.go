@@ -3,10 +3,11 @@ package postgres
 import (
 	"context"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 )
 
 // CreateTaskRunRequest waits for a competing insertion of the same user's key.

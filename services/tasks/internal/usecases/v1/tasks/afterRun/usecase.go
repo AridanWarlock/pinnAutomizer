@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/google/uuid"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-	"github.com/google/uuid"
 )
 
 type Postgres interface {

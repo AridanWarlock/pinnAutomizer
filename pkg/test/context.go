@@ -3,8 +3,9 @@ package test
 import (
 	"context"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/rs/zerolog"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
 func ContextWithZeroLogger() context.Context {

@@ -1,9 +1,9 @@
 package core
 
 import (
-	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
-
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
 
 type RoleType string

@@ -88,7 +88,7 @@ func (c *CacheAside) Get(ctx context.Context, key string, target any) error {
 
 func (c *CacheAside) decode(src, target any) error {
 	v := reflect.ValueOf(target)
-	if v.Kind() != reflect.Ptr || v.IsNil() {
+	if v.Kind() != reflect.Pointer || v.IsNil() {
 		return ErrInvalidTarget
 	}
 	v.Elem().Set(reflect.ValueOf(src))

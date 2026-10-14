@@ -3,9 +3,10 @@ package postgres
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-	"github.com/google/uuid"
 )
 
 type TaskRunRequestRow struct {

@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/rs/zerolog"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/consumer"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/segmentio"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/rs/zerolog"
 )
 
 var (

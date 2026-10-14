@@ -1,8 +1,9 @@
 package postgres
 
 import (
-	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 )
 
 type UserRow struct {

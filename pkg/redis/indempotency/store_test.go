@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 )
 
 // Keep the same JSON boundary as the real Redis adapter, so incompatible formats fail.

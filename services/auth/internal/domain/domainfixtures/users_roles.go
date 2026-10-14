@@ -1,9 +1,10 @@
 package domainfixtures
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
-	"github.com/google/uuid"
 )
 
 func NewUsersRoles(mods ...corefixtures.Mod[domain.UsersRoles]) domain.UsersRoles {

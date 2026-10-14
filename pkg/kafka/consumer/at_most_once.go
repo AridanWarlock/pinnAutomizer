@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/segmentio"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/segmentio"
 )
 
 type AtMostOnceReader interface {

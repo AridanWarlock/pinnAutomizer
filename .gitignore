@@ -34,3 +34,6 @@ out
 
 # Docker volumes
 docker
+# Local quality tools and Python bytecode
+.tools/
+__pycache__/

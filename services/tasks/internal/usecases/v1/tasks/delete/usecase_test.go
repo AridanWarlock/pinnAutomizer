@@ -5,12 +5,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 )
 
 func TestDeleteTaskDoesNotRemoveFilesOnCommitFailure(t *testing.T) {

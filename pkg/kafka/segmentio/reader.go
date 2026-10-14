@@ -7,8 +7,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/segmentio/kafka-go"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
 
 var (

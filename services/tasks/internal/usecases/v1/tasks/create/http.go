@@ -3,7 +3,6 @@ package tasksCreate
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks"
 	"io"
 	"net/http"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks"
 )
 
 const maxUploadSize = 200 << 20 // 200 MB
