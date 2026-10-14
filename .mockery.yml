@@ -13,4 +13,4 @@ packages:
       pkgname: tasksAccept
       structname: '{{.InterfaceName}}Mock'
     interfaces:
-      Repository:
+      SQLite:

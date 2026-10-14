@@ -8,9 +8,9 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
-type usecase struct{ repo Repository }
+type usecase struct{ sqlite SQLite }
 
-func New(repo Repository) Usecase { return &usecase{repo: repo} }
+func New(sqlite SQLite) Usecase { return &usecase{sqlite: sqlite} }
 
 // AcceptTask persists the command before the transport may acknowledge it.
 func (u *usecase) AcceptTask(ctx context.Context, in Input) (Output, error) {
@@ -18,7 +18,7 @@ func (u *usecase) AcceptTask(ctx context.Context, in Input) (Output, error) {
 	if err != nil {
 		return Output{}, err
 	}
-	stored, created, err := u.repo.RegisterAttempt(ctx, a)
+	stored, created, err := u.sqlite.RegisterAttempt(ctx, a)
 	if err != nil {
 		return Output{}, fmt.Errorf("register solver attempt: %w", err)
 	}

@@ -17,7 +17,7 @@ type Output struct {
 	Attempt domain.Attempt
 	Created bool
 }
-type Repository interface {
+type SQLite interface {
 	RegisterAttempt(context.Context, domain.Attempt) (domain.Attempt, bool, error)
 }
 type Usecase interface {

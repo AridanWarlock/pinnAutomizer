@@ -12,24 +12,24 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
-type Repository interface {
+type SQLite interface {
 	GetPendingEvents(context.Context, int) ([]domain.Event, error)
 	DeleteEvent(context.Context, uuid.UUID) error
 }
 
-// Writer must confirm delivery synchronously. Async writers cannot drain an outbox safely.
-type Writer interface {
+// Kafka must confirm delivery synchronously. Async writers cannot drain an outbox safely.
+type Kafka interface {
 	WriteMessages(context.Context, ...core.KafkaMessage) error
 }
 type usecase struct {
-	repo   Repository
-	writer Writer
+	sqlite SQLite
+	kafka  Kafka
 }
 
-func New(repo Repository, writer Writer) *usecase { return &usecase{repo: repo, writer: writer} }
+func New(sqlite SQLite, kafka Kafka) *usecase { return &usecase{sqlite: sqlite, kafka: kafka} }
 
 func (u *usecase) PublishPending(ctx context.Context) error {
-	events, err := u.repo.GetPendingEvents(ctx, 32)
+	events, err := u.sqlite.GetPendingEvents(ctx, 32)
 	if err != nil {
 		return fmt.Errorf("read solver outbox: %w", err)
 	}
@@ -37,10 +37,10 @@ func (u *usecase) PublishPending(ctx context.Context) error {
 		if err = ctx.Err(); err != nil {
 			return err
 		}
-		if err = u.writer.WriteMessages(ctx, e.Message); err != nil {
+		if err = u.kafka.WriteMessages(ctx, e.Message); err != nil {
 			return fmt.Errorf("publish solver event %s: %w", e.ID, err)
 		}
-		if err = u.repo.DeleteEvent(ctx, e.ID); err != nil {
+		if err = u.sqlite.DeleteEvent(ctx, e.ID); err != nil {
 			return fmt.Errorf("acknowledge solver event %s: %w", e.ID, err)
 		}
 	}

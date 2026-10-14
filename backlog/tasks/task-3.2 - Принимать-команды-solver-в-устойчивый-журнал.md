@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-14 10:46'
-updated_date: '2026-10-14 10:58'
+updated_date: '2026-10-14 11:29'
 labels: []
 dependencies: []
 parent_task_id: TASK-3
@@ -33,6 +33,12 @@ Kafka consumer должен подтверждать принятие тольк
 <!-- SECTION:PLAN:BEGIN -->
 Добавить отдельный usecase принятия команды с проверкой идентификаторов и параметров. Проверить реальные повторы и ошибки записи на SQLite; не подключать новый consumer до проверки восстановления Docker.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+По review пользователя DI Repository переименован в SQLite; поле/параметр sqlite. Мок перегенерирован mockery v3.7.1. Конвенция явных инфраструктурных имён закреплена в AGENTS.md.
+<!-- SECTION:NOTES:END -->
 
 ## Final Summary
 

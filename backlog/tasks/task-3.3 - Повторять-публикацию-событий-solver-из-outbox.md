@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-14 10:46'
-updated_date: '2026-10-14 10:58'
+updated_date: '2026-10-14 11:29'
 labels: []
 dependencies: []
 parent_task_id: TASK-3
@@ -32,6 +32,12 @@ ordinal: 12000
 <!-- SECTION:PLAN:BEGIN -->
 Добавить синхронный outbox worker с последовательной публикацией, стабильным payload и удалением только после подтверждения. Дисковые тесты воспроизводят неоднозначное подтверждение, перезапуск и отмену; подключение к runtime вынести в следующий этап.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+По review пользователя DI Repository/Writer переименованы в SQLite/Kafka; поля и параметры sqlite/kafka. Поведение не изменено.
+<!-- SECTION:NOTES:END -->
 
 ## Final Summary
 

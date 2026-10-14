@@ -11,26 +11,26 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
-// Ensure that RepositoryMock does implement Repository.
+// Ensure that SQLiteMock does implement SQLite.
 // If this is not the case, regenerate this file with mockery.
-var _ Repository = &RepositoryMock{}
+var _ SQLite = &SQLiteMock{}
 
-// RepositoryMock is a mock implementation of Repository.
+// SQLiteMock is a mock implementation of SQLite.
 //
-//	func TestSomethingThatUsesRepository(t *testing.T) {
+//	func TestSomethingThatUsesSQLite(t *testing.T) {
 //
-//		// make and configure a mocked Repository
-//		mockedRepository := &RepositoryMock{
+//		// make and configure a mocked SQLite
+//		mockedSQLite := &SQLiteMock{
 //			RegisterAttemptFunc: func(context1 context.Context, attempt domain.Attempt) (domain.Attempt, bool, error) {
 //				panic("mock out the RegisterAttempt method")
 //			},
 //		}
 //
-//		// use mockedRepository in code that requires Repository
+//		// use mockedSQLite in code that requires SQLite
 //		// and then make assertions.
 //
 //	}
-type RepositoryMock struct {
+type SQLiteMock struct {
 	// RegisterAttemptFunc mocks the RegisterAttempt method.
 	RegisterAttemptFunc func(context1 context.Context, attempt domain.Attempt) (domain.Attempt, bool, error)
 
@@ -48,9 +48,9 @@ type RepositoryMock struct {
 }
 
 // RegisterAttempt calls RegisterAttemptFunc.
-func (mock *RepositoryMock) RegisterAttempt(context1 context.Context, attempt domain.Attempt) (domain.Attempt, bool, error) {
+func (mock *SQLiteMock) RegisterAttempt(context1 context.Context, attempt domain.Attempt) (domain.Attempt, bool, error) {
 	if mock.RegisterAttemptFunc == nil {
-		panic("RepositoryMock.RegisterAttemptFunc: method is nil but Repository.RegisterAttempt was just called")
+		panic("SQLiteMock.RegisterAttemptFunc: method is nil but SQLite.RegisterAttempt was just called")
 	}
 	callInfo := struct {
 		Context1 context.Context
@@ -68,8 +68,8 @@ func (mock *RepositoryMock) RegisterAttempt(context1 context.Context, attempt do
 // RegisterAttemptCalls gets all the calls that were made to RegisterAttempt.
 // Check the length with:
 //
-//	len(mockedRepository.RegisterAttemptCalls())
-func (mock *RepositoryMock) RegisterAttemptCalls() []struct {
+//	len(mockedSQLite.RegisterAttemptCalls())
+func (mock *SQLiteMock) RegisterAttemptCalls() []struct {
 	Context1 context.Context
 	Attempt  domain.Attempt
 } {

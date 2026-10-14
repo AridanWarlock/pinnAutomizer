@@ -51,7 +51,7 @@ func TestAcceptTaskDurableReplayAndValidation(t *testing.T) {
 
 func TestConsumerPropagatesStorageFailure(t *testing.T) {
 	failure := errors.New("disk full")
-	repo := &RepositoryMock{RegisterAttemptFunc: func(context.Context, domain.Attempt) (domain.Attempt, bool, error) {
+	repo := &SQLiteMock{RegisterAttemptFunc: func(context.Context, domain.Attempt) (domain.Attempt, bool, error) {
 		return domain.Attempt{}, false, failure
 	}}
 	c := NewConsumer(New(repo))
