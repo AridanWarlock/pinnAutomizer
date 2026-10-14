@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-14 10:46'
-updated_date: '2026-10-14 12:48'
+updated_date: '2026-10-14 13:12'
 labels: []
 dependencies: []
 parent_task_id: TASK-3
@@ -32,6 +32,8 @@ ordinal: 10000
 
 <!-- SECTION:PLAN:BEGIN -->
 1. Добавить domain.Attempt/Event и narrow SQLite repository с фиксированной версией modernc.org/sqlite без CGO. 2. Реализовать schema version, WAL/FULL/busy timeout и process flock на каноническом локальном пути. 3. Регистрация, условные переходы и финализация с outbox выполняются короткими атомарными транзакциями. 4. Дисковые тесты проверяют конкуренцию, payload-конфликт, rollback, reopen, SQLITE_BUSY и SIGKILL владельца. 5. make check и адресный race; коммит с тестами.
+
+По review migrate schema через goose Provider и embed SQL; в Go библиотеке закрепить v3.26.0, так как v3.27.0 требует обновления Docker API/otel. CLI goose в Compose остаётся v3.27.0; SQL-формат совместим. Проверить повторный Up, incremental Up, SQL rollback, отказ older binary при newer schema, Down только на временной БД, и сохранение старого unversioned журнала при отказе. Из-за goose module graph lz4 меняется с v4.1.15 на v4.1.22; Docker API, Go и sqlite driver не меняются.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -40,6 +42,10 @@ ordinal: 10000
 Review пользователя: сделать владение ресурсами в New явным через defer очистки на неуспешной инициализации; разделить открытие пути, ownership, соединение и schema init на приватные методы. Сохранить время жизни DB/lock до Repository.Close и SQL поведение. Проверить освобождение lock после ошибок открытия/версии/schema transaction и общий make check.
 
 Исправление review завершено: New вынесен в connection.go и читает последовательность preparePath/acquireOwner/createJournalFile/openDatabase/initializeSchema. Deferred cleanup освобождает DB/lock до передачи результата вызывающему, включая разворачивание panic; временный file.Close передаёт ошибку через errors.Join. createSchema имеет defer Rollback. Дисковые regression tests проверяют ошибки создания файла, версии и второго CREATE с rollback первой таблицы и повторным успешным открытием. make check и race для SQLite проходят; PG/Docker/Kafka интеграции в этом запуске не выполнялись.
+
+Review пользователя: заменить ручные schemaVersion/PRAGMA user_version на goose, уже используемый в проекте. Поддержка SQLite/modernc подтверждена официальной документацией. План: goose v3.27.0 как в compose, SQL Up/Down с embed.FS, instance Provider без глобальной конфигурации, запуск Up под ownership lock; тесты повторного применения, pending migration с сохранением данных, rollback и неизвестной версии. Runtime solver ещё не подключён, действующие БД не мигрировать.
+
+Goose внедрён: SQL Up/Down в services/solver/migrations, embed.FS, instance Provider без глобального registry. schema.go/schemaVersion/PRAGMA user_version удалены; новые версии определяются SQL-файлами, история в goose_db_version. Provider Up выполняется под ownership lock, более новая схема отклоняется; старый unversioned journal не baselined автоматически, тест подтверждает сохранность данных при отказе. Проверены reopen без повторного Up, pending Up ровно один раз с сохранением попытки, rollback SQL+version при сбое, Down только на временной БД. make check, race SQLite и CGO_ENABLED=0 Linux test binary проходят. Рабочие БД не затрагивались, PG/Docker/Kafka end-to-end не запускались.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

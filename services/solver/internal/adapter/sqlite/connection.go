@@ -116,30 +116,3 @@ func openDatabase(path string, busyTimeout time.Duration) (*sql.DB, error) {
 	db.SetMaxIdleConns(1)
 	return db, nil
 }
-
-func (r *Repository) initializeSchema(ctx context.Context) error {
-	var version int
-	if err := r.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
-		return err
-	}
-	switch version {
-	case 0:
-		return r.createSchema(ctx)
-	case schemaVersion:
-		return nil
-	default:
-		return fmt.Errorf("unsupported solver journal schema: %d", version)
-	}
-}
-
-func (r *Repository) createSchema(ctx context.Context) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	if _, err = tx.ExecContext(ctx, schema); err != nil {
-		return err
-	}
-	return tx.Commit()
-}

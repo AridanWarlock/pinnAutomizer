@@ -1,8 +1,4 @@
-package sqlite
-
-const schemaVersion = 1
-
-const schema = `
+-- +goose Up
 CREATE TABLE attempts (
  run_id TEXT PRIMARY KEY,
  task_id TEXT NOT NULL UNIQUE,
@@ -28,5 +24,7 @@ CREATE TABLE outbox (
  value BLOB NOT NULL,
  headers TEXT NOT NULL
 );
-PRAGMA user_version = 1;
-`
+
+-- +goose Down
+DROP TABLE outbox;
+DROP TABLE attempts;
