@@ -187,23 +187,30 @@ undeploy:
 	@docker compose down
 
 .PHONY: $(QUALITY_TARGETS)
-tools-install:
-	@python3 scripts/quality.py install
+QUALITY_BIN := .tools/quality
+QUALITY_SOURCES := $(wildcard pkg/cmd/quality/*.go)
 
-fmt:
-	@python3 scripts/quality.py fmt
+$(QUALITY_BIN): $(QUALITY_SOURCES) pkg/go.mod Makefile
+	@mkdir -p .tools
+	@cd pkg && GOWORK=off go build -trimpath -ldflags="-s -w" -o ../$(QUALITY_BIN) ./cmd/quality
 
-fmt-check:
-	@python3 scripts/quality.py fmt-check
+tools-install: $(QUALITY_BIN)
+	@$(QUALITY_BIN) install
 
-lint:
-	@python3 scripts/quality.py lint
+fmt: $(QUALITY_BIN)
+	@$(QUALITY_BIN) fmt
 
-test:
-	@python3 scripts/quality.py test $(TEST_ARGS)
+fmt-check: $(QUALITY_BIN)
+	@$(QUALITY_BIN) fmt-check
 
-test-race:
-	@python3 scripts/quality.py test -race $(if $(TEST_ARGS),$(TEST_ARGS),./pkg/... ./services/auth/... ./services/tasks/... ./services/solver/... ./services/gateway/...)
+lint: $(QUALITY_BIN)
+	@$(QUALITY_BIN) lint
 
-check:
-	@python3 scripts/quality.py check
+test: $(QUALITY_BIN)
+	@$(QUALITY_BIN) test $(TEST_ARGS)
+
+test-race: $(QUALITY_BIN)
+	@$(QUALITY_BIN) test -race $(if $(TEST_ARGS),$(TEST_ARGS),./pkg/... ./services/auth/... ./services/tasks/... ./services/solver/... ./services/gateway/...)
+
+check: $(QUALITY_BIN)
+	@$(QUALITY_BIN) check
