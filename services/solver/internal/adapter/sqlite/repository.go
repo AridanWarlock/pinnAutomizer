@@ -5,11 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"net/url"
 	"os"
-	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
@@ -27,83 +23,6 @@ type Repository struct {
 	owner    *os.File
 	once     sync.Once
 	closeErr error
-}
-
-func New(cfg Config) (*Repository, error) {
-	if cfg.Path == "" || cfg.Path == ":memory:" || cfg.BusyTimeout < time.Millisecond {
-		return nil, fmt.Errorf("%w: journal path and positive busy timeout required", errs.ErrInvalidArgument)
-	}
-	path, err := filepath.Abs(cfg.Path)
-	if err != nil {
-		return nil, err
-	}
-	if err = os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return nil, err
-	}
-	dir, err := filepath.EvalSymlinks(filepath.Dir(path))
-	if err != nil {
-		return nil, err
-	}
-	path = filepath.Join(dir, filepath.Base(path))
-	if resolved, e := filepath.EvalSymlinks(path); e == nil {
-		path = resolved
-	} else if !os.IsNotExist(e) {
-		return nil, e
-	}
-	owner, err := os.OpenFile(path+".lock", os.O_CREATE|os.O_RDWR, 0600)
-	if err != nil {
-		return nil, err
-	}
-	if err = lock(owner); err != nil {
-		_ = owner.Close()
-		return nil, err
-	}
-	repo := &Repository{owner: owner}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0600)
-	if err != nil {
-		_ = repo.Close()
-		return nil, err
-	}
-	_ = file.Close()
-	uri := url.URL{Scheme: "file", Path: path}
-	q := uri.Query()
-	for _, pragma := range []string{"journal_mode(WAL)", "synchronous(FULL)", "foreign_keys(1)", "busy_timeout(" + strconv.FormatInt(cfg.BusyTimeout.Milliseconds(), 10) + ")"} {
-		q.Add("_pragma", pragma)
-	}
-	uri.RawQuery = q.Encode()
-	repo.db, err = sql.Open("sqlite", uri.String())
-	if err != nil {
-		_ = repo.Close()
-		return nil, err
-	}
-	repo.db.SetMaxOpenConns(1)
-	repo.db.SetMaxIdleConns(1)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	var version int
-	if err = repo.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err == nil {
-		switch version {
-		case 0:
-			var tx *sql.Tx
-			tx, err = repo.db.BeginTx(ctx, nil)
-			if err == nil {
-				_, err = tx.ExecContext(ctx, schema)
-				if err == nil {
-					err = tx.Commit()
-				} else {
-					_ = tx.Rollback()
-				}
-			}
-		case schemaVersion:
-		default:
-			err = fmt.Errorf("unsupported solver journal schema: %d", version)
-		}
-	}
-	if err != nil {
-		_ = repo.Close()
-		return nil, err
-	}
-	return repo, nil
 }
 
 func (r *Repository) Close() error {
@@ -159,9 +78,11 @@ func scanAttempt(row scanner) (domain.Attempt, error) {
 	}
 	return a, nil
 }
+
 func (r *Repository) GetAttempt(ctx context.Context, id uuid.UUID) (domain.Attempt, error) {
 	return scanAttempt(r.db.QueryRowContext(ctx, "SELECT "+columns+" FROM attempts WHERE run_id=?", id.String()))
 }
+
 func (r *Repository) RegisterAttempt(ctx context.Context, a domain.Attempt) (domain.Attempt, bool, error) {
 	valid, err := domain.NewAttempt(a.RunID, a.TaskID, a.Mode, a.CreatedAt)
 	if err != nil {
@@ -185,6 +106,7 @@ func (r *Repository) RegisterAttempt(ctx context.Context, a domain.Attempt) (dom
 	}
 	return stored, n == 1, err
 }
+
 func (r *Repository) FinishAttempt(ctx context.Context, id uuid.UUID, code *int, failure *string, now time.Time, event domain.Event) (bool, error) {
 	if now.IsZero() || (failure == nil && (code == nil || *code != 0)) || event.RunID != id {
 		return false, errs.ErrInvalidArgument
@@ -225,6 +147,7 @@ func (r *Repository) FinishAttempt(ctx context.Context, id uuid.UUID, code *int,
 	}
 	return true, tx.Commit()
 }
+
 func (r *Repository) GetPendingEvents(ctx context.Context, limit int) ([]domain.Event, error) {
 	if limit <= 0 {
 		return nil, errs.ErrInvalidArgument
@@ -254,6 +177,7 @@ func (r *Repository) GetPendingEvents(ctx context.Context, limit int) ([]domain.
 	}
 	return events, rows.Err()
 }
+
 func (r *Repository) DeleteEvent(ctx context.Context, id uuid.UUID) error {
 	_, err := r.db.ExecContext(ctx, "DELETE FROM outbox WHERE event_id=?", id.String())
 	return err
