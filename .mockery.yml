@@ -6,3 +6,11 @@ packages:
       all: true
       recursive: true
       inpackage: true
+  github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/accept:
+    config:
+      dir: services/solver/internal/usecases/v1/tasks/accept
+      filename: mocks_test.go
+      pkgname: tasksAccept
+      structname: '{{.InterfaceName}}Mock'
+    interfaces:
+      Repository:
