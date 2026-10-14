@@ -12,6 +12,467 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+// Ensure that MockSqlizer does implement Sqlizer.
+// If this is not the case, regenerate this file with mockery.
+var _ Sqlizer = &MockSqlizer{}
+
+// MockSqlizer is a mock implementation of Sqlizer.
+//
+//	func TestSomethingThatUsesSqlizer(t *testing.T) {
+//
+//		// make and configure a mocked Sqlizer
+//		mockedSqlizer := &MockSqlizer{
+//			ToSqlFunc: func() (string, []any, error) {
+//				panic("mock out the ToSql method")
+//			},
+//		}
+//
+//		// use mockedSqlizer in code that requires Sqlizer
+//		// and then make assertions.
+//
+//	}
+type MockSqlizer struct {
+	// ToSqlFunc mocks the ToSql method.
+	ToSqlFunc func() (string, []any, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// ToSql holds details about calls to the ToSql method.
+		ToSql []struct {
+		}
+	}
+	lockToSql sync.RWMutex
+}
+
+// ToSql calls ToSqlFunc.
+func (mock *MockSqlizer) ToSql() (string, []any, error) {
+	if mock.ToSqlFunc == nil {
+		panic("MockSqlizer.ToSqlFunc: method is nil but Sqlizer.ToSql was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockToSql.Lock()
+	mock.calls.ToSql = append(mock.calls.ToSql, callInfo)
+	mock.lockToSql.Unlock()
+	return mock.ToSqlFunc()
+}
+
+// ToSqlCalls gets all the calls that were made to ToSql.
+// Check the length with:
+//
+//	len(mockedSqlizer.ToSqlCalls())
+func (mock *MockSqlizer) ToSqlCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockToSql.RLock()
+	calls = mock.calls.ToSql
+	mock.lockToSql.RUnlock()
+	return calls
+}
+
+// Ensure that MockTag does implement Tag.
+// If this is not the case, regenerate this file with mockery.
+var _ Tag = &MockTag{}
+
+// MockTag is a mock implementation of Tag.
+//
+//	func TestSomethingThatUsesTag(t *testing.T) {
+//
+//		// make and configure a mocked Tag
+//		mockedTag := &MockTag{
+//			RowsAffectedFunc: func() int {
+//				panic("mock out the RowsAffected method")
+//			},
+//		}
+//
+//		// use mockedTag in code that requires Tag
+//		// and then make assertions.
+//
+//	}
+type MockTag struct {
+	// RowsAffectedFunc mocks the RowsAffected method.
+	RowsAffectedFunc func() int
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// RowsAffected holds details about calls to the RowsAffected method.
+		RowsAffected []struct {
+		}
+	}
+	lockRowsAffected sync.RWMutex
+}
+
+// RowsAffected calls RowsAffectedFunc.
+func (mock *MockTag) RowsAffected() int {
+	if mock.RowsAffectedFunc == nil {
+		panic("MockTag.RowsAffectedFunc: method is nil but Tag.RowsAffected was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockRowsAffected.Lock()
+	mock.calls.RowsAffected = append(mock.calls.RowsAffected, callInfo)
+	mock.lockRowsAffected.Unlock()
+	return mock.RowsAffectedFunc()
+}
+
+// RowsAffectedCalls gets all the calls that were made to RowsAffected.
+// Check the length with:
+//
+//	len(mockedTag.RowsAffectedCalls())
+func (mock *MockTag) RowsAffectedCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockRowsAffected.RLock()
+	calls = mock.calls.RowsAffected
+	mock.lockRowsAffected.RUnlock()
+	return calls
+}
+
+// Ensure that MockPool does implement Pool.
+// If this is not the case, regenerate this file with mockery.
+var _ Pool = &MockPool{}
+
+// MockPool is a mock implementation of Pool.
+//
+//	func TestSomethingThatUsesPool(t *testing.T) {
+//
+//		// make and configure a mocked Pool
+//		mockedPool := &MockPool{
+//			CloseFunc: func()  {
+//				panic("mock out the Close method")
+//			},
+//			ExecxFunc: func(ctx context.Context, sqlizer Sqlizer) (Tag, error) {
+//				panic("mock out the Execx method")
+//			},
+//			GetxFunc: func(ctx context.Context, dst any, sqlizer Sqlizer) error {
+//				panic("mock out the Getx method")
+//			},
+//			InTransactionFunc: func(ctx context.Context, inTx func(ctx context.Context) error) error {
+//				panic("mock out the InTransaction method")
+//			},
+//			SelectxFunc: func(ctx context.Context, dst any, sqlizer Sqlizer) error {
+//				panic("mock out the Selectx method")
+//			},
+//		}
+//
+//		// use mockedPool in code that requires Pool
+//		// and then make assertions.
+//
+//	}
+type MockPool struct {
+	// CloseFunc mocks the Close method.
+	CloseFunc func()
+
+	// ExecxFunc mocks the Execx method.
+	ExecxFunc func(ctx context.Context, sqlizer Sqlizer) (Tag, error)
+
+	// GetxFunc mocks the Getx method.
+	GetxFunc func(ctx context.Context, dst any, sqlizer Sqlizer) error
+
+	// InTransactionFunc mocks the InTransaction method.
+	InTransactionFunc func(ctx context.Context, inTx func(ctx context.Context) error) error
+
+	// SelectxFunc mocks the Selectx method.
+	SelectxFunc func(ctx context.Context, dst any, sqlizer Sqlizer) error
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Close holds details about calls to the Close method.
+		Close []struct {
+		}
+		// Execx holds details about calls to the Execx method.
+		Execx []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Sqlizer is the sqlizer argument value.
+			Sqlizer Sqlizer
+		}
+		// Getx holds details about calls to the Getx method.
+		Getx []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Dst is the dst argument value.
+			Dst any
+			// Sqlizer is the sqlizer argument value.
+			Sqlizer Sqlizer
+		}
+		// InTransaction holds details about calls to the InTransaction method.
+		InTransaction []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// InTx is the inTx argument value.
+			InTx func(ctx context.Context) error
+		}
+		// Selectx holds details about calls to the Selectx method.
+		Selectx []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Dst is the dst argument value.
+			Dst any
+			// Sqlizer is the sqlizer argument value.
+			Sqlizer Sqlizer
+		}
+	}
+	lockClose         sync.RWMutex
+	lockExecx         sync.RWMutex
+	lockGetx          sync.RWMutex
+	lockInTransaction sync.RWMutex
+	lockSelectx       sync.RWMutex
+}
+
+// Close calls CloseFunc.
+func (mock *MockPool) Close() {
+	if mock.CloseFunc == nil {
+		panic("MockPool.CloseFunc: method is nil but Pool.Close was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockClose.Lock()
+	mock.calls.Close = append(mock.calls.Close, callInfo)
+	mock.lockClose.Unlock()
+	mock.CloseFunc()
+}
+
+// CloseCalls gets all the calls that were made to Close.
+// Check the length with:
+//
+//	len(mockedPool.CloseCalls())
+func (mock *MockPool) CloseCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockClose.RLock()
+	calls = mock.calls.Close
+	mock.lockClose.RUnlock()
+	return calls
+}
+
+// Execx calls ExecxFunc.
+func (mock *MockPool) Execx(ctx context.Context, sqlizer Sqlizer) (Tag, error) {
+	if mock.ExecxFunc == nil {
+		panic("MockPool.ExecxFunc: method is nil but Pool.Execx was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Sqlizer Sqlizer
+	}{
+		Ctx:     ctx,
+		Sqlizer: sqlizer,
+	}
+	mock.lockExecx.Lock()
+	mock.calls.Execx = append(mock.calls.Execx, callInfo)
+	mock.lockExecx.Unlock()
+	return mock.ExecxFunc(ctx, sqlizer)
+}
+
+// ExecxCalls gets all the calls that were made to Execx.
+// Check the length with:
+//
+//	len(mockedPool.ExecxCalls())
+func (mock *MockPool) ExecxCalls() []struct {
+	Ctx     context.Context
+	Sqlizer Sqlizer
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Sqlizer Sqlizer
+	}
+	mock.lockExecx.RLock()
+	calls = mock.calls.Execx
+	mock.lockExecx.RUnlock()
+	return calls
+}
+
+// Getx calls GetxFunc.
+func (mock *MockPool) Getx(ctx context.Context, dst any, sqlizer Sqlizer) error {
+	if mock.GetxFunc == nil {
+		panic("MockPool.GetxFunc: method is nil but Pool.Getx was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Dst     any
+		Sqlizer Sqlizer
+	}{
+		Ctx:     ctx,
+		Dst:     dst,
+		Sqlizer: sqlizer,
+	}
+	mock.lockGetx.Lock()
+	mock.calls.Getx = append(mock.calls.Getx, callInfo)
+	mock.lockGetx.Unlock()
+	return mock.GetxFunc(ctx, dst, sqlizer)
+}
+
+// GetxCalls gets all the calls that were made to Getx.
+// Check the length with:
+//
+//	len(mockedPool.GetxCalls())
+func (mock *MockPool) GetxCalls() []struct {
+	Ctx     context.Context
+	Dst     any
+	Sqlizer Sqlizer
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Dst     any
+		Sqlizer Sqlizer
+	}
+	mock.lockGetx.RLock()
+	calls = mock.calls.Getx
+	mock.lockGetx.RUnlock()
+	return calls
+}
+
+// InTransaction calls InTransactionFunc.
+func (mock *MockPool) InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error {
+	if mock.InTransactionFunc == nil {
+		panic("MockPool.InTransactionFunc: method is nil but Pool.InTransaction was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		InTx func(ctx context.Context) error
+	}{
+		Ctx:  ctx,
+		InTx: inTx,
+	}
+	mock.lockInTransaction.Lock()
+	mock.calls.InTransaction = append(mock.calls.InTransaction, callInfo)
+	mock.lockInTransaction.Unlock()
+	return mock.InTransactionFunc(ctx, inTx)
+}
+
+// InTransactionCalls gets all the calls that were made to InTransaction.
+// Check the length with:
+//
+//	len(mockedPool.InTransactionCalls())
+func (mock *MockPool) InTransactionCalls() []struct {
+	Ctx  context.Context
+	InTx func(ctx context.Context) error
+} {
+	var calls []struct {
+		Ctx  context.Context
+		InTx func(ctx context.Context) error
+	}
+	mock.lockInTransaction.RLock()
+	calls = mock.calls.InTransaction
+	mock.lockInTransaction.RUnlock()
+	return calls
+}
+
+// Selectx calls SelectxFunc.
+func (mock *MockPool) Selectx(ctx context.Context, dst any, sqlizer Sqlizer) error {
+	if mock.SelectxFunc == nil {
+		panic("MockPool.SelectxFunc: method is nil but Pool.Selectx was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Dst     any
+		Sqlizer Sqlizer
+	}{
+		Ctx:     ctx,
+		Dst:     dst,
+		Sqlizer: sqlizer,
+	}
+	mock.lockSelectx.Lock()
+	mock.calls.Selectx = append(mock.calls.Selectx, callInfo)
+	mock.lockSelectx.Unlock()
+	return mock.SelectxFunc(ctx, dst, sqlizer)
+}
+
+// SelectxCalls gets all the calls that were made to Selectx.
+// Check the length with:
+//
+//	len(mockedPool.SelectxCalls())
+func (mock *MockPool) SelectxCalls() []struct {
+	Ctx     context.Context
+	Dst     any
+	Sqlizer Sqlizer
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Dst     any
+		Sqlizer Sqlizer
+	}
+	mock.lockSelectx.RLock()
+	calls = mock.calls.Selectx
+	mock.lockSelectx.RUnlock()
+	return calls
+}
+
+// Ensure that MockTxManager does implement TxManager.
+// If this is not the case, regenerate this file with mockery.
+var _ TxManager = &MockTxManager{}
+
+// MockTxManager is a mock implementation of TxManager.
+//
+//	func TestSomethingThatUsesTxManager(t *testing.T) {
+//
+//		// make and configure a mocked TxManager
+//		mockedTxManager := &MockTxManager{
+//			InTransactionFunc: func(ctx context.Context, inTx func(context.Context) error) error {
+//				panic("mock out the InTransaction method")
+//			},
+//		}
+//
+//		// use mockedTxManager in code that requires TxManager
+//		// and then make assertions.
+//
+//	}
+type MockTxManager struct {
+	// InTransactionFunc mocks the InTransaction method.
+	InTransactionFunc func(ctx context.Context, inTx func(context.Context) error) error
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// InTransaction holds details about calls to the InTransaction method.
+		InTransaction []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// InTx is the inTx argument value.
+			InTx func(context.Context) error
+		}
+	}
+	lockInTransaction sync.RWMutex
+}
+
+// InTransaction calls InTransactionFunc.
+func (mock *MockTxManager) InTransaction(ctx context.Context, inTx func(context.Context) error) error {
+	if mock.InTransactionFunc == nil {
+		panic("MockTxManager.InTransactionFunc: method is nil but TxManager.InTransaction was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		InTx func(context.Context) error
+	}{
+		Ctx:  ctx,
+		InTx: inTx,
+	}
+	mock.lockInTransaction.Lock()
+	mock.calls.InTransaction = append(mock.calls.InTransaction, callInfo)
+	mock.lockInTransaction.Unlock()
+	return mock.InTransactionFunc(ctx, inTx)
+}
+
+// InTransactionCalls gets all the calls that were made to InTransaction.
+// Check the length with:
+//
+//	len(mockedTxManager.InTransactionCalls())
+func (mock *MockTxManager) InTransactionCalls() []struct {
+	Ctx  context.Context
+	InTx func(context.Context) error
+} {
+	var calls []struct {
+		Ctx  context.Context
+		InTx func(context.Context) error
+	}
+	mock.lockInTransaction.RLock()
+	calls = mock.calls.InTransaction
+	mock.lockInTransaction.RUnlock()
+	return calls
+}
+
 // Ensure that mockexecutor does implement executor.
 // If this is not the case, regenerate this file with mockery.
 var _ executor = &mockexecutor{}

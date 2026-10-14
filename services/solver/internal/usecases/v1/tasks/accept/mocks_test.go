@@ -11,16 +11,16 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
-// Ensure that SQLiteMock does implement SQLite.
+// Ensure that MockSQLite does implement SQLite.
 // If this is not the case, regenerate this file with mockery.
-var _ SQLite = &SQLiteMock{}
+var _ SQLite = &MockSQLite{}
 
-// SQLiteMock is a mock implementation of SQLite.
+// MockSQLite is a mock implementation of SQLite.
 //
 //	func TestSomethingThatUsesSQLite(t *testing.T) {
 //
 //		// make and configure a mocked SQLite
-//		mockedSQLite := &SQLiteMock{
+//		mockedSQLite := &MockSQLite{
 //			RegisterAttemptFunc: func(context1 context.Context, attempt domain.Attempt) (domain.Attempt, bool, error) {
 //				panic("mock out the RegisterAttempt method")
 //			},
@@ -30,7 +30,7 @@ var _ SQLite = &SQLiteMock{}
 //		// and then make assertions.
 //
 //	}
-type SQLiteMock struct {
+type MockSQLite struct {
 	// RegisterAttemptFunc mocks the RegisterAttempt method.
 	RegisterAttemptFunc func(context1 context.Context, attempt domain.Attempt) (domain.Attempt, bool, error)
 
@@ -48,9 +48,9 @@ type SQLiteMock struct {
 }
 
 // RegisterAttempt calls RegisterAttemptFunc.
-func (mock *SQLiteMock) RegisterAttempt(context1 context.Context, attempt domain.Attempt) (domain.Attempt, bool, error) {
+func (mock *MockSQLite) RegisterAttempt(context1 context.Context, attempt domain.Attempt) (domain.Attempt, bool, error) {
 	if mock.RegisterAttemptFunc == nil {
-		panic("SQLiteMock.RegisterAttemptFunc: method is nil but SQLite.RegisterAttempt was just called")
+		panic("MockSQLite.RegisterAttemptFunc: method is nil but SQLite.RegisterAttempt was just called")
 	}
 	callInfo := struct {
 		Context1 context.Context
@@ -69,7 +69,7 @@ func (mock *SQLiteMock) RegisterAttempt(context1 context.Context, attempt domain
 // Check the length with:
 //
 //	len(mockedSQLite.RegisterAttemptCalls())
-func (mock *SQLiteMock) RegisterAttemptCalls() []struct {
+func (mock *MockSQLite) RegisterAttemptCalls() []struct {
 	Context1 context.Context
 	Attempt  domain.Attempt
 } {
@@ -80,5 +80,77 @@ func (mock *SQLiteMock) RegisterAttemptCalls() []struct {
 	mock.lockRegisterAttempt.RLock()
 	calls = mock.calls.RegisterAttempt
 	mock.lockRegisterAttempt.RUnlock()
+	return calls
+}
+
+// Ensure that MockUsecase does implement Usecase.
+// If this is not the case, regenerate this file with mockery.
+var _ Usecase = &MockUsecase{}
+
+// MockUsecase is a mock implementation of Usecase.
+//
+//	func TestSomethingThatUsesUsecase(t *testing.T) {
+//
+//		// make and configure a mocked Usecase
+//		mockedUsecase := &MockUsecase{
+//			AcceptTaskFunc: func(context1 context.Context, input Input) (Output, error) {
+//				panic("mock out the AcceptTask method")
+//			},
+//		}
+//
+//		// use mockedUsecase in code that requires Usecase
+//		// and then make assertions.
+//
+//	}
+type MockUsecase struct {
+	// AcceptTaskFunc mocks the AcceptTask method.
+	AcceptTaskFunc func(context1 context.Context, input Input) (Output, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// AcceptTask holds details about calls to the AcceptTask method.
+		AcceptTask []struct {
+			// Context1 is the context1 argument value.
+			Context1 context.Context
+			// Input is the input argument value.
+			Input Input
+		}
+	}
+	lockAcceptTask sync.RWMutex
+}
+
+// AcceptTask calls AcceptTaskFunc.
+func (mock *MockUsecase) AcceptTask(context1 context.Context, input Input) (Output, error) {
+	if mock.AcceptTaskFunc == nil {
+		panic("MockUsecase.AcceptTaskFunc: method is nil but Usecase.AcceptTask was just called")
+	}
+	callInfo := struct {
+		Context1 context.Context
+		Input    Input
+	}{
+		Context1: context1,
+		Input:    input,
+	}
+	mock.lockAcceptTask.Lock()
+	mock.calls.AcceptTask = append(mock.calls.AcceptTask, callInfo)
+	mock.lockAcceptTask.Unlock()
+	return mock.AcceptTaskFunc(context1, input)
+}
+
+// AcceptTaskCalls gets all the calls that were made to AcceptTask.
+// Check the length with:
+//
+//	len(mockedUsecase.AcceptTaskCalls())
+func (mock *MockUsecase) AcceptTaskCalls() []struct {
+	Context1 context.Context
+	Input    Input
+} {
+	var calls []struct {
+		Context1 context.Context
+		Input    Input
+	}
+	mock.lockAcceptTask.RLock()
+	calls = mock.calls.AcceptTask
+	mock.lockAcceptTask.RUnlock()
 	return calls
 }

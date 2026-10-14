@@ -24,7 +24,3 @@ CREATE TABLE outbox (
  value BLOB NOT NULL,
  headers TEXT NOT NULL
 );
-
--- +goose Down
-DROP TABLE outbox;
-DROP TABLE attempts;

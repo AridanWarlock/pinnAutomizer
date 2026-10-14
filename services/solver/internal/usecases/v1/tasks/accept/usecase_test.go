@@ -2,13 +2,16 @@ package tasksAccept
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
@@ -20,6 +23,16 @@ import (
 func TestAcceptTaskDurableReplayAndValidation(t *testing.T) {
 	ctx := context.Background()
 	cfg := sqlite.Config{Path: filepath.Join(t.TempDir(), "journal.db"), BusyTimeout: time.Second}
+	dir, err := filepath.Abs("../../../../../migrations")
+	require.NoError(t, err)
+	cfg.MigrationsDir = dir
+	db, err := sql.Open("sqlite", cfg.Path)
+	require.NoError(t, err)
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, os.DirFS(dir))
+	require.NoError(t, err)
+	_, err = provider.Up(context.Background())
+	require.NoError(t, err)
+	require.NoError(t, db.Close())
 	repo, err := sqlite.New(cfg)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = repo.Close() })
@@ -51,7 +64,7 @@ func TestAcceptTaskDurableReplayAndValidation(t *testing.T) {
 
 func TestConsumerPropagatesStorageFailure(t *testing.T) {
 	failure := errors.New("disk full")
-	repo := &SQLiteMock{RegisterAttemptFunc: func(context.Context, domain.Attempt) (domain.Attempt, bool, error) {
+	repo := &MockSQLite{RegisterAttemptFunc: func(context.Context, domain.Attempt) (domain.Attempt, bool, error) {
 		return domain.Attempt{}, false, failure
 	}}
 	c := NewConsumer(New(repo))

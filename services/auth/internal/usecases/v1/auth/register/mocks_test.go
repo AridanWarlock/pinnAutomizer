@@ -103,7 +103,7 @@ var _ Postgres = &MockPostgres{}
 //			GetRoleByTitleFunc: func(ctx context.Context, title string) (core.Role, error) {
 //				panic("mock out the GetRoleByTitle method")
 //			},
-//			InTransactionFunc: func(ctx context.Context, inTx func(ctx context.Context) error) error {
+//			InTransactionFunc: func(ctx context.Context, inTx func(context.Context) error) error {
 //				panic("mock out the InTransaction method")
 //			},
 //		}
@@ -123,7 +123,7 @@ type MockPostgres struct {
 	GetRoleByTitleFunc func(ctx context.Context, title string) (core.Role, error)
 
 	// InTransactionFunc mocks the InTransaction method.
-	InTransactionFunc func(ctx context.Context, inTx func(ctx context.Context) error) error
+	InTransactionFunc func(ctx context.Context, inTx func(context.Context) error) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -153,7 +153,7 @@ type MockPostgres struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// InTx is the inTx argument value.
-			InTx func(ctx context.Context) error
+			InTx func(context.Context) error
 		}
 	}
 	lockCreateUser            sync.RWMutex
@@ -271,13 +271,13 @@ func (mock *MockPostgres) GetRoleByTitleCalls() []struct {
 }
 
 // InTransaction calls InTransactionFunc.
-func (mock *MockPostgres) InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error {
+func (mock *MockPostgres) InTransaction(ctx context.Context, inTx func(context.Context) error) error {
 	if mock.InTransactionFunc == nil {
 		panic("MockPostgres.InTransactionFunc: method is nil but Postgres.InTransaction was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
-		InTx func(ctx context.Context) error
+		InTx func(context.Context) error
 	}{
 		Ctx:  ctx,
 		InTx: inTx,
@@ -294,11 +294,11 @@ func (mock *MockPostgres) InTransaction(ctx context.Context, inTx func(ctx conte
 //	len(mockedPostgres.InTransactionCalls())
 func (mock *MockPostgres) InTransactionCalls() []struct {
 	Ctx  context.Context
-	InTx func(ctx context.Context) error
+	InTx func(context.Context) error
 } {
 	var calls []struct {
 		Ctx  context.Context
-		InTx func(ctx context.Context) error
+		InTx func(context.Context) error
 	}
 	mock.lockInTransaction.RLock()
 	calls = mock.calls.InTransaction

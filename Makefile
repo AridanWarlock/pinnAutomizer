@@ -27,6 +27,7 @@ export PROJECT_ROOT
 	kafka-ui-up kafka-ui-down \
 	auth-goose-create auth-goose-up \
 	tasks-goose-create tasks-goose-up \
+	solver-goose-create solver-goose-up \
 	swagger-gen swagger-fmt \
 	mockery \
 	gateway-run gateway-shutdown \
@@ -122,6 +123,17 @@ tasks-goose-create:
 
 tasks-goose-up:
 	@docker compose run --rm goose-tasks
+
+solver-goose-create:
+	@if [ -z "$(name)" ]; then \
+		echo "Отсутствует name. Пример: make solver-goose-create name=add_index"; \
+		exit 1; \
+	fi
+	@docker compose run --rm --build --no-deps \
+		-e GOOSE_COMMAND=create -e GOOSE_COMMAND_ARG="$(name) sql" goose-solver
+
+solver-goose-up:
+	@docker compose run --rm --build --no-deps goose-solver
 
 swagger-gen:
 	@if [ -z "$(service)" ]; then \

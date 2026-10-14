@@ -6,36 +6,43 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	driver "modernc.org/sqlite"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	shared "github.com/AridanWarlock/pinnAutomizer/pkg/sqlite"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
-var ErrAlreadyOwned = errors.New("solver journal already owned")
-
 type Repository struct {
-	db       *sql.DB
-	owner    *os.File
-	once     sync.Once
-	closeErr error
+	db     *sql.DB
+	client *shared.SQLite
 }
 
-func (r *Repository) Close() error {
-	r.once.Do(func() {
-		if r.db != nil {
-			r.closeErr = r.db.Close()
+var ErrAlreadyOwned = shared.ErrAlreadyOwned
+
+func New(cfg Config) (_ *Repository, err error) {
+	client, err := shared.New(shared.Config{Path: cfg.Path, BusyTimeout: cfg.BusyTimeout})
+	if err != nil {
+		return nil, err
+	}
+	ready := false
+	defer func() {
+		if !ready {
+			err = errors.Join(err, client.Close())
 		}
-		if r.owner != nil {
-			r.closeErr = errors.Join(r.closeErr, r.owner.Close())
-		}
-	})
-	return r.closeErr
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err = client.CheckMigrations(ctx, os.DirFS(cfg.MigrationsDir)); err != nil {
+		return nil, err
+	}
+	ready = true
+	return &Repository{db: client.Database(), client: client}, nil
 }
+func (r *Repository) Close() error { return r.client.Close() }
 
 const columns = "run_id,task_id,mode,state,container_id,created_at,deadline,completed_at,exit_code,error"
 

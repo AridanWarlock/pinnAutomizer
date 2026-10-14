@@ -29,4 +29,5 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 FROM scratch
 WORKDIR /app
 COPY --from=builder ["/app/exe", "."]
+COPY --from=builder /app/services/solver/migrations /app/migrations
 ENTRYPOINT ["./exe"]

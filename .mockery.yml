@@ -1,16 +1,11 @@
 template: matryer
+filename: mocks_test.go
+all: true
+recursive: true
+inpackage: true
 packages:
-  github.com/AridanWarlock/pinnAutomizer:
-    config:
-      filename: "mocks_test.go"
-      all: true
-      recursive: true
-      inpackage: true
-  github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/accept:
-    config:
-      dir: services/solver/internal/usecases/v1/tasks/accept
-      filename: mocks_test.go
-      pkgname: tasksAccept
-      structname: '{{.InterfaceName}}Mock'
-    interfaces:
-      SQLite:
+  github.com/AridanWarlock/pinnAutomizer/pkg:
+  github.com/AridanWarlock/pinnAutomizer/auth:
+  github.com/AridanWarlock/pinnAutomizer/tasks:
+  github.com/AridanWarlock/pinnAutomizer/solver:
+  github.com/AridanWarlock/pinnAutomizer/gateway:

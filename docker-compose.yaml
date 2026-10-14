@@ -214,12 +214,25 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${PROJECT_ROOT}/out/solver/logs:/app/out/logs
+      - ${PROJECT_ROOT}/out/solver/journal:/journal
     deploy:
       restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
         window: 120s
+
+  goose-solver:
+    build:
+      context: ${PROJECT_ROOT}
+      dockerfile: services/solver/migrations/Dockerfile
+    profiles: [tools]
+    environment:
+      - GOOSE_DRIVER=sqlite3
+      - GOOSE_DBSTRING=file:/journal/journal.db?_pragma=journal_mode(WAL)&_pragma=synchronous(FULL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)
+    volumes:
+      - ${PROJECT_ROOT}/services/solver/migrations:/migrations
+      - ${PROJECT_ROOT}/out/solver/journal:/journal
 
   swagger:
     build:
@@ -241,6 +254,14 @@ services:
     volumes:
       - ${PROJECT_ROOT}:/src
     working_dir: /src
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        cd "$$(mktemp -d)"
+        export GOWORK="$$PWD/go.work"
+        go work init /src/pkg /src/services/auth /src/services/tasks /src/services/solver /src/services/gateway
+        cd /src
+        exec mockery --config /src/.mockery.yml
 
   redis:
     image: redis:7-alpine

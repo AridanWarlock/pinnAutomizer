@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -26,7 +25,11 @@ import (
 
 func config(t *testing.T) Config {
 	t.Helper()
-	return Config{Path: filepath.Join(t.TempDir(), "journal.db"), BusyTimeout: 50 * time.Millisecond}
+	dir, err := filepath.Abs("../../../migrations")
+	require.NoError(t, err)
+	cfg := Config{Path: filepath.Join(t.TempDir(), "journal.db"), BusyTimeout: 50 * time.Millisecond, MigrationsDir: dir}
+	migrate(t, cfg.Path, os.DirFS(dir))
+	return cfg
 }
 func open(t *testing.T, c Config) *Repository {
 	t.Helper()
@@ -147,12 +150,13 @@ func TestStartIntentIsNotRepeated(t *testing.T) {
 	require.Equal(t, first.Deadline, second.Deadline)
 }
 func TestBusyAndCanceledRegistration(t *testing.T) {
-	r := open(t, config(t))
+	cfg := config(t)
+	r := open(t, cfg)
 	ctx := context.Background()
 	conn, err := r.db.Conn(ctx)
 	require.NoError(t, err)
 	// A separate connection emulates another SQLite client holding the write lock.
-	external, err := sql.Open("sqlite", strings.TrimSuffix(r.owner.Name(), ".lock"))
+	external, err := sql.Open("sqlite", cfg.Path)
 	require.NoError(t, err)
 	defer external.Close()
 	_ = conn.Close()
@@ -174,7 +178,7 @@ func TestOwnerProcessHelper(t *testing.T) {
 	if path == "" {
 		return
 	}
-	r, err := New(Config{Path: path, BusyTimeout: time.Second})
+	r, err := New(Config{Path: path, BusyTimeout: time.Second, MigrationsDir: os.Getenv("PINN_TEST_MIGRATIONS_DIR")})
 	require.NoError(t, err)
 	a := attempt(t)
 	_, _, err = r.RegisterAttempt(context.Background(), a)
@@ -185,7 +189,7 @@ func TestOwnerProcessHelper(t *testing.T) {
 func TestKilledOwnerReleasesLockAndPreservesRecord(t *testing.T) {
 	c := config(t)
 	cmd := exec.Command(os.Args[0], "-test.run=^TestOwnerProcessHelper$")
-	cmd.Env = append(os.Environ(), "PINN_TEST_OWNER_PATH="+c.Path)
+	cmd.Env = append(os.Environ(), "PINN_TEST_OWNER_PATH="+c.Path, "PINN_TEST_MIGRATIONS_DIR="+c.MigrationsDir)
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	require.NoError(t, cmd.Start())

@@ -2,12 +2,15 @@ package outbox
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
@@ -37,6 +40,16 @@ func (w *recordingWriter) WriteMessages(ctx context.Context, messages ...core.Ka
 func setup(t *testing.T) (*sqlite.Repository, sqlite.Config, domain.Event) {
 	t.Helper()
 	cfg := sqlite.Config{Path: filepath.Join(t.TempDir(), "journal.db"), BusyTimeout: time.Second}
+	dir, err := filepath.Abs("../../../../migrations")
+	require.NoError(t, err)
+	cfg.MigrationsDir = dir
+	db, err := sql.Open("sqlite", cfg.Path)
+	require.NoError(t, err)
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, os.DirFS(dir))
+	require.NoError(t, err)
+	_, err = provider.Up(context.Background())
+	require.NoError(t, err)
+	require.NoError(t, db.Close())
 	repo, err := sqlite.New(cfg)
 	require.NoError(t, err)
 	a, err := domain.NewAttempt(uuid.New(), uuid.New(), "train", time.Now())

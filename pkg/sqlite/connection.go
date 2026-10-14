@@ -14,9 +14,9 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
 
-func New(cfg Config) (result *Repository, err error) {
+func New(cfg Config) (result *SQLite, err error) {
 	if cfg.Path == "" || cfg.Path == ":memory:" || cfg.BusyTimeout < time.Millisecond {
-		return nil, fmt.Errorf("%w: journal path and positive busy timeout required", errs.ErrInvalidArgument)
+		return nil, fmt.Errorf("%w: database path and positive busy timeout required", errs.ErrInvalidArgument)
 	}
 	path, err := preparePath(cfg.Path)
 	if err != nil {
@@ -26,26 +26,26 @@ func New(cfg Config) (result *Repository, err error) {
 	if err != nil {
 		return nil, err
 	}
-	repo := &Repository{owner: owner}
+	client := &SQLite{owner: owner}
 	// Ownership transfers to the caller only after complete initialization.
 	defer func() {
 		if result == nil {
-			err = errors.Join(err, repo.Close())
+			err = errors.Join(err, client.Close())
 		}
 	}()
-	if err = createJournalFile(path); err != nil {
+	if err = checkDatabaseFile(path); err != nil {
 		return nil, err
 	}
-	repo.db, err = openDatabase(path, cfg.BusyTimeout)
+	client.db, err = openDatabase(path, cfg.BusyTimeout)
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err = repo.initializeSchema(ctx); err != nil {
+	if err = client.db.PingContext(ctx); err != nil {
 		return nil, err
 	}
-	return repo, nil
+	return client, nil
 }
 
 func preparePath(path string) (string, error) {
@@ -87,8 +87,8 @@ func acquireOwner(path string) (owner *os.File, err error) {
 	return file, nil
 }
 
-func createJournalFile(path string) (err error) {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0600)
+func checkDatabaseFile(path string) (err error) {
+	file, err := os.OpenFile(path, os.O_RDWR, 0600)
 	if err != nil {
 		return err
 	}
@@ -99,6 +99,7 @@ func createJournalFile(path string) (err error) {
 func openDatabase(path string, busyTimeout time.Duration) (*sql.DB, error) {
 	uri := url.URL{Scheme: "file", Path: path}
 	query := uri.Query()
+	query.Set("mode", "rw")
 	for _, pragma := range []string{
 		"journal_mode(WAL)",
 		"synchronous(FULL)",
