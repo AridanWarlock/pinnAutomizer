@@ -24,7 +24,7 @@ type Config struct {
 	Postgres             postgres.Config      `envPrefix:"POSTGRES_"`
 	Redis                goRedis.Config       `envPrefix:"REDIS_"`
 	AccessTokenGenerator jwt.Config           `envPrefix:"JWT_"`
-	KafkaConsumer        kafka.ConsumerConfig `envPrefix:"KAFKA_READER_"`
+	KafkaConsumer        kafka.ConsumerConfig `envPrefix:"KAFKA_CONSUMER_"`
 }
 
 func InitConfig() (Config, error) {

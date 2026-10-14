@@ -18,8 +18,8 @@ type Config struct {
 	App           App
 	Log           logger.Config        `envPrefix:"LOGGER_"`
 	PinnRunner    mlrunner.Config      `envPrefix:"PINN_RUNNER_"`
-	KafkaProducer kafka.ProducerConfig `envPrefix:"KAFKA_WRITER_"`
-	KafkaConsumer kafka.ConsumerConfig `envPrefix:"KAFKA_READER_"`
+	KafkaProducer kafka.ProducerConfig `envPrefix:"KAFKA_PRODUCER_"`
+	KafkaConsumer kafka.ConsumerConfig `envPrefix:"KAFKA_CONSUMER_"`
 }
 
 func InitConfig() (Config, error) {

@@ -20,8 +20,8 @@ type Config struct {
 	HTTP          httpsrv.Config       `envPrefix:"HTTP_"`
 	Log           logger.Config        `envPrefix:"LOGGER_"`
 	Postgres      postgres.Config      `envPrefix:"POSTGRES_"`
-	KafkaProducer kafka.ProducerConfig `envPrefix:"KAFKA_WRITER_"`
-	KafkaConsumer kafka.ConsumerConfig `envPrefix:"KAFKA_READER_"`
+	KafkaProducer kafka.ProducerConfig `envPrefix:"KAFKA_PRODUCER_"`
+	KafkaConsumer kafka.ConsumerConfig `envPrefix:"KAFKA_CONSUMER_"`
 }
 
 func InitConfig() (Config, error) {

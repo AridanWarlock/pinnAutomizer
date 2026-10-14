@@ -20,7 +20,7 @@ services:
       # Tokens
       - JWT_SECRET=${JWT_SECRET}
       # Kafka
-      - KAFKA_WRITER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_PRODUCER_BROKER=kafka:${KAFKA_PORT}
       # Redis
       - REDIS_ADDR=redis:${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -68,8 +68,8 @@ services:
       # Tokens
       - JWT_SECRET=${JWT_SECRET}
       # Kafka
-      - KAFKA_READER_BROKER=kafka:${KAFKA_PORT}
-      - KAFKA_READER_GROUP_ID=pinn-auth-services
+      - KAFKA_CONSUMER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_CONSUMER_GROUP_ID=pinn-auth-services
       # Redis
       - REDIS_ADDR=redis:${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -145,9 +145,9 @@ services:
       - POSTGRES_DB=${TASKS_POSTGRES_DB}
       - POSTGRES_TIMEOUT=${TASKS_POSTGRES_TIMEOUT}
       # Kafka
-      - KAFKA_WRITER_BROKER=kafka:${KAFKA_PORT}
-      - KAFKA_READER_BROKER=kafka:${KAFKA_PORT}
-      - KAFKA_READER_GROUP_ID=pinn-tasks-services
+      - KAFKA_PRODUCER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_CONSUMER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_CONSUMER_GROUP_ID=pinn-tasks-services
     volumes:
       - ${PROJECT_ROOT}/out/tasks/logs:/app/out/logs
       # PINN data
@@ -203,9 +203,9 @@ services:
       - LOGGER_LEVEL=${LOGGER_LEVEL}
       - LOGGER_FOLDER=/app/out/logs
       # Kafka
-      - KAFKA_WRITER_BROKER=kafka:${KAFKA_PORT}
-      - KAFKA_READER_BROKER=kafka:${KAFKA_PORT}
-      - KAFKA_READER_GROUP_ID=pinn-solver-services
+      - KAFKA_PRODUCER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_CONSUMER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_CONSUMER_GROUP_ID=pinn-solver-services
       # PINN runner
       - PINN_RUNNER_IMAGE=pinn-runner-image:latest
       - PINN_RUNNER_HOST_TASKS_DATA_DIR=${PROJECT_ROOT}/out/pinn/tasks/data

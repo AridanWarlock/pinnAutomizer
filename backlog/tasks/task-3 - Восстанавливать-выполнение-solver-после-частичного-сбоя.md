@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-14 12:14'
+updated_date: '2026-10-14 12:17'
 labels: []
 dependencies: []
 priority: high
@@ -42,4 +42,6 @@ At-most-once чтение и отсутствие устойчивой попы�
 Review checkpoint: TASK-3.1/3.2/3.3 завершены отдельными коммитами: SQLite ledger, acceptance consumer и outbox worker. Runtime пока использует прежний consumer/runner. make check, race для solver и Linux CGO_ENABLED=0 сборка solver и SQLite test binary проходят. Docker daemon недоступен, настоящий Kafka и восстановление контейнеров не проверены. Следующий этап: recovery usecase/worker, Docker create-inspect-start с защитой от повторного Start, runtime ownership/volume/shutdown и rollout legacy сообщений. До переключения рабочей доставки нужен review этой границы и Docker интеграционные проверки.
 
 По согласованному review выполнено механическое переименование Kafka-обёрток обоих уровней: Consumer/Producer, ConsumerConfig/ProducerConfig, NewConsumer/NewProducer и WithProducer. Места подключения во всех четырёх сервисах обновлены. Env prefixes KAFKA_READER_/KAFKA_WRITER_ сохранены для совместимости развёртывания; библиотечные kafka-go.Reader/Writer остаются внутри segmentio-адаптера. Интерфейсы и сигнатуры методов зависимостей не изменены, существующие моки не требуют перегенерации.
+
+По запросу пользователя env также переименован: KAFKA_CONSUMER_/KAFKA_PRODUCER_ в Go config и docker-compose.yaml. .env.example документирует новые service keys. В игнорируемом локальном .env старые Kafka prefixes отсутствуют; секреты не выводились. Старые env names больше не поддерживаются; при review учитывать обновление внешней конфигурации запуска.
 <!-- SECTION:NOTES:END -->

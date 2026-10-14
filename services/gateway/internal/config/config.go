@@ -24,7 +24,7 @@ type Config struct {
 	Log                  logger.Config        `envPrefix:"LOGGER_"`
 	Redis                goRedis.Config       `envPrefix:"REDIS_"`
 	AccessTokenGenerator jwt.Config           `envPrefix:"JWT_"`
-	KafkaProducer        kafka.ProducerConfig `envPrefix:"KAFKA_WRITER_"`
+	KafkaProducer        kafka.ProducerConfig `envPrefix:"KAFKA_PRODUCER_"`
 }
 
 func InitConfig() (Config, error) {
