@@ -106,8 +106,8 @@ func AppRun(
 
 	// consumers
 	authCompromisedConsumer := authCompromised.NewConsumer(authCompromisedUsecase)
-	authCompromisedReader, err := kafka.NewReader(
-		cfg.KafkaReader,
+	authCompromisedKafkaConsumer, err := kafka.NewConsumer(
+		cfg.KafkaConsumer,
 		"auth.session.compromised",
 		kafka.StrategyAtMostOnce,
 		log,
@@ -144,7 +144,7 @@ func AppRun(
 	return lifecycle.Run(ctx,
 		lifecycle.Worker{Name: "http server", Run: server.Run},
 		lifecycle.Worker{Name: "auth.session.compromised", Run: func(ctx context.Context) error {
-			return authCompromisedReader.Run(ctx, authCompromisedConsumer.HandleMessage)
+			return authCompromisedKafkaConsumer.Run(ctx, authCompromisedConsumer.HandleMessage)
 		}},
 	)
 }

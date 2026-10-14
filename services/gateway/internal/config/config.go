@@ -20,11 +20,11 @@ type App struct {
 
 type Config struct {
 	App                  App
-	HTTP                 httpsrv.Config     `envPrefix:"HTTP_"`
-	Log                  logger.Config      `envPrefix:"LOGGER_"`
-	Redis                goRedis.Config     `envPrefix:"REDIS_"`
-	AccessTokenGenerator jwt.Config         `envPrefix:"JWT_"`
-	KafkaWriter          kafka.WriterConfig `envPrefix:"KAFKA_WRITER_"`
+	HTTP                 httpsrv.Config       `envPrefix:"HTTP_"`
+	Log                  logger.Config        `envPrefix:"LOGGER_"`
+	Redis                goRedis.Config       `envPrefix:"REDIS_"`
+	AccessTokenGenerator jwt.Config           `envPrefix:"JWT_"`
+	KafkaProducer        kafka.ProducerConfig `envPrefix:"KAFKA_WRITER_"`
 }
 
 func InitConfig() (Config, error) {

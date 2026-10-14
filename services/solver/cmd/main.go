@@ -62,18 +62,18 @@ func AppRun(
 	}()
 	log.Info().Msg("pinn runner connected")
 	// kafka producer
-	writer := kafka.NewWriter(cfg.KafkaWriter, log)
+	producer := kafka.NewProducer(cfg.KafkaProducer, log)
 	defer func() {
-		if err := writer.Close(); err != nil {
+		if err := producer.Close(); err != nil {
 			log.Error().Err(err).Msg("kafka producer shutdown error")
 			return
 		}
 		log.Info().Msg("kafka producer shutdown gracefully")
 	}()
 	log.Info().Msg("kafka producer connected")
-	// kafka reader
-	runQueueReader, err := kafka.NewReader(
-		cfg.KafkaReader,
+	// kafka consumer
+	runQueueConsumer, err := kafka.NewConsumer(
+		cfg.KafkaConsumer,
 		"tasks.run.queue",
 		kafka.StrategyAtMostOnce,
 		log,
@@ -81,8 +81,8 @@ func AppRun(
 	if err != nil {
 		return fmt.Errorf("start on run kafka reader: %w", err)
 	}
-	predictQueueReader, err := kafka.NewReader(
-		cfg.KafkaReader,
+	predictQueueConsumer, err := kafka.NewConsumer(
+		cfg.KafkaConsumer,
 		"tasks.predict.queue",
 		kafka.StrategyAtMostOnce,
 		log,
@@ -96,13 +96,13 @@ func AppRun(
 	runUsecase := tasksRun.New(runner)
 
 	// consumers
-	runConsumer := tasksRun.NewConsumer(runUsecase, writer)
+	runConsumer := tasksRun.NewConsumer(runUsecase, producer)
 	return lifecycle.Run(ctx,
 		lifecycle.Worker{Name: "tasks.run.queue", Run: func(ctx context.Context) error {
-			return runQueueReader.Run(ctx, runConsumer.HandleMessage)
+			return runQueueConsumer.Run(ctx, runConsumer.HandleMessage)
 		}},
 		lifecycle.Worker{Name: "tasks.predict.queue", Run: func(ctx context.Context) error {
-			return predictQueueReader.Run(ctx, runConsumer.HandleMessage)
+			return predictQueueConsumer.Run(ctx, runConsumer.HandleMessage)
 		}},
 	)
 }

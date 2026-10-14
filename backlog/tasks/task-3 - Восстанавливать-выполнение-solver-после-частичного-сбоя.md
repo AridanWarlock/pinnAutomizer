@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-14 10:59'
+updated_date: '2026-10-14 12:14'
 labels: []
 dependencies: []
 priority: high
@@ -40,4 +40,6 @@ At-most-once чтение и отсутствие устойчивой попы�
 После разбора с пользователем PostgreSQL для solver заменён в плане на локальную SQLite: текущий объём метаданных и один Docker-host не требуют отдельной серверной БД. Сохраняются атомарные ledger/outbox, стабильный run_id и запрет слепого повторного Start. Ограничения: постоянный локальный volume, WAL, один владелец журнала; потерю хоста/диска и общий журнал нескольких хостов это не покрывает. Основание: sqlite.org/whentouse.html, sqlite.org/wal.html и synchronous pragma. Код реализации пока не менялся.
 
 Review checkpoint: TASK-3.1/3.2/3.3 завершены отдельными коммитами: SQLite ledger, acceptance consumer и outbox worker. Runtime пока использует прежний consumer/runner. make check, race для solver и Linux CGO_ENABLED=0 сборка solver и SQLite test binary проходят. Docker daemon недоступен, настоящий Kafka и восстановление контейнеров не проверены. Следующий этап: recovery usecase/worker, Docker create-inspect-start с защитой от повторного Start, runtime ownership/volume/shutdown и rollout legacy сообщений. До переключения рабочей доставки нужен review этой границы и Docker интеграционные проверки.
+
+По согласованному review выполнено механическое переименование Kafka-обёрток обоих уровней: Consumer/Producer, ConsumerConfig/ProducerConfig, NewConsumer/NewProducer и WithProducer. Места подключения во всех четырёх сервисах обновлены. Env prefixes KAFKA_READER_/KAFKA_WRITER_ сохранены для совместимости развёртывания; библиотечные kafka-go.Reader/Writer остаются внутри segmentio-адаптера. Интерфейсы и сигнатуры методов зависимостей не изменены, существующие моки не требуют перегенерации.
 <!-- SECTION:NOTES:END -->

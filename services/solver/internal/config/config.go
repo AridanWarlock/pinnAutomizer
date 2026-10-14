@@ -15,11 +15,11 @@ type App struct {
 }
 
 type Config struct {
-	App         App
-	Log         logger.Config      `envPrefix:"LOGGER_"`
-	PinnRunner  mlrunner.Config    `envPrefix:"PINN_RUNNER_"`
-	KafkaWriter kafka.WriterConfig `envPrefix:"KAFKA_WRITER_"`
-	KafkaReader kafka.ReaderConfig `envPrefix:"KAFKA_READER_"`
+	App           App
+	Log           logger.Config        `envPrefix:"LOGGER_"`
+	PinnRunner    mlrunner.Config      `envPrefix:"PINN_RUNNER_"`
+	KafkaProducer kafka.ProducerConfig `envPrefix:"KAFKA_WRITER_"`
+	KafkaConsumer kafka.ConsumerConfig `envPrefix:"KAFKA_READER_"`
 }
 
 func InitConfig() (Config, error) {

@@ -74,7 +74,7 @@ func AppRun(
 	}()
 	log.Info().Msg("postgres connected")
 	// kafka producer
-	producer := kafka.NewWriter(cfg.KafkaWriter, log)
+	producer := kafka.NewProducer(cfg.KafkaProducer, log)
 	defer func() {
 		if err := producer.Close(); err != nil {
 			log.Error().Err(err).Msg("kafka producer shutdown error")
@@ -83,11 +83,11 @@ func AppRun(
 		log.Info().Msg("kafka producer shutdown gracefully")
 	}()
 	log.Info().Msg("kafka_produce connected")
-	// outbox writer
-	writer := outbox.NewWorker(postgresAdapter, producer, log)
+	// outbox worker
+	outboxWorker := outbox.NewWorker(postgresAdapter, producer, log)
 	defer func() {
-		writer.Close()
-		log.Info().Msg("outbox writer shutdown gracefully")
+		outboxWorker.Close()
+		log.Info().Msg("outbox worker shutdown gracefully")
 	}()
 	log.Info().Msg("outbox worker started")
 	// file store
@@ -141,12 +141,12 @@ func AppRun(
 	// kafka consumers
 	// tasks-on-run
 	tasksOnRunConsumer := tasksOnRun.NewConsumer(tasksOnRunUsecase, log)
-	tasksOnRunConsumeAdapter, err := kafka.NewReader(
-		cfg.KafkaReader,
+	tasksOnRunConsumeAdapter, err := kafka.NewConsumer(
+		cfg.KafkaConsumer,
 		"tasks.on.run",
 		kafka.StrategyAtLeastOnce,
 		log,
-		kafka.WithWriter(producer),
+		kafka.WithProducer(producer),
 	)
 	if err != nil {
 		return fmt.Errorf("tasks.on.run reader init: %w", err)
@@ -154,12 +154,12 @@ func AppRun(
 
 	// tasks-after-run
 	tasksAfterRunConsumer := tasksAfterRun.NewConsumer(tasksAfterRunUsecase, log)
-	tasksAfterRunConsumeAdapter, err := kafka.NewReader(
-		cfg.KafkaReader,
+	tasksAfterRunConsumeAdapter, err := kafka.NewConsumer(
+		cfg.KafkaConsumer,
 		"tasks.after.run",
 		kafka.StrategyAtLeastOnce,
 		log,
-		kafka.WithWriter(producer),
+		kafka.WithProducer(producer),
 	)
 	if err != nil {
 		return fmt.Errorf("tasks.after.run reader init: %w", err)

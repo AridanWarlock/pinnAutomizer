@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/segmentio/kafka-go"
+	kafkago "github.com/segmentio/kafka-go"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
@@ -16,25 +16,25 @@ var (
 	ErrReaderClosed = errors.New("reader closed")
 )
 
-type Reader struct {
+type Consumer struct {
 	topic    string
 	maxBytes int
 
-	reader *kafka.Reader
+	reader *kafkago.Reader
 }
 
-func NewReader(cfg ReaderConfig, topic string, maxBytes int) *Reader {
-	reader := kafka.NewReader(kafka.ReaderConfig{
+func NewConsumer(cfg ConsumerConfig, topic string, maxBytes int) *Consumer {
+	reader := kafkago.NewReader(kafkago.ReaderConfig{
 		Brokers:        []string{cfg.Broker},
 		GroupID:        cfg.GroupID,
 		Topic:          topic,
-		StartOffset:    kafka.FirstOffset,
+		StartOffset:    kafkago.FirstOffset,
 		MaxWait:        10 * time.Millisecond,
 		MaxBytes:       maxBytes,
 		CommitInterval: 0,
 	})
 
-	r := &Reader{
+	r := &Consumer{
 		topic:    topic,
 		maxBytes: maxBytes,
 
@@ -44,7 +44,7 @@ func NewReader(cfg ReaderConfig, topic string, maxBytes int) *Reader {
 	return r
 }
 
-func (r *Reader) FetchMessage(ctx context.Context) (Message, error) {
+func (r *Consumer) FetchMessage(ctx context.Context) (Message, error) {
 	msg, err := r.reader.FetchMessage(ctx)
 
 	if err != nil {
@@ -54,8 +54,8 @@ func (r *Reader) FetchMessage(ctx context.Context) (Message, error) {
 	return NewMessageFromKafka(msg), nil
 }
 
-func (r *Reader) CommitMessages(ctx context.Context, msgs ...Message) error {
-	kafkaMsgs := make([]kafka.Message, len(msgs))
+func (r *Consumer) CommitMessages(ctx context.Context, msgs ...Message) error {
+	kafkaMsgs := make([]kafkago.Message, len(msgs))
 	for i, msg := range msgs {
 		kafkaMsgs[i] = msg.ToKafkaMessage()
 	}
@@ -67,7 +67,7 @@ func (r *Reader) CommitMessages(ctx context.Context, msgs ...Message) error {
 	return nil
 }
 
-func (r *Reader) ReadMessage(ctx context.Context) (Message, error) {
+func (r *Consumer) ReadMessage(ctx context.Context) (Message, error) {
 	kafkaMsg, err := r.reader.ReadMessage(ctx)
 
 	if err != nil {
@@ -76,7 +76,7 @@ func (r *Reader) ReadMessage(ctx context.Context) (Message, error) {
 	return NewMessageFromKafka(kafkaMsg), nil
 }
 
-func (r *Reader) handleError(err error) error {
+func (r *Consumer) handleError(err error) error {
 	switch {
 	case errs.IsContextErr(err):
 		return err
@@ -89,10 +89,10 @@ func (r *Reader) handleError(err error) error {
 	}
 }
 
-func (r *Reader) Close() error {
+func (r *Consumer) Close() error {
 	return r.reader.Close()
 }
 
-func (r *Reader) GetTopic() string {
+func (r *Consumer) GetTopic() string {
 	return r.topic
 }

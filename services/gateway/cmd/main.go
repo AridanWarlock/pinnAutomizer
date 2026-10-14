@@ -52,15 +52,15 @@ func AppRun(
 	defer cancel()
 
 	// adapters
-	// kafka writer
-	writer := kafka.NewWriter(cfg.KafkaWriter, log)
+	// kafka producer
+	producer := kafka.NewProducer(cfg.KafkaProducer, log)
 	defer func() {
-		err := writer.Close()
+		err := producer.Close()
 		if err != nil {
-			log.Error().Err(err).Msg("shutdown kafka writer error")
+			log.Error().Err(err).Msg("shutdown kafka producer error")
 			return
 		}
-		log.Info().Msg("writer closed gracefully")
+		log.Info().Msg("producer closed gracefully")
 	}()
 	// redis
 	redisClient, err := goRedis.New(cfg.Redis)
@@ -95,7 +95,7 @@ func AppRun(
 		middleware.Auth(
 			cacheAside,
 			accessTokenGenerator,
-			writer,
+			producer,
 			"auth.session.compromised",
 		),
 	)

@@ -1,10 +1,10 @@
 package kafka
 
-type ReaderConfig struct {
+type ConsumerConfig struct {
 	Broker  string `env:"BROKER,required"`
 	GroupID string `env:"GROUP_ID,required"`
 }
 
-type WriterConfig struct {
+type ProducerConfig struct {
 	Broker string `env:"BROKER,required"`
 }

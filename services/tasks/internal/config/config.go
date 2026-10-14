@@ -16,12 +16,12 @@ type App struct {
 }
 
 type Config struct {
-	App         App
-	HTTP        httpsrv.Config     `envPrefix:"HTTP_"`
-	Log         logger.Config      `envPrefix:"LOGGER_"`
-	Postgres    postgres.Config    `envPrefix:"POSTGRES_"`
-	KafkaWriter kafka.WriterConfig `envPrefix:"KAFKA_WRITER_"`
-	KafkaReader kafka.ReaderConfig `envPrefix:"KAFKA_READER_"`
+	App           App
+	HTTP          httpsrv.Config       `envPrefix:"HTTP_"`
+	Log           logger.Config        `envPrefix:"LOGGER_"`
+	Postgres      postgres.Config      `envPrefix:"POSTGRES_"`
+	KafkaProducer kafka.ProducerConfig `envPrefix:"KAFKA_WRITER_"`
+	KafkaConsumer kafka.ConsumerConfig `envPrefix:"KAFKA_READER_"`
 }
 
 func InitConfig() (Config, error) {
