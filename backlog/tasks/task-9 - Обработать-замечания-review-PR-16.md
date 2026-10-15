@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-15 13:38'
-updated_date: '2026-10-15 14:00'
+updated_date: '2026-10-15 14:07'
 labels: []
 dependencies: []
 ordinal: 14000
@@ -19,10 +19,10 @@ ordinal: 14000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Общий SQLite API поддерживает Sqlizer, Getx/Selectx/Execx, структурное сканирование и транзакции с дисковыми тестами; solver использует этот API
-- [ ] #2 Замечания lifecycle, HTTP shutdown, cache TTL, Redis tests и quality runner обработаны и проверены
-- [ ] #3 Замечания solver/domain/outbox, usecase интерфейсов, конвенций и миграций обработаны без смены PINN API
-- [ ] #4 make check и адресные race проходят; обновления отправлены в тот же PR, все 29 обсуждений получили ответ [Codex] без auto-resolve
+- [x] #1 Общий SQLite API поддерживает Sqlizer, Getx/Selectx/Execx, структурное сканирование и транзакции с дисковыми тестами; solver использует этот API
+- [x] #2 Замечания lifecycle, HTTP shutdown, cache TTL, Redis tests и quality runner обработаны и проверены
+- [x] #3 Замечания solver/domain/outbox, usecase интерфейсов, конвенций и миграций обработаны без смены PINN API
+- [x] #4 make check и адресные race проходят; обновления отправлены в тот же PR, все 29 обсуждений получили ответ [Codex] без auto-resolve
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -35,4 +35,6 @@ ordinal: 14000
 
 <!-- SECTION:NOTES:BEGIN -->
 Первая группа готова: lifecycle Worker options с валидацией до старта; shutdown на Background timeout + тест принудительного закрытия; TTL<=0 не хранится, фикстуры expired заданы явно, ticker.Close/close race исправлены. Redis unit tests используют generated MockRedis и TryLock до общего барьера. Runner больше не знает env Postgres. Именованы multipart memory threshold, вставлен TxManager, инвертирован happy path run; удалены Down и лишние IDE/Python ignore правила; объявления развёрнуты. Полный make check и реальные PG integration на временном TCP-кластере прошли.
+
+Исправления опубликованы в PR #16: 189eee8, 1ffaf40, c2b5c1c. Shared SQLite использует Sqlizer, scany/sqlscan и контекстные транзакции; solver переведён на Squirrel; domain validation и naming уточнены; polling outbox вынесен в infrastructure worker. Полный make check с реальным временным PostgreSQL прошёл; адресные race-проверки cache/lifecycle/HTTP/Redis Store/SQLite/solver прошли с разрешением локального listener. Linux CGO_ENABLED=0 solver build и SQLite test compile прошли. Все 29 обсуждений получили ответы [Codex]; обсуждения не закрыты, PR не влит. Docker daemon и реальный Redis недоступны: образ миграций и Redis TTL интеграционно не проверены; PINN не запускался. Временный PostgreSQL остановлен. Ожидается review пользователя.
 <!-- SECTION:NOTES:END -->
