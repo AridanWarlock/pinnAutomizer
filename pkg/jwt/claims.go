@@ -3,9 +3,10 @@ package jwt
 import (
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 )
 
 type Claims struct {

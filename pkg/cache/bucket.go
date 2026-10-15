@@ -28,6 +28,7 @@ func newBucket(cleanupInterval time.Duration) *bucket {
 
 	go func() {
 		ticker := time.NewTicker(cleanupInterval)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-b.done:
@@ -65,6 +66,10 @@ func (b *bucket) get(key string) (any, bool) {
 }
 
 func (b *bucket) set(key string, value any, ttl time.Duration) {
+	if ttl <= 0 {
+		b.delete(key)
+		return
+	}
 	entry := entry{
 		value:     value,
 		expiresAt: time.Now().Add(ttl),
@@ -94,10 +99,6 @@ func (b *bucket) cleanup() {
 }
 
 func (b *bucket) close() {
-	if b.closed {
-		return
-	}
-
 	b.mu.Lock()
 	defer b.mu.Unlock()
 

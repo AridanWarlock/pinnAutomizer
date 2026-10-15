@@ -4,9 +4,10 @@ import (
 	"context"
 	"strings"
 
-	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 )
 
 func (r *Repository) CreateUser(ctx context.Context, user domain.User) (domain.User, error) {

@@ -3,14 +3,15 @@ package tasksDelete
 import (
 	"context"
 	"fmt"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
+
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-	"github.com/google/uuid"
 )
 
 type FileService interface {
@@ -18,7 +19,7 @@ type FileService interface {
 }
 
 type Postgres interface {
-	GetTaskByIDAndUserID(ctx context.Context, id, userID uuid.UUID) (domain.Task, error)
+	GetTaskByIDAndUserIDForUpdate(ctx context.Context, id, userID uuid.UUID) (domain.Task, error)
 	DeleteTaskByIDAndUserID(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
 
 	poolx.TxManager
@@ -46,40 +47,43 @@ func (u *usecase) DeleteTask(ctx context.Context, in Input) error {
 	log := logger.FromContext(ctx)
 	auth := core.MustAuthInfoFromContext(ctx)
 
+	// Keep file paths until the delete transaction commits; cleanup must run afterwards.
+	var task domain.Task
 	err := u.postgres.InTransaction(ctx, func(ctx context.Context) error {
-		return u.deleteTaskIfAvailable(ctx, in, auth.UserID, log)
+		var err error
+		task, err = u.deleteTaskIfAvailable(ctx, in, auth.UserID)
+		return err
 	})
 
 	if err != nil {
 		return fmt.Errorf("delete task transaction: %w", err)
 	}
 
+	u.removeTaskFiles(task, log)
 	return nil
 }
 
-func (u *usecase) deleteTaskIfAvailable(ctx context.Context, in Input, userID uuid.UUID, log zerolog.Logger) error {
-	task, err := u.postgres.GetTaskByIDAndUserID(ctx, in.TaskID, userID)
+func (u *usecase) deleteTaskIfAvailable(ctx context.Context, in Input, userID uuid.UUID) (domain.Task, error) {
+	task, err := u.postgres.GetTaskByIDAndUserIDForUpdate(ctx, in.TaskID, userID)
 	if err != nil {
-		return fmt.Errorf("get task from postgres: %w", err)
+		return domain.Task{}, fmt.Errorf("get task from postgres: %w", err)
 	}
 
-	if task.InQueue() || task.IsRunning() {
-		return fmt.Errorf("%w: task is running", errs.ErrInvalidArgument)
+	if !task.CanDelete() {
+		return domain.Task{}, fmt.Errorf("%w: task is in progress", errs.ErrConflict)
 	}
 
-	err = u.postgres.DeleteTaskByIDAndUserID(ctx, task.ID, userID)
-	if err != nil {
-		return fmt.Errorf("delete task in postgres: %w", err)
+	if err := u.postgres.DeleteTaskByIDAndUserID(ctx, task.ID, userID); err != nil {
+		return domain.Task{}, fmt.Errorf("delete task in postgres: %w", err)
 	}
+	return task, nil
+}
 
-	err = u.fileService.RemoveAll(task.DataPath)
-	if err != nil {
+func (u *usecase) removeTaskFiles(task domain.Task, log zerolog.Logger) {
+	if err := u.fileService.RemoveAll(task.DataPath); err != nil {
 		log.Error().Err(err).Msgf("failed to delete task data dir: %s", task.DataPath)
 	}
-	err = u.fileService.RemoveAll(task.OutputPath)
-	if err != nil {
-		log.Error().Err(err).Msgf("failed to delete task output dir: %s", task.DataPath)
+	if err := u.fileService.RemoveAll(task.OutputPath); err != nil {
+		log.Error().Err(err).Msgf("failed to delete task output dir: %s", task.OutputPath)
 	}
-
-	return nil
 }

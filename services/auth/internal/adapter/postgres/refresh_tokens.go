@@ -4,11 +4,12 @@ import (
 	"context"
 	"strings"
 
+	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
+
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
-	sq "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 )
 
 func (r *Repository) GetRefreshTokenByHash(ctx context.Context, hash string) (domain.RefreshToken, error) {

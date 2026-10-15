@@ -69,13 +69,19 @@ func OrderBy(name string, direction string) SortField {
 }
 
 func WithLimit(limit *int) Option {
-	return func(opts *Options) { opts.limit = limit }
+	return func(opts *Options) {
+		opts.limit = limit
+	}
 }
 
 func WithOffset(offset *int) Option {
-	return func(opts *Options) { opts.offset = offset }
+	return func(opts *Options) {
+		opts.offset = offset
+	}
 }
 
 func WithSortFields(fields ...SortField) Option {
-	return func(opts *Options) { opts.sort = fields }
+	return func(opts *Options) {
+		opts.sort = fields
+	}
 }

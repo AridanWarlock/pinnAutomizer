@@ -1,9 +1,11 @@
 package tasks
 
 import (
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 )
 
 type TaskDto struct {

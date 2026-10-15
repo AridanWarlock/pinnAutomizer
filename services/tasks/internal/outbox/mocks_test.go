@@ -8,9 +8,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
-	"github.com/google/uuid"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 )
 
 // Ensure that MockPostgres does implement Postgres.
@@ -23,13 +22,13 @@ var _ Postgres = &MockPostgres{}
 //
 //		// make and configure a mocked Postgres
 //		mockedPostgres := &MockPostgres{
-//			DeleteEventsByIDsFunc: func(ctx context.Context, ids []uuid.UUID) error {
-//				panic("mock out the DeleteEventsByIDs method")
+//			DeleteEventsByIdKeysFunc: func(ctx context.Context, idKeys []core.IdempotencyKey) error {
+//				panic("mock out the DeleteEventsByIdKeys method")
 //			},
 //			GetAvailableEventsFunc: func(ctx context.Context, batchSize int) ([]domain.Event, error) {
 //				panic("mock out the GetAvailableEvents method")
 //			},
-//			InTransactionFunc: func(ctx context.Context, inTx func(ctx context.Context) error) error {
+//			InTransactionFunc: func(ctx context.Context, inTx func(context.Context) error) error {
 //				panic("mock out the InTransaction method")
 //			},
 //		}
@@ -39,23 +38,23 @@ var _ Postgres = &MockPostgres{}
 //
 //	}
 type MockPostgres struct {
-	// DeleteEventsByIDsFunc mocks the DeleteEventsByIDs method.
-	DeleteEventsByIDsFunc func(ctx context.Context, ids []uuid.UUID) error
+	// DeleteEventsByIdKeysFunc mocks the DeleteEventsByIdKeys method.
+	DeleteEventsByIdKeysFunc func(ctx context.Context, idKeys []core.IdempotencyKey) error
 
 	// GetAvailableEventsFunc mocks the GetAvailableEvents method.
 	GetAvailableEventsFunc func(ctx context.Context, batchSize int) ([]domain.Event, error)
 
 	// InTransactionFunc mocks the InTransaction method.
-	InTransactionFunc func(ctx context.Context, inTx func(ctx context.Context) error) error
+	InTransactionFunc func(ctx context.Context, inTx func(context.Context) error) error
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// DeleteEventsByIDs holds details about calls to the DeleteEventsByIDs method.
-		DeleteEventsByIDs []struct {
+		// DeleteEventsByIdKeys holds details about calls to the DeleteEventsByIdKeys method.
+		DeleteEventsByIdKeys []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Ids is the ids argument value.
-			Ids []uuid.UUID
+			// IdKeys is the idKeys argument value.
+			IdKeys []core.IdempotencyKey
 		}
 		// GetAvailableEvents holds details about calls to the GetAvailableEvents method.
 		GetAvailableEvents []struct {
@@ -69,47 +68,47 @@ type MockPostgres struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// InTx is the inTx argument value.
-			InTx func(ctx context.Context) error
+			InTx func(context.Context) error
 		}
 	}
-	lockDeleteEventsByIDs  sync.RWMutex
-	lockGetAvailableEvents sync.RWMutex
-	lockInTransaction      sync.RWMutex
+	lockDeleteEventsByIdKeys sync.RWMutex
+	lockGetAvailableEvents   sync.RWMutex
+	lockInTransaction        sync.RWMutex
 }
 
-// DeleteEventsByIDs calls DeleteEventsByIDsFunc.
-func (mock *MockPostgres) DeleteEventsByIdKeys(ctx context.Context, ids []uuid.UUID) error {
-	if mock.DeleteEventsByIDsFunc == nil {
-		panic("MockPostgres.DeleteEventsByIDsFunc: method is nil but Postgres.DeleteEventsByIDs was just called")
+// DeleteEventsByIdKeys calls DeleteEventsByIdKeysFunc.
+func (mock *MockPostgres) DeleteEventsByIdKeys(ctx context.Context, idKeys []core.IdempotencyKey) error {
+	if mock.DeleteEventsByIdKeysFunc == nil {
+		panic("MockPostgres.DeleteEventsByIdKeysFunc: method is nil but Postgres.DeleteEventsByIdKeys was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
-		Ids []uuid.UUID
+		Ctx    context.Context
+		IdKeys []core.IdempotencyKey
 	}{
-		Ctx: ctx,
-		Ids: ids,
+		Ctx:    ctx,
+		IdKeys: idKeys,
 	}
-	mock.lockDeleteEventsByIDs.Lock()
-	mock.calls.DeleteEventsByIDs = append(mock.calls.DeleteEventsByIDs, callInfo)
-	mock.lockDeleteEventsByIDs.Unlock()
-	return mock.DeleteEventsByIDsFunc(ctx, ids)
+	mock.lockDeleteEventsByIdKeys.Lock()
+	mock.calls.DeleteEventsByIdKeys = append(mock.calls.DeleteEventsByIdKeys, callInfo)
+	mock.lockDeleteEventsByIdKeys.Unlock()
+	return mock.DeleteEventsByIdKeysFunc(ctx, idKeys)
 }
 
-// DeleteEventsByIDsCalls gets all the calls that were made to DeleteEventsByIDs.
+// DeleteEventsByIdKeysCalls gets all the calls that were made to DeleteEventsByIdKeys.
 // Check the length with:
 //
-//	len(mockedPostgres.DeleteEventsByIDsCalls())
-func (mock *MockPostgres) DeleteEventsByIDsCalls() []struct {
-	Ctx context.Context
-	Ids []uuid.UUID
+//	len(mockedPostgres.DeleteEventsByIdKeysCalls())
+func (mock *MockPostgres) DeleteEventsByIdKeysCalls() []struct {
+	Ctx    context.Context
+	IdKeys []core.IdempotencyKey
 } {
 	var calls []struct {
-		Ctx context.Context
-		Ids []uuid.UUID
+		Ctx    context.Context
+		IdKeys []core.IdempotencyKey
 	}
-	mock.lockDeleteEventsByIDs.RLock()
-	calls = mock.calls.DeleteEventsByIDs
-	mock.lockDeleteEventsByIDs.RUnlock()
+	mock.lockDeleteEventsByIdKeys.RLock()
+	calls = mock.calls.DeleteEventsByIdKeys
+	mock.lockDeleteEventsByIdKeys.RUnlock()
 	return calls
 }
 
@@ -150,13 +149,13 @@ func (mock *MockPostgres) GetAvailableEventsCalls() []struct {
 }
 
 // InTransaction calls InTransactionFunc.
-func (mock *MockPostgres) InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error {
+func (mock *MockPostgres) InTransaction(ctx context.Context, inTx func(context.Context) error) error {
 	if mock.InTransactionFunc == nil {
 		panic("MockPostgres.InTransactionFunc: method is nil but Postgres.InTransaction was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
-		InTx func(ctx context.Context) error
+		InTx func(context.Context) error
 	}{
 		Ctx:  ctx,
 		InTx: inTx,
@@ -173,11 +172,11 @@ func (mock *MockPostgres) InTransaction(ctx context.Context, inTx func(ctx conte
 //	len(mockedPostgres.InTransactionCalls())
 func (mock *MockPostgres) InTransactionCalls() []struct {
 	Ctx  context.Context
-	InTx func(ctx context.Context) error
+	InTx func(context.Context) error
 } {
 	var calls []struct {
 		Ctx  context.Context
-		InTx func(ctx context.Context) error
+		InTx func(context.Context) error
 	}
 	mock.lockInTransaction.RLock()
 	calls = mock.calls.InTransaction

@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/rs/zerolog"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/consumer"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka/segmentio"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/rs/zerolog"
 )
 
 var (
@@ -35,37 +36,37 @@ const (
 
 type Handler = func(ctx context.Context, msg core.KafkaMessage) error
 
-type Reader struct {
+type Consumer struct {
 	strategy Strategy
 
-	cfg   ReaderConfig
+	cfg   ConsumerConfig
 	topic string
 
-	writer *Writer
+	producer *Producer
 
 	log zerolog.Logger
 }
 
-type Option func(consumer *Reader)
+type Option func(consumer *Consumer)
 
-func WithWriter(writer *Writer) Option {
-	return func(consumer *Reader) {
-		consumer.writer = writer
+func WithProducer(producer *Producer) Option {
+	return func(consumer *Consumer) {
+		consumer.producer = producer
 	}
 }
 
-func NewReader(
-	cfg ReaderConfig,
+func NewConsumer(
+	cfg ConsumerConfig,
 	topic string,
 	strategy Strategy,
 	log zerolog.Logger,
 	options ...Option,
-) (*Reader, error) {
-	r := &Reader{
+) (*Consumer, error) {
+	r := &Consumer{
 		strategy: strategy,
 		cfg:      cfg,
 		topic:    topic,
-		writer:   nil,
+		producer: nil,
 		log:      log,
 	}
 
@@ -80,7 +81,7 @@ func NewReader(
 	return r, nil
 }
 
-func (r *Reader) Run(
+func (r *Consumer) Run(
 	ctx context.Context,
 	handler Handler,
 ) error {
@@ -96,12 +97,12 @@ func (r *Reader) Run(
 	}
 }
 
-func (r *Reader) runAtLeastOnce(
+func (r *Consumer) runAtLeastOnce(
 	ctx context.Context,
 	handler Handler,
 ) error {
-	reader := segmentio.NewReader(
-		segmentio.ReaderConfig{
+	reader := segmentio.NewConsumer(
+		segmentio.ConsumerConfig{
 			Broker:  r.cfg.Broker,
 			GroupID: r.cfg.GroupID,
 		},
@@ -114,8 +115,8 @@ func (r *Reader) runAtLeastOnce(
 		}
 	}()
 
-	retryReader := segmentio.NewReader(
-		segmentio.ReaderConfig{
+	retryReader := segmentio.NewConsumer(
+		segmentio.ConsumerConfig{
 			Broker:  r.cfg.Broker,
 			GroupID: r.cfg.GroupID,
 		},
@@ -128,12 +129,12 @@ func (r *Reader) runAtLeastOnce(
 		}
 	}()
 
-	writer := segmentio.NewWriter(segmentio.WriterConfig{
+	producer := segmentio.NewProducer(segmentio.ProducerConfig{
 		Broker: r.cfg.Broker,
 	})
 	defer func() {
-		if err := writer.Close(); err != nil {
-			r.log.Error().Err(err).Msg("closing writer")
+		if err := producer.Close(); err != nil {
+			r.log.Error().Err(err).Msg("closing producer")
 		}
 	}()
 
@@ -163,18 +164,18 @@ func (r *Reader) runAtLeastOnce(
 	atLeastOnceConsumer := consumer.NewAtLeastOnceConsumer(
 		reader,
 		retryReader,
-		writer,
+		producer,
 		r.log,
 	)
 	return atLeastOnceConsumer.Run(ctx, handlerFunc)
 }
 
-func (r *Reader) runAtMostOnce(
+func (r *Consumer) runAtMostOnce(
 	ctx context.Context,
 	handler Handler,
 ) error {
-	reader := segmentio.NewReader(
-		segmentio.ReaderConfig{
+	reader := segmentio.NewConsumer(
+		segmentio.ConsumerConfig{
 			Broker:  r.cfg.Broker,
 			GroupID: r.cfg.GroupID,
 		},
@@ -208,9 +209,9 @@ func (r *Reader) runAtMostOnce(
 	return atMostOnceConsumer.Run(ctx, handlerFunc)
 }
 
-func (r *Reader) Validate() error {
-	if r.strategy == StrategyAtLeastOnce && r.writer == nil {
-		return fmt.Errorf("%w: nil writer", ErrInvalidStrategySetup)
+func (r *Consumer) Validate() error {
+	if r.strategy == StrategyAtLeastOnce && r.producer == nil {
+		return fmt.Errorf("%w: nil producer", ErrInvalidStrategySetup)
 	}
 	return nil
 }

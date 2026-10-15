@@ -3,8 +3,9 @@ package httpmv
 import (
 	"net/http"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/rs/zerolog"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
 func Logger(log zerolog.Logger) Middleware {

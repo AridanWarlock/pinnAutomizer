@@ -8,7 +8,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	"github.com/google/uuid"
 )
 
@@ -22,8 +22,8 @@ var _ Usecase = &MockUsecase{}
 //
 //		// make and configure a mocked Usecase
 //		mockedUsecase := &MockUsecase{
-//			UpdateTaskAfterTrainFunc: func(ctx context.Context, in Input) error {
-//				panic("mock out the UpdateTaskOnRun method")
+//			UpdateTaskAfterRunFunc: func(ctx context.Context, in Input) error {
+//				panic("mock out the UpdateTaskAfterRun method")
 //			},
 //		}
 //
@@ -32,26 +32,26 @@ var _ Usecase = &MockUsecase{}
 //
 //	}
 type MockUsecase struct {
-	// UpdateTaskAfterTrainFunc mocks the UpdateTaskAfterTrain method.
-	UpdateTaskAfterTrainFunc func(ctx context.Context, in Input) error
+	// UpdateTaskAfterRunFunc mocks the UpdateTaskAfterRun method.
+	UpdateTaskAfterRunFunc func(ctx context.Context, in Input) error
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// UpdateTaskAfterTrain holds details about calls to the UpdateTaskAfterTrain method.
-		UpdateTaskAfterTrain []struct {
+		// UpdateTaskAfterRun holds details about calls to the UpdateTaskAfterRun method.
+		UpdateTaskAfterRun []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// In is the in argument value.
 			In Input
 		}
 	}
-	lockUpdateTaskAfterTrain sync.RWMutex
+	lockUpdateTaskAfterRun sync.RWMutex
 }
 
-// UpdateTaskAfterTrain calls UpdateTaskAfterTrainFunc.
+// UpdateTaskAfterRun calls UpdateTaskAfterRunFunc.
 func (mock *MockUsecase) UpdateTaskAfterRun(ctx context.Context, in Input) error {
-	if mock.UpdateTaskAfterTrainFunc == nil {
-		panic("MockUsecase.UpdateTaskAfterTrainFunc: method is nil but Usecase.UpdateTaskOnRun was just called")
+	if mock.UpdateTaskAfterRunFunc == nil {
+		panic("MockUsecase.UpdateTaskAfterRunFunc: method is nil but Usecase.UpdateTaskAfterRun was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -60,17 +60,17 @@ func (mock *MockUsecase) UpdateTaskAfterRun(ctx context.Context, in Input) error
 		Ctx: ctx,
 		In:  in,
 	}
-	mock.lockUpdateTaskAfterTrain.Lock()
-	mock.calls.UpdateTaskAfterTrain = append(mock.calls.UpdateTaskAfterTrain, callInfo)
-	mock.lockUpdateTaskAfterTrain.Unlock()
-	return mock.UpdateTaskAfterTrainFunc(ctx, in)
+	mock.lockUpdateTaskAfterRun.Lock()
+	mock.calls.UpdateTaskAfterRun = append(mock.calls.UpdateTaskAfterRun, callInfo)
+	mock.lockUpdateTaskAfterRun.Unlock()
+	return mock.UpdateTaskAfterRunFunc(ctx, in)
 }
 
-// UpdateTaskAfterTrainCalls gets all the calls that were made to UpdateTaskAfterTrain.
+// UpdateTaskAfterRunCalls gets all the calls that were made to UpdateTaskAfterRun.
 // Check the length with:
 //
-//	len(mockedUsecase.UpdateTaskAfterTrainCalls())
-func (mock *MockUsecase) UpdateTaskAfterTrainCalls() []struct {
+//	len(mockedUsecase.UpdateTaskAfterRunCalls())
+func (mock *MockUsecase) UpdateTaskAfterRunCalls() []struct {
 	Ctx context.Context
 	In  Input
 } {
@@ -78,9 +78,9 @@ func (mock *MockUsecase) UpdateTaskAfterTrainCalls() []struct {
 		Ctx context.Context
 		In  Input
 	}
-	mock.lockUpdateTaskAfterTrain.RLock()
-	calls = mock.calls.UpdateTaskAfterTrain
-	mock.lockUpdateTaskAfterTrain.RUnlock()
+	mock.lockUpdateTaskAfterRun.RLock()
+	calls = mock.calls.UpdateTaskAfterRun
+	mock.lockUpdateTaskAfterRun.RUnlock()
 	return calls
 }
 
@@ -94,8 +94,14 @@ var _ Postgres = &MockPostgres{}
 //
 //		// make and configure a mocked Postgres
 //		mockedPostgres := &MockPostgres{
-//			UpdateTaskStatusByIDFunc: func(ctx context.Context, id uuid.UUID, status string, oldStatus string) error {
-//				panic("mock out the UpdateTaskStatusByID method")
+//			GetTaskByIDForUpdateFunc: func(ctx context.Context, id uuid.UUID) (domain.Task, error) {
+//				panic("mock out the GetTaskByIDForUpdate method")
+//			},
+//			InTransactionFunc: func(ctx context.Context, inTx func(context.Context) error) error {
+//				panic("mock out the InTransaction method")
+//			},
+//			UpdateTaskFunc: func(ctx context.Context, task domain.Task) (domain.Task, error) {
+//				panic("mock out the UpdateTask method")
 //			},
 //		}
 //
@@ -104,306 +110,214 @@ var _ Postgres = &MockPostgres{}
 //
 //	}
 type MockPostgres struct {
-	// UpdateTaskStatusByIDFunc mocks the UpdateTaskStatusByID method.
-	UpdateTaskStatusByIDFunc func(ctx context.Context, id uuid.UUID, status string, oldStatus string) error
+	// GetTaskByIDForUpdateFunc mocks the GetTaskByIDForUpdate method.
+	GetTaskByIDForUpdateFunc func(ctx context.Context, id uuid.UUID) (domain.Task, error)
+
+	// InTransactionFunc mocks the InTransaction method.
+	InTransactionFunc func(ctx context.Context, inTx func(context.Context) error) error
+
+	// UpdateTaskFunc mocks the UpdateTask method.
+	UpdateTaskFunc func(ctx context.Context, task domain.Task) (domain.Task, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// UpdateTaskStatusByID holds details about calls to the UpdateTaskStatusByID method.
-		UpdateTaskStatusByID []struct {
+		// GetTaskByIDForUpdate holds details about calls to the GetTaskByIDForUpdate method.
+		GetTaskByIDForUpdate []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
-			// Status is the status argument value.
-			Status string
-			// OldStatus is the oldStatus argument value.
-			OldStatus string
+		}
+		// InTransaction holds details about calls to the InTransaction method.
+		InTransaction []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// InTx is the inTx argument value.
+			InTx func(context.Context) error
+		}
+		// UpdateTask holds details about calls to the UpdateTask method.
+		UpdateTask []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Task is the task argument value.
+			Task domain.Task
 		}
 	}
-	lockUpdateTaskStatusByID sync.RWMutex
+	lockGetTaskByIDForUpdate sync.RWMutex
+	lockInTransaction        sync.RWMutex
+	lockUpdateTask           sync.RWMutex
 }
 
-// UpdateTaskStatusByID calls UpdateTaskStatusByIDFunc.
-func (mock *MockPostgres) UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, status string, oldStatus string) error {
-	if mock.UpdateTaskStatusByIDFunc == nil {
-		panic("MockPostgres.UpdateTaskStatusByIDFunc: method is nil but Postgres.UpdateTaskStatusByID was just called")
+// GetTaskByIDForUpdate calls GetTaskByIDForUpdateFunc.
+func (mock *MockPostgres) GetTaskByIDForUpdate(ctx context.Context, id uuid.UUID) (domain.Task, error) {
+	if mock.GetTaskByIDForUpdateFunc == nil {
+		panic("MockPostgres.GetTaskByIDForUpdateFunc: method is nil but Postgres.GetTaskByIDForUpdate was just called")
 	}
 	callInfo := struct {
-		Ctx       context.Context
-		ID        uuid.UUID
-		Status    string
-		OldStatus string
+		Ctx context.Context
+		ID  uuid.UUID
 	}{
-		Ctx:       ctx,
-		ID:        id,
-		Status:    status,
-		OldStatus: oldStatus,
+		Ctx: ctx,
+		ID:  id,
 	}
-	mock.lockUpdateTaskStatusByID.Lock()
-	mock.calls.UpdateTaskStatusByID = append(mock.calls.UpdateTaskStatusByID, callInfo)
-	mock.lockUpdateTaskStatusByID.Unlock()
-	return mock.UpdateTaskStatusByIDFunc(ctx, id, status, oldStatus)
+	mock.lockGetTaskByIDForUpdate.Lock()
+	mock.calls.GetTaskByIDForUpdate = append(mock.calls.GetTaskByIDForUpdate, callInfo)
+	mock.lockGetTaskByIDForUpdate.Unlock()
+	return mock.GetTaskByIDForUpdateFunc(ctx, id)
 }
 
-// UpdateTaskStatusByIDCalls gets all the calls that were made to UpdateTaskStatusByID.
+// GetTaskByIDForUpdateCalls gets all the calls that were made to GetTaskByIDForUpdate.
 // Check the length with:
 //
-//	len(mockedPostgres.UpdateTaskStatusByIDCalls())
-func (mock *MockPostgres) UpdateTaskStatusByIDCalls() []struct {
-	Ctx       context.Context
-	ID        uuid.UUID
-	Status    string
-	OldStatus string
+//	len(mockedPostgres.GetTaskByIDForUpdateCalls())
+func (mock *MockPostgres) GetTaskByIDForUpdateCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
 } {
 	var calls []struct {
-		Ctx       context.Context
-		ID        uuid.UUID
-		Status    string
-		OldStatus string
+		Ctx context.Context
+		ID  uuid.UUID
 	}
-	mock.lockUpdateTaskStatusByID.RLock()
-	calls = mock.calls.UpdateTaskStatusByID
-	mock.lockUpdateTaskStatusByID.RUnlock()
+	mock.lockGetTaskByIDForUpdate.RLock()
+	calls = mock.calls.GetTaskByIDForUpdate
+	mock.lockGetTaskByIDForUpdate.RUnlock()
 	return calls
 }
 
-// Ensure that MockRedis does implement Redis.
-// If this is not the case, regenerate this file with mockery.
-var _ Redis = &MockRedis{}
+// InTransaction calls InTransactionFunc.
+func (mock *MockPostgres) InTransaction(ctx context.Context, inTx func(context.Context) error) error {
+	if mock.InTransactionFunc == nil {
+		panic("MockPostgres.InTransactionFunc: method is nil but Postgres.InTransaction was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		InTx func(context.Context) error
+	}{
+		Ctx:  ctx,
+		InTx: inTx,
+	}
+	mock.lockInTransaction.Lock()
+	mock.calls.InTransaction = append(mock.calls.InTransaction, callInfo)
+	mock.lockInTransaction.Unlock()
+	return mock.InTransactionFunc(ctx, inTx)
+}
 
-// MockRedis is a mock implementation of Redis.
+// InTransactionCalls gets all the calls that were made to InTransaction.
+// Check the length with:
 //
-//	func TestSomethingThatUsesRedis(t *testing.T) {
+//	len(mockedPostgres.InTransactionCalls())
+func (mock *MockPostgres) InTransactionCalls() []struct {
+	Ctx  context.Context
+	InTx func(context.Context) error
+} {
+	var calls []struct {
+		Ctx  context.Context
+		InTx func(context.Context) error
+	}
+	mock.lockInTransaction.RLock()
+	calls = mock.calls.InTransaction
+	mock.lockInTransaction.RUnlock()
+	return calls
+}
+
+// UpdateTask calls UpdateTaskFunc.
+func (mock *MockPostgres) UpdateTask(ctx context.Context, task domain.Task) (domain.Task, error) {
+	if mock.UpdateTaskFunc == nil {
+		panic("MockPostgres.UpdateTaskFunc: method is nil but Postgres.UpdateTask was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Task domain.Task
+	}{
+		Ctx:  ctx,
+		Task: task,
+	}
+	mock.lockUpdateTask.Lock()
+	mock.calls.UpdateTask = append(mock.calls.UpdateTask, callInfo)
+	mock.lockUpdateTask.Unlock()
+	return mock.UpdateTaskFunc(ctx, task)
+}
+
+// UpdateTaskCalls gets all the calls that were made to UpdateTask.
+// Check the length with:
 //
-//		// make and configure a mocked Redis
-//		mockedRedis := &MockRedis{
-//			DeleteFunc: func(ctx context.Context, idKey core.IdempotencyKey) error {
-//				panic("mock out the Delete method")
-//			},
-//			GetFunc: func(ctx context.Context, idKey core.IdempotencyKey, target any) (core.IdempotencyStatus, error) {
-//				panic("mock out the Get method")
-//			},
-//			SetFunc: func(ctx context.Context, idKey core.IdempotencyKey, status core.IdempotencyStatus, value any) error {
-//				panic("mock out the Set method")
-//			},
-//			TryLockFunc: func(ctx context.Context, idKey core.IdempotencyKey) (bool, error) {
-//				panic("mock out the TryLock method")
+//	len(mockedPostgres.UpdateTaskCalls())
+func (mock *MockPostgres) UpdateTaskCalls() []struct {
+	Ctx  context.Context
+	Task domain.Task
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Task domain.Task
+	}
+	mock.lockUpdateTask.RLock()
+	calls = mock.calls.UpdateTask
+	mock.lockUpdateTask.RUnlock()
+	return calls
+}
+
+// Ensure that MockFileService does implement FileService.
+// If this is not the case, regenerate this file with mockery.
+var _ FileService = &MockFileService{}
+
+// MockFileService is a mock implementation of FileService.
+//
+//	func TestSomethingThatUsesFileService(t *testing.T) {
+//
+//		// make and configure a mocked FileService
+//		mockedFileService := &MockFileService{
+//			ExistsFunc: func(filepath string) bool {
+//				panic("mock out the Exists method")
 //			},
 //		}
 //
-//		// use mockedRedis in code that requires Redis
+//		// use mockedFileService in code that requires FileService
 //		// and then make assertions.
 //
 //	}
-type MockRedis struct {
-	// DeleteFunc mocks the Delete method.
-	DeleteFunc func(ctx context.Context, idKey core.IdempotencyKey) error
-
-	// GetFunc mocks the Get method.
-	GetFunc func(ctx context.Context, idKey core.IdempotencyKey, target any) (core.IdempotencyStatus, error)
-
-	// SetFunc mocks the Set method.
-	SetFunc func(ctx context.Context, idKey core.IdempotencyKey, status core.IdempotencyStatus, value any) error
-
-	// TryLockFunc mocks the TryLock method.
-	TryLockFunc func(ctx context.Context, idKey core.IdempotencyKey) (bool, error)
+type MockFileService struct {
+	// ExistsFunc mocks the Exists method.
+	ExistsFunc func(filepath string) bool
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// Delete holds details about calls to the Delete method.
-		Delete []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// IdKey is the idKey argument value.
-			IdKey core.IdempotencyKey
-		}
-		// Get holds details about calls to the Get method.
-		Get []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// IdKey is the idKey argument value.
-			IdKey core.IdempotencyKey
-			// Target is the target argument value.
-			Target any
-		}
-		// Set holds details about calls to the Set method.
-		Set []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// IdKey is the idKey argument value.
-			IdKey core.IdempotencyKey
-			// Status is the status argument value.
-			Status core.IdempotencyStatus
-			// Value is the value argument value.
-			Value any
-		}
-		// TryLock holds details about calls to the TryLock method.
-		TryLock []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// IdKey is the idKey argument value.
-			IdKey core.IdempotencyKey
+		// Exists holds details about calls to the Exists method.
+		Exists []struct {
+			// Filepath is the filepath argument value.
+			Filepath string
 		}
 	}
-	lockDelete  sync.RWMutex
-	lockGet     sync.RWMutex
-	lockSet     sync.RWMutex
-	lockTryLock sync.RWMutex
+	lockExists sync.RWMutex
 }
 
-// Delete calls DeleteFunc.
-func (mock *MockRedis) Delete(ctx context.Context, idKey core.IdempotencyKey) error {
-	if mock.DeleteFunc == nil {
-		panic("MockRedis.DeleteFunc: method is nil but Redis.Delete was just called")
+// Exists calls ExistsFunc.
+func (mock *MockFileService) Exists(filepath string) bool {
+	if mock.ExistsFunc == nil {
+		panic("MockFileService.ExistsFunc: method is nil but FileService.Exists was just called")
 	}
 	callInfo := struct {
-		Ctx   context.Context
-		IdKey core.IdempotencyKey
+		Filepath string
 	}{
-		Ctx:   ctx,
-		IdKey: idKey,
+		Filepath: filepath,
 	}
-	mock.lockDelete.Lock()
-	mock.calls.Delete = append(mock.calls.Delete, callInfo)
-	mock.lockDelete.Unlock()
-	return mock.DeleteFunc(ctx, idKey)
+	mock.lockExists.Lock()
+	mock.calls.Exists = append(mock.calls.Exists, callInfo)
+	mock.lockExists.Unlock()
+	return mock.ExistsFunc(filepath)
 }
 
-// DeleteCalls gets all the calls that were made to Delete.
+// ExistsCalls gets all the calls that were made to Exists.
 // Check the length with:
 //
-//	len(mockedRedis.DeleteCalls())
-func (mock *MockRedis) DeleteCalls() []struct {
-	Ctx   context.Context
-	IdKey core.IdempotencyKey
+//	len(mockedFileService.ExistsCalls())
+func (mock *MockFileService) ExistsCalls() []struct {
+	Filepath string
 } {
 	var calls []struct {
-		Ctx   context.Context
-		IdKey core.IdempotencyKey
+		Filepath string
 	}
-	mock.lockDelete.RLock()
-	calls = mock.calls.Delete
-	mock.lockDelete.RUnlock()
-	return calls
-}
-
-// Get calls GetFunc.
-func (mock *MockRedis) Get(ctx context.Context, idKey core.IdempotencyKey, target any) (core.IdempotencyStatus, error) {
-	if mock.GetFunc == nil {
-		panic("MockRedis.GetFunc: method is nil but Redis.Get was just called")
-	}
-	callInfo := struct {
-		Ctx    context.Context
-		IdKey  core.IdempotencyKey
-		Target any
-	}{
-		Ctx:    ctx,
-		IdKey:  idKey,
-		Target: target,
-	}
-	mock.lockGet.Lock()
-	mock.calls.Get = append(mock.calls.Get, callInfo)
-	mock.lockGet.Unlock()
-	return mock.GetFunc(ctx, idKey, target)
-}
-
-// GetCalls gets all the calls that were made to Get.
-// Check the length with:
-//
-//	len(mockedRedis.GetCalls())
-func (mock *MockRedis) GetCalls() []struct {
-	Ctx    context.Context
-	IdKey  core.IdempotencyKey
-	Target any
-} {
-	var calls []struct {
-		Ctx    context.Context
-		IdKey  core.IdempotencyKey
-		Target any
-	}
-	mock.lockGet.RLock()
-	calls = mock.calls.Get
-	mock.lockGet.RUnlock()
-	return calls
-}
-
-// Set calls SetFunc.
-func (mock *MockRedis) Set(ctx context.Context, idKey core.IdempotencyKey, status core.IdempotencyStatus, value any) error {
-	if mock.SetFunc == nil {
-		panic("MockRedis.SetFunc: method is nil but Redis.Set was just called")
-	}
-	callInfo := struct {
-		Ctx    context.Context
-		IdKey  core.IdempotencyKey
-		Status core.IdempotencyStatus
-		Value  any
-	}{
-		Ctx:    ctx,
-		IdKey:  idKey,
-		Status: status,
-		Value:  value,
-	}
-	mock.lockSet.Lock()
-	mock.calls.Set = append(mock.calls.Set, callInfo)
-	mock.lockSet.Unlock()
-	return mock.SetFunc(ctx, idKey, status, value)
-}
-
-// SetCalls gets all the calls that were made to Set.
-// Check the length with:
-//
-//	len(mockedRedis.SetCalls())
-func (mock *MockRedis) SetCalls() []struct {
-	Ctx    context.Context
-	IdKey  core.IdempotencyKey
-	Status core.IdempotencyStatus
-	Value  any
-} {
-	var calls []struct {
-		Ctx    context.Context
-		IdKey  core.IdempotencyKey
-		Status core.IdempotencyStatus
-		Value  any
-	}
-	mock.lockSet.RLock()
-	calls = mock.calls.Set
-	mock.lockSet.RUnlock()
-	return calls
-}
-
-// TryLock calls TryLockFunc.
-func (mock *MockRedis) TryLock(ctx context.Context, idKey core.IdempotencyKey) (bool, error) {
-	if mock.TryLockFunc == nil {
-		panic("MockRedis.TryLockFunc: method is nil but Redis.TryLock was just called")
-	}
-	callInfo := struct {
-		Ctx   context.Context
-		IdKey core.IdempotencyKey
-	}{
-		Ctx:   ctx,
-		IdKey: idKey,
-	}
-	mock.lockTryLock.Lock()
-	mock.calls.TryLock = append(mock.calls.TryLock, callInfo)
-	mock.lockTryLock.Unlock()
-	return mock.TryLockFunc(ctx, idKey)
-}
-
-// TryLockCalls gets all the calls that were made to TryLock.
-// Check the length with:
-//
-//	len(mockedRedis.TryLockCalls())
-func (mock *MockRedis) TryLockCalls() []struct {
-	Ctx   context.Context
-	IdKey core.IdempotencyKey
-} {
-	var calls []struct {
-		Ctx   context.Context
-		IdKey core.IdempotencyKey
-	}
-	mock.lockTryLock.RLock()
-	calls = mock.calls.TryLock
-	mock.lockTryLock.RUnlock()
+	mock.lockExists.RLock()
+	calls = mock.calls.Exists
+	mock.lockExists.RUnlock()
 	return calls
 }

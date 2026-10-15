@@ -7,16 +7,22 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
 )
 
+type Redis interface {
+	Get(ctx context.Context, key string, target any) error
+	Set(ctx context.Context, key string, value any, ttl time.Duration) error
+	TryLock(ctx context.Context, key string, value any, ttl time.Duration) (bool, error)
+	Delete(ctx context.Context, key string) error
+}
+
 type Store struct {
-	redis   *redis.Redis
+	redis   Redis
 	ttl     time.Duration
 	lockTtl time.Duration
 }
 
-func NewStore(client *redis.Redis, ttl time.Duration, lockTtl time.Duration) *Store {
+func NewStore(client Redis, ttl time.Duration, lockTtl time.Duration) *Store {
 	return &Store{
 		redis:   client,
 		ttl:     ttl,
@@ -38,7 +44,7 @@ func (s *Store) Get(ctx context.Context, idKey core.IdempotencyKey, target any) 
 	}
 
 	if target != nil {
-		if err := json.Unmarshal(env.Data, &target); err != nil {
+		if err := json.Unmarshal(env.Data, target); err != nil {
 			return "", fmt.Errorf("failed to unmarshal data: %w", err)
 		}
 	}
@@ -77,7 +83,7 @@ func (s *Store) TryLock(
 	ctx context.Context,
 	idKey core.IdempotencyKey,
 ) (bool, error) {
-	success, err := s.redis.TryLock(ctx, idKey.ToRedisKey(), core.IdempotencyStatusPending, s.lockTtl)
+	success, err := s.redis.TryLock(ctx, idKey.ToRedisKey(), envelope{Status: core.IdempotencyStatusPending}, s.lockTtl)
 	if err != nil {
 		return false, fmt.Errorf("try lock idempotency: %w", err)
 	}

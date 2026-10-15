@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/pagination"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-	sq "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 )
 
 func (r *Repository) CreateTask(ctx context.Context, task domain.Task) (domain.Task, error) {
@@ -54,6 +55,36 @@ func (r *Repository) GetTaskByIDAndUserID(ctx context.Context, id uuid.UUID, use
 	}
 
 	return ToTaskModel(outRow), nil
+}
+
+// GetTaskByIDForUpdate must be called inside InTransaction.
+func (r *Repository) GetTaskByIDForUpdate(ctx context.Context, id uuid.UUID) (domain.Task, error) {
+	query := r.sb.
+		Select(TasksColumns...).
+		From(TasksTable).
+		Where(sq.Eq{TasksID: id}).
+		Suffix("FOR UPDATE")
+
+	var row TaskRow
+	if err := r.pool.Getx(ctx, &row, query); err != nil {
+		return domain.Task{}, err
+	}
+	return ToTaskModel(row), nil
+}
+
+// GetTaskByIDAndUserIDForUpdate must be called inside InTransaction.
+func (r *Repository) GetTaskByIDAndUserIDForUpdate(ctx context.Context, id, userID uuid.UUID) (domain.Task, error) {
+	query := r.sb.
+		Select(TasksColumns...).
+		From(TasksTable).
+		Where(sq.Eq{TasksID: id, TasksUserId: userID}).
+		Suffix("FOR UPDATE")
+
+	var row TaskRow
+	if err := r.pool.Getx(ctx, &row, query); err != nil {
+		return domain.Task{}, err
+	}
+	return ToTaskModel(row), nil
 }
 
 func (r *Repository) GetTasksByUserID(

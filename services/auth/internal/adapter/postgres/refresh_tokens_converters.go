@@ -4,9 +4,10 @@ import (
 	"net/netip"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
-	"github.com/google/uuid"
 )
 
 type RefreshTokenRaw struct {

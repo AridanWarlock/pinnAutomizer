@@ -6,6 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog"
+
 	_ "github.com/AridanWarlock/pinnAutomizer/auth/docs"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/config"
@@ -18,11 +20,11 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/lifecycle"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/password"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
-	"github.com/rs/zerolog"
 )
 
 // @title		PINN Automizer AuthService
@@ -104,8 +106,8 @@ func AppRun(
 
 	// consumers
 	authCompromisedConsumer := authCompromised.NewConsumer(authCompromisedUsecase)
-	authCompromisedReader, err := kafka.NewReader(
-		cfg.KafkaReader,
+	authCompromisedKafkaConsumer, err := kafka.NewConsumer(
+		cfg.KafkaConsumer,
 		"auth.session.compromised",
 		kafka.StrategyAtMostOnce,
 		log,
@@ -113,12 +115,7 @@ func AppRun(
 	if err != nil {
 		return fmt.Errorf("kafka init auth.session.compromised: %w", err)
 	}
-	go func() {
-		err := authCompromisedReader.Run(ctx, authCompromisedConsumer.HandleMessage)
-		if err != nil {
-			log.Err(err).Msg("kafka handle auth.session.compromised")
-		}
-	}()
+
 	// http handlers
 	// auth
 	authLoginHandler := authLogin.NewHttpHandler(authLoginUsecase)
@@ -144,5 +141,10 @@ func AppRun(
 	server.RegisterApiRouters(apiV1Router)
 	// httpServer.RegisterSwagger()
 
-	return server.Run(ctx)
+	return lifecycle.Run(ctx,
+		lifecycle.Worker("http server", server.Run),
+		lifecycle.Worker("auth.session.compromised", func(ctx context.Context) error {
+			return authCompromisedKafkaConsumer.Run(ctx, authCompromisedConsumer.HandleMessage)
+		}),
+	)
 }

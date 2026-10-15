@@ -3,12 +3,12 @@ package config
 import (
 	"fmt"
 
+	"github.com/caarlos0/env/v11"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/postgres"
-	"github.com/caarlos0/env/v11"
 )
 
 type App struct {
@@ -16,13 +16,12 @@ type App struct {
 }
 
 type Config struct {
-	App         App
-	HTTP        httpsrv.Config     `envPrefix:"HTTP_"`
-	Log         logger.Config      `envPrefix:"LOGGER_"`
-	Postgres    postgres.Config    `envPrefix:"POSTGRES_"`
-	Redis       goRedis.Config     `envPrefix:"REDIS_"`
-	KafkaWriter kafka.WriterConfig `envPrefix:"KAFKA_WRITER_"`
-	KafkaReader kafka.ReaderConfig `envPrefix:"KAFKA_READER_"`
+	App           App
+	HTTP          httpsrv.Config       `envPrefix:"HTTP_"`
+	Log           logger.Config        `envPrefix:"LOGGER_"`
+	Postgres      postgres.Config      `envPrefix:"POSTGRES_"`
+	KafkaProducer kafka.ProducerConfig `envPrefix:"KAFKA_PRODUCER_"`
+	KafkaConsumer kafka.ConsumerConfig `envPrefix:"KAFKA_CONSUMER_"`
 }
 
 func InitConfig() (Config, error) {

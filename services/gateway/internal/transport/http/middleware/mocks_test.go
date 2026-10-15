@@ -87,6 +87,9 @@ var _ Redis = &MockRedis{}
 //
 //		// make and configure a mocked Redis
 //		mockedRedis := &MockRedis{
+//			DeleteFunc: func(ctx context.Context, key string) error {
+//				panic("mock out the Delete method")
+//			},
 //			GetFunc: func(ctx context.Context, key string, target any) error {
 //				panic("mock out the Get method")
 //			},
@@ -97,11 +100,21 @@ var _ Redis = &MockRedis{}
 //
 //	}
 type MockRedis struct {
+	// DeleteFunc mocks the Delete method.
+	DeleteFunc func(ctx context.Context, key string) error
+
 	// GetFunc mocks the Get method.
 	GetFunc func(ctx context.Context, key string, target any) error
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// Delete holds details about calls to the Delete method.
+		Delete []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Key is the key argument value.
+			Key string
+		}
 		// Get holds details about calls to the Get method.
 		Get []struct {
 			// Ctx is the ctx argument value.
@@ -112,7 +125,44 @@ type MockRedis struct {
 			Target any
 		}
 	}
-	lockGet sync.RWMutex
+	lockDelete sync.RWMutex
+	lockGet    sync.RWMutex
+}
+
+// Delete calls DeleteFunc.
+func (mock *MockRedis) Delete(ctx context.Context, key string) error {
+	if mock.DeleteFunc == nil {
+		panic("MockRedis.DeleteFunc: method is nil but Redis.Delete was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Key string
+	}{
+		Ctx: ctx,
+		Key: key,
+	}
+	mock.lockDelete.Lock()
+	mock.calls.Delete = append(mock.calls.Delete, callInfo)
+	mock.lockDelete.Unlock()
+	return mock.DeleteFunc(ctx, key)
+}
+
+// DeleteCalls gets all the calls that were made to Delete.
+// Check the length with:
+//
+//	len(mockedRedis.DeleteCalls())
+func (mock *MockRedis) DeleteCalls() []struct {
+	Ctx context.Context
+	Key string
+} {
+	var calls []struct {
+		Ctx context.Context
+		Key string
+	}
+	mock.lockDelete.RLock()
+	calls = mock.calls.Delete
+	mock.lockDelete.RUnlock()
+	return calls
 }
 
 // Get calls GetFunc.
@@ -152,5 +202,77 @@ func (mock *MockRedis) GetCalls() []struct {
 	mock.lockGet.RLock()
 	calls = mock.calls.Get
 	mock.lockGet.RUnlock()
+	return calls
+}
+
+// Ensure that MockKafkaWriter does implement KafkaWriter.
+// If this is not the case, regenerate this file with mockery.
+var _ KafkaWriter = &MockKafkaWriter{}
+
+// MockKafkaWriter is a mock implementation of KafkaWriter.
+//
+//	func TestSomethingThatUsesKafkaWriter(t *testing.T) {
+//
+//		// make and configure a mocked KafkaWriter
+//		mockedKafkaWriter := &MockKafkaWriter{
+//			WriteMessagesFunc: func(ctx context.Context, msgs ...core.KafkaMessage) error {
+//				panic("mock out the WriteMessages method")
+//			},
+//		}
+//
+//		// use mockedKafkaWriter in code that requires KafkaWriter
+//		// and then make assertions.
+//
+//	}
+type MockKafkaWriter struct {
+	// WriteMessagesFunc mocks the WriteMessages method.
+	WriteMessagesFunc func(ctx context.Context, msgs ...core.KafkaMessage) error
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// WriteMessages holds details about calls to the WriteMessages method.
+		WriteMessages []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Msgs is the msgs argument value.
+			Msgs []core.KafkaMessage
+		}
+	}
+	lockWriteMessages sync.RWMutex
+}
+
+// WriteMessages calls WriteMessagesFunc.
+func (mock *MockKafkaWriter) WriteMessages(ctx context.Context, msgs ...core.KafkaMessage) error {
+	if mock.WriteMessagesFunc == nil {
+		panic("MockKafkaWriter.WriteMessagesFunc: method is nil but KafkaWriter.WriteMessages was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Msgs []core.KafkaMessage
+	}{
+		Ctx:  ctx,
+		Msgs: msgs,
+	}
+	mock.lockWriteMessages.Lock()
+	mock.calls.WriteMessages = append(mock.calls.WriteMessages, callInfo)
+	mock.lockWriteMessages.Unlock()
+	return mock.WriteMessagesFunc(ctx, msgs...)
+}
+
+// WriteMessagesCalls gets all the calls that were made to WriteMessages.
+// Check the length with:
+//
+//	len(mockedKafkaWriter.WriteMessagesCalls())
+func (mock *MockKafkaWriter) WriteMessagesCalls() []struct {
+	Ctx  context.Context
+	Msgs []core.KafkaMessage
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Msgs []core.KafkaMessage
+	}
+	mock.lockWriteMessages.RLock()
+	calls = mock.calls.WriteMessages
+	mock.lockWriteMessages.RUnlock()
 	return calls
 }

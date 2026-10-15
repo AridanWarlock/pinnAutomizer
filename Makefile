@@ -1,5 +1,9 @@
+QUALITY_TARGETS := tools-install fmt fmt-check lint test test-race check
+# Quality checks do not depend on local service credentials.
+ifneq ($(filter-out $(QUALITY_TARGETS),$(or $(MAKECMDGOALS),kafka)),)
 include .env
 export
+endif
 
 ifeq ($(OS),Windows_NT)
     PROJECT_ROOT := $(shell pwd -W 2>/dev/null || pwd)
@@ -23,6 +27,7 @@ export PROJECT_ROOT
 	kafka-ui-up kafka-ui-down \
 	auth-goose-create auth-goose-up \
 	tasks-goose-create tasks-goose-up \
+	solver-goose-create solver-goose-up \
 	swagger-gen swagger-fmt \
 	mockery \
 	gateway-run gateway-shutdown \
@@ -119,6 +124,17 @@ tasks-goose-create:
 tasks-goose-up:
 	@docker compose run --rm goose-tasks
 
+solver-goose-create:
+	@if [ -z "$(name)" ]; then \
+		echo "Отсутствует name. Пример: make solver-goose-create name=add_index"; \
+		exit 1; \
+	fi
+	@docker compose run --rm --build --no-deps \
+		-e GOOSE_COMMAND=create -e GOOSE_COMMAND_ARG="$(name) sql" goose-solver
+
+solver-goose-up:
+	@docker compose run --rm --build --no-deps goose-solver
+
 swagger-gen:
 	@if [ -z "$(service)" ]; then \
 		echo "Отсутствует необходимый параметр service. Пример: make swagger-gen service=auth"; \
@@ -181,3 +197,32 @@ deploy:
 
 undeploy:
 	@docker compose down
+
+.PHONY: $(QUALITY_TARGETS)
+QUALITY_BIN := .tools/quality
+QUALITY_SOURCES := $(wildcard pkg/cmd/quality/*.go)
+
+$(QUALITY_BIN): $(QUALITY_SOURCES) pkg/go.mod Makefile
+	@mkdir -p .tools
+	@cd pkg && GOWORK=off go build -trimpath -ldflags="-s -w" -o ../$(QUALITY_BIN) ./cmd/quality
+
+tools-install: $(QUALITY_BIN)
+	@$(QUALITY_BIN) install
+
+fmt: $(QUALITY_BIN)
+	@$(QUALITY_BIN) fmt
+
+fmt-check: $(QUALITY_BIN)
+	@$(QUALITY_BIN) fmt-check
+
+lint: $(QUALITY_BIN)
+	@$(QUALITY_BIN) lint
+
+test: $(QUALITY_BIN)
+	@$(QUALITY_BIN) test $(TEST_ARGS)
+
+test-race: $(QUALITY_BIN)
+	@$(QUALITY_BIN) test -race $(if $(TEST_ARGS),$(TEST_ARGS),./pkg/... ./services/auth/... ./services/tasks/... ./services/solver/... ./services/gateway/...)
+
+check: $(QUALITY_BIN)
+	@$(QUALITY_BIN) check

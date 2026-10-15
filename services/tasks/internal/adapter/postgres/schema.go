@@ -49,3 +49,20 @@ var TasksSortColumns = map[string]struct{}{
 	TasksStatus:    {},
 	TasksCreatedAt: {},
 }
+
+const TaskRunRequestsTable = "task_run_requests"
+const (
+	TaskRunRequestsUserID    = "user_id"
+	TaskRunRequestsIdKey     = "id_key"
+	TaskRunRequestsTaskID    = "task_id"
+	TaskRunRequestsEventID   = "event_id"
+	TaskRunRequestsCreatedAt = "created_at"
+)
+
+var TaskRunRequestsColumns = []string{
+	TaskRunRequestsUserID,
+	TaskRunRequestsIdKey,
+	TaskRunRequestsTaskID,
+	TaskRunRequestsEventID,
+	TaskRunRequestsCreatedAt,
+}

@@ -3,7 +3,7 @@ package tasksCreate
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks"
+	"io"
 	"net/http"
 	"strings"
 
@@ -12,9 +12,13 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks"
 )
 
-const maxUploadSize = 200 << 20 // 200 MB
+const (
+	maxUploadSize      = 200 << 20 // 200 MB
+	maxMultipartMemory = 8 << 20   // Spill larger multipart parts to temporary files.
+)
 
 type TaskRequest struct {
 	Name        string  `json:"name" example:"Теплопроводность стержня"`
@@ -63,6 +67,20 @@ func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(ctx)
 	rh := httpout.NewHandler(w, log)
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(maxMultipartMemory); err != nil {
+		rh.ErrorResponse(
+			fmt.Errorf("%w: failed to parse multipart form: %v", errs.ErrInvalidArgument, err),
+			"request body must be multipart/form-data",
+		)
+		return
+	}
+	defer func() {
+		if err := r.MultipartForm.RemoveAll(); err != nil {
+			log.Err(err).Msg("remove multipart error")
+		}
+	}()
+
 	jsonStr := strings.TrimSpace(r.FormValue("data"))
 	if jsonStr == "" {
 		rh.ErrorResponse(errs.ErrInvalidArgument, "missing 'data' field with JSON metadata")
@@ -91,20 +109,6 @@ func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
-	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		rh.ErrorResponse(
-			fmt.Errorf("%w: failed to parse multipart form: %v", errs.ErrInvalidArgument, err),
-			"request body must be multipart/form-data",
-		)
-		return
-	}
-	defer func() {
-		if err := r.MultipartForm.RemoveAll(); err != nil {
-			log.Err(err).Msg("remove multipart error")
-		}
-	}()
 
 	files, err := h.collectFiles(r, mode)
 	if err != nil {
@@ -144,13 +148,28 @@ func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HttpHandler) collectFiles(r *http.Request, mode domain.TaskMode) ([]domain.TaskFile, error) {
+	return collectTaskFiles(mode, func(filename string) (io.ReadCloser, error) {
+		file, _, err := r.FormFile(filename)
+		return file, err
+	})
+}
+
+func collectTaskFiles(mode domain.TaskMode, open func(string) (io.ReadCloser, error)) ([]domain.TaskFile, error) {
 	var files []domain.TaskFile
+	var complete bool
+	defer func() {
+		if !complete {
+			for _, file := range files {
+				_ = file.File.Close()
+			}
+		}
+	}()
 
 	for _, filename := range mode.RequiredFiles() {
-		file, _, err := r.FormFile(filename)
+		file, err := open(filename)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"%w: failed to get requred file=%s: %v",
+				"%w: failed to get required file=%s: %v",
 				errs.ErrInvalidArgument,
 				filename,
 				err,
@@ -163,5 +182,6 @@ func (h *HttpHandler) collectFiles(r *http.Request, mode domain.TaskMode) ([]dom
 		})
 	}
 
+	complete = true
 	return files, nil
 }

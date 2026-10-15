@@ -3,11 +3,11 @@ package authRegister
 import (
 	"context"
 	"fmt"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 )
 
 type Postgres interface {

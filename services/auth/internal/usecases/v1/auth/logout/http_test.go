@@ -7,8 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 )
 
 func TestHttpHandler_Logout(t *testing.T) {

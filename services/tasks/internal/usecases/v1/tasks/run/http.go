@@ -38,9 +38,11 @@ func (h *HttpHandler) Route() httpsrv.Route {
 //		@Description	Отправить PINN задачу на исполнение
 //		@Tags			tasks
 //		@Accept			json
+//	 @Param          X-Idempotency-Key header string false "Ключ запуска, максимум 256 байт; повторять с тем же task ID"
 //	    @Param          id   path      string  true  "ID задачи (UUID)" format(uuid)
 //		@Success		204		"Задача успешно отправлена в очередь"
 //		@Failure		400		{object}	httpout.ErrorResponse	"Bad request"
+//		@Failure		409		{object}	httpout.ErrorResponse	"Idempotency key conflict"
 //		@Failure		500		{object}	httpout.ErrorResponse	"Internal server error"
 //		@Router			/tasks/{id}/run 	[post]
 func (h *HttpHandler) RunTask(w http.ResponseWriter, r *http.Request) {
