@@ -9,6 +9,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 )
 
@@ -16,7 +17,7 @@ type Postgres interface {
 	GetTaskByIDForUpdate(ctx context.Context, id uuid.UUID) (domain.Task, error)
 	UpdateTask(ctx context.Context, task domain.Task) (domain.Task, error)
 
-	InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error
+	poolx.TxManager
 }
 
 type FileService interface {

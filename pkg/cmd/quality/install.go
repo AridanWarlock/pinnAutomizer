@@ -41,6 +41,7 @@ func download(ctx context.Context, address, path string) error {
 	_, copyErr := io.Copy(file, response.Body)
 	return errors.Join(copyErr, file.Close())
 }
+
 func install(ctx context.Context, root, base string) error {
 	if (runtime.GOOS != "darwin" && runtime.GOOS != "linux") || (runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64") {
 		return fmt.Errorf("installer supports macOS/Linux on amd64/arm64")

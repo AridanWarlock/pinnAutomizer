@@ -23,14 +23,22 @@ func TestWorkerCloseWaitsForTransactionCleanup(t *testing.T) {
 		return ctx.Err()
 	}}
 	worker := NewWorker(postgres, &MockWriter{}, zerolog.Nop())
-	t.Cleanup(func() { once.Do(func() { close(release) }); worker.Close() })
+	t.Cleanup(func() {
+		once.Do(func() {
+			close(release)
+		})
+		worker.Close()
+	})
 	select {
 	case <-started:
 	case <-time.After(10 * time.Second):
 		t.Fatal("worker did not start")
 	}
 	done := make(chan struct{})
-	go func() { worker.Close(); close(done) }()
+	go func() {
+		worker.Close()
+		close(done)
+	}()
 	select {
 	case <-cleaning:
 	case <-time.After(time.Second):
@@ -41,7 +49,9 @@ func TestWorkerCloseWaitsForTransactionCleanup(t *testing.T) {
 		t.Fatal("Close returned before transaction cleanup")
 	default:
 	}
-	once.Do(func() { close(release) })
+	once.Do(func() {
+		close(release)
+	})
 	select {
 	case <-done:
 	case <-time.After(time.Second):

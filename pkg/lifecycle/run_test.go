@@ -3,11 +3,14 @@ package lifecycle
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
 
 func TestRunWaitsForCleanupAfterFailure(t *testing.T) {
@@ -20,8 +23,11 @@ func TestRunWaitsForCleanupAfterFailure(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- Run(ctx,
-			Worker{Name: "consumer", Run: func(ctx context.Context) error { <-ready; return failure }},
-			Worker{Name: "other", Run: func(ctx context.Context) error {
+			Worker("consumer", func(ctx context.Context) error {
+				<-ready
+				return failure
+			}),
+			Worker("other", func(ctx context.Context) error {
 				close(ready)
 				<-ctx.Done()
 				close(cleaning)
@@ -35,7 +41,7 @@ func TestRunWaitsForCleanupAfterFailure(t *testing.T) {
 					}
 				}
 				return ctx.Err()
-			}},
+			}),
 		)
 	}()
 	select {
@@ -59,13 +65,31 @@ func TestRunWaitsForCleanupAfterFailure(t *testing.T) {
 }
 
 func TestRunStopsOnUnexpectedReturn(t *testing.T) {
-	err := Run(context.Background(), Worker{Name: "consumer", Run: func(context.Context) error { return nil }})
+	err := Run(context.Background(), Worker("consumer", func(context.Context) error {
+		return nil
+	}))
 	require.ErrorIs(t, err, ErrWorkerStopped)
 }
 
 func TestRunTreatsCancellationAsNormalStop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	err := Run(ctx, Worker{Name: "consumer", Run: func(ctx context.Context) error { return ctx.Err() }})
+	err := Run(ctx, Worker("consumer", func(ctx context.Context) error {
+		return ctx.Err()
+	}))
 	require.NoError(t, err)
+}
+
+func TestRunRejectsInvalidOptionsBeforeStarting(t *testing.T) {
+	for _, invalid := range []Option{nil, Worker("nil", nil), Worker("", func(context.Context) error {
+		return nil
+	})} {
+		var started atomic.Bool
+		err := Run(context.Background(), Worker("valid", func(context.Context) error {
+			started.Store(true)
+			return nil
+		}), invalid)
+		require.ErrorIs(t, err, errs.ErrInvalidArgument)
+		require.False(t, started.Load())
+	}
 }

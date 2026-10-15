@@ -22,7 +22,9 @@ func TestShutdownAllowsActiveRequestToFinish(t *testing.T) {
 		_, _ = io.WriteString(w, "completed")
 	}))
 	defer server.Close()
-	server.Config.RegisterOnShutdown(func() { close(shuttingDown) })
+	server.Config.RegisterOnShutdown(func() {
+		close(shuttingDown)
+	})
 	requestDone := make(chan error, 1)
 	go func() {
 		response, err := server.Client().Get(server.URL)
@@ -37,10 +39,10 @@ func TestShutdownAllowsActiveRequestToFinish(t *testing.T) {
 		requestDone <- err
 	}()
 	<-started
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
 	done := make(chan error, 1)
-	go func() { done <- shutdownServer(ctx, server.Config, time.Second) }()
+	go func() {
+		done <- shutdownServer(server.Config, time.Second)
+	}()
 	<-shuttingDown
 	// Shutdown closes listeners before invoking these callbacks.
 	close(release)
@@ -50,7 +52,33 @@ func TestShutdownAllowsActiveRequestToFinish(t *testing.T) {
 
 func TestShutdownHasBoundedCleanupContext(t *testing.T) {
 	server := &http.Server{}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	assert.NoError(t, shutdownServer(ctx, server, time.Second))
+	assert.NoError(t, shutdownServer(server, time.Second))
+}
+
+func TestShutdownDeadlineClosesActiveConnection(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		close(started)
+		<-release
+	}))
+	defer server.Close()
+	defer close(release)
+	requestDone := make(chan error, 1)
+	go func() {
+		response, err := server.Client().Get(server.URL)
+		if response != nil {
+			_ = response.Body.Close()
+		}
+		requestDone <- err
+	}()
+	<-started
+	require.ErrorIs(t, shutdownServer(server.Config, 20*time.Millisecond), context.DeadlineExceeded)
+	select {
+	case err := <-requestDone:
+		require.Error(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("connection remained open after shutdown deadline")
+	}
 }

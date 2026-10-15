@@ -101,7 +101,7 @@ func (s *Server) Run(ctx context.Context) error {
 	case <-ctx.Done():
 		s.log.Warn().Msg("shutdown HTTP server...")
 
-		if err := shutdownServer(ctx, server, s.cfg.ShutdownTimeout); err != nil {
+		if err := shutdownServer(server, s.cfg.ShutdownTimeout); err != nil {
 			return fmt.Errorf("shutdown HTTP server: %w", err)
 		}
 
@@ -111,8 +111,8 @@ func (s *Server) Run(ctx context.Context) error {
 	return nil
 }
 
-func shutdownServer(ctx context.Context, server *http.Server, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
+func shutdownServer(server *http.Server, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
 		_ = server.Close()

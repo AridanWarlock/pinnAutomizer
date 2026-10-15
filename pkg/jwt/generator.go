@@ -52,6 +52,7 @@ func (g *Generator) GenerateAndGetClaims(userID uuid.UUID) (core.AccessToken, co
 	}
 	return token, jwtClaims, nil
 }
+
 func (g *Generator) generateAndGetClaims(userID uuid.UUID) (core.AccessToken, Claims, error) {
 	issuedAt := time.Now()
 

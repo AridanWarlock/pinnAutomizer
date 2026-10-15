@@ -25,7 +25,7 @@ deprecated API не включены; расширение набора прав
 Успешный тестовый лог вообще не разбирается. Не использовать pipe в head для
 замены runner-а: это может скрыть exit code go test.
 
-Без PINN_TEST_POSTGRES_DSN тесты БД пропускаются с явным сообщением. DSN нужно
+Без PINN_TEST_POSTGRES_DSN PostgreSQL-тесты пропускаются самими тестами (сообщения Skip сохраняются в полном логе). Runner не знает о конкретных БД или env-переменных. DSN нужно
 задавать только для одноразового PostgreSQL-кластера с CREATE DATABASE permission
 (см. services/tasks/README.md). GitHub Actions запускает make check с такой БД;
 при ошибке полный лог сохраняется как artifact quality-logs.

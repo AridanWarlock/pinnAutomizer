@@ -28,6 +28,7 @@ func write(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
 func goVersion(t *testing.T) string {
 	t.Helper()
 	data, err := exec.Command("go", "env", "GOVERSION").Output()
@@ -36,6 +37,7 @@ func goVersion(t *testing.T) string {
 	}
 	return strings.TrimPrefix(strings.TrimSpace(string(data)), "go")
 }
+
 func probe(t *testing.T, source string) (int, string, string) {
 	t.Helper()
 	t.Setenv("GOWORK", "off")
@@ -54,6 +56,7 @@ func probe(t *testing.T, source string) (int, string, string) {
 	}
 	return code, output.String(), string(log)
 }
+
 func TestSuccessfulRunIsQuiet(t *testing.T) {
 	code, out, log := probe(t, `package probe
 import "testing"
@@ -69,16 +72,19 @@ func TestPassing(t *testing.T){t.Log("SUCCESS_NOISE")}
 		t.Fatal(err)
 	}
 }
+
 func TestOnlyFailedTestsArePrinted(t *testing.T) {
 	code, out, log := probe(t, `package probe
 import "testing"
 func TestPassing(t *testing.T){t.Log("SUCCESS_NOISE")}
+
 func TestFailure(t *testing.T){t.Fatal("EXPECTED_FAILURE")}
 `)
 	if code == 0 || !strings.Contains(out, "EXPECTED_FAILURE") || strings.Contains(out, "SUCCESS_NOISE") || !strings.Contains(log, "SUCCESS_NOISE") || !strings.Contains(out, "Full log:") {
 		t.Fatalf("code=%d, output=%q", code, out)
 	}
 }
+
 func TestBuildErrorsAreVisible(t *testing.T) {
 	code, out, _ := probe(t, `package probe
 import "testing"
@@ -88,6 +94,7 @@ func TestBuild(t *testing.T){missingName()}
 		t.Fatalf("code=%d, output=%q", code, out)
 	}
 }
+
 func TestCleanCloneWorkspace(t *testing.T) {
 	t.Setenv("GOWORK", "")
 	root := t.TempDir()
@@ -112,6 +119,7 @@ func TestCleanCloneWorkspace(t *testing.T) {
 		t.Fatalf("unexpected packages: %s", data)
 	}
 }
+
 func TestExplicitWorkspacePreserved(t *testing.T) {
 	t.Setenv("GOWORK", "off")
 	r := runner{root: t.TempDir()}
@@ -123,6 +131,7 @@ func TestExplicitWorkspacePreserved(t *testing.T) {
 		t.Fatal("explicit workspace overwritten")
 	}
 }
+
 func TestDiagnosticsAreBounded(t *testing.T) {
 	root := t.TempDir()
 	var output bytes.Buffer
@@ -137,11 +146,13 @@ func TestDiagnosticsAreBounded(t *testing.T) {
 		t.Fatalf("code=%d, error=%v, output=%q", code, err, output.String())
 	}
 }
+
 func TestVersionOrdering(t *testing.T) {
 	if !versionLess("1.9.9", "1.26.1") || versionLess("1.26.2", "1.26.1") || versionLess("1.26.1", "1.26.1") {
 		t.Fatal("Go versions compared incorrectly")
 	}
 }
+
 func TestCommandExitCodeAndCancellation(t *testing.T) {
 	t.Setenv("GOWORK", "off")
 	r := runner{root: t.TempDir(), ctx: context.Background()}
@@ -212,6 +223,7 @@ func TestInstallerChecksumAndAtomicReplacement(t *testing.T) {
 		t.Fatal("failed installation replaced existing tool")
 	}
 }
+
 func TestInstallerHTTPFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unavailable", http.StatusServiceUnavailable)

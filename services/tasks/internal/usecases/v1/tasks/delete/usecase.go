@@ -47,6 +47,7 @@ func (u *usecase) DeleteTask(ctx context.Context, in Input) error {
 	log := logger.FromContext(ctx)
 	auth := core.MustAuthInfoFromContext(ctx)
 
+	// Keep file paths until the delete transaction commits; cleanup must run afterwards.
 	var task domain.Task
 	err := u.postgres.InTransaction(ctx, func(ctx context.Context) error {
 		var err error

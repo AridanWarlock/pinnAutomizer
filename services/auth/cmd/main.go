@@ -142,9 +142,9 @@ func AppRun(
 	// httpServer.RegisterSwagger()
 
 	return lifecycle.Run(ctx,
-		lifecycle.Worker{Name: "http server", Run: server.Run},
-		lifecycle.Worker{Name: "auth.session.compromised", Run: func(ctx context.Context) error {
+		lifecycle.Worker("http server", server.Run),
+		lifecycle.Worker("auth.session.compromised", func(ctx context.Context) error {
 			return authCompromisedKafkaConsumer.Run(ctx, authCompromisedConsumer.HandleMessage)
-		}},
+		}),
 	)
 }

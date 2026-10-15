@@ -62,7 +62,10 @@ func TestHttpHandler_CreateTask(t *testing.T) {
 
 type zeroReader struct{}
 
-func (zeroReader) Read(p []byte) (int, error) { clear(p); return len(p), nil }
+func (zeroReader) Read(p []byte) (int, error) {
+	clear(p)
+	return len(p), nil
+}
 
 func TestHttpHandler_CreateTaskRejectsOversizedBody(t *testing.T) {
 	// Stream an oversized part instead of allocating a 200 MiB byte slice.
@@ -89,7 +92,10 @@ type trackedFile struct {
 	closed bool
 }
 
-func (f *trackedFile) Close() error { f.closed = true; return nil }
+func (f *trackedFile) Close() error {
+	f.closed = true
+	return nil
+}
 
 func TestCollectTaskFilesClosesPartialCollection(t *testing.T) {
 	first := &trackedFile{Reader: strings.NewReader("data")}

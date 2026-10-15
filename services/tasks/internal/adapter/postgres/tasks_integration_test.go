@@ -55,7 +55,9 @@ func newTaskIntegrationRepository(t *testing.T) (*Repository, *pgx.Conn) {
 	testCfg.Database = name
 	db, err := pgx.ConnectConfig(ctx, testCfg)
 	require.NoError(t, err)
-	t.Cleanup(func() { assert.NoError(t, db.Close(context.Background())) })
+	t.Cleanup(func() {
+		assert.NoError(t, db.Close(context.Background()))
+	})
 	_, err = db.Exec(ctx, `
  CREATE TYPE task_status_enum AS ENUM ('created','in_queue','running','done','error');
  CREATE TABLE tasks (
@@ -118,6 +120,7 @@ func (r *heldTaskRepository) GetTaskByIDAndUserIDForUpdate(ctx context.Context, 
 		return domain.Task{}, ctx.Err()
 	}
 }
+
 func (r *heldTaskRepository) GetTaskByIDForUpdate(ctx context.Context, id uuid.UUID) (domain.Task, error) {
 	task, err := r.Repository.GetTaskByIDForUpdate(ctx, id)
 	if err != nil {
@@ -131,6 +134,7 @@ func (r *heldTaskRepository) GetTaskByIDForUpdate(ctx context.Context, id uuid.U
 		return domain.Task{}, ctx.Err()
 	}
 }
+
 func waitTaskLock(t *testing.T, db *pgx.Conn) {
 	t.Helper()
 	require.Eventually(t, func() bool {
@@ -141,6 +145,7 @@ func waitTaskLock(t *testing.T, db *pgx.Conn) {
 		return err == nil && waiting
 	}, 5*time.Second, 10*time.Millisecond, "competing transaction must wait for the task row lock")
 }
+
 func awaitTaskLock(t *testing.T, held *heldTaskRepository) {
 	t.Helper()
 	select {
@@ -161,7 +166,11 @@ func TestTaskIntegrationConcurrentRunDelete(t *testing.T) {
 			ctx, task := integrationTask(t, repo, domain.TaskStatusCreated)
 			held := &heldTaskRepository{Repository: repo, locked: make(chan struct{}), release: make(chan struct{})}
 			var once sync.Once
-			release := func() { once.Do(func() { close(held.release) }) }
+			release := func() {
+				once.Do(func() {
+					close(held.release)
+				})
+			}
 			defer release()
 			first := make(chan error, 1)
 			second := make(chan error, 1)
@@ -171,11 +180,15 @@ func TestTaskIntegrationConcurrentRunDelete(t *testing.T) {
 					first <- tasksRun.New(held).RunTask(ctx, tasksRun.Input{TaskID: task.ID})
 				}()
 			} else {
-				go func() { first <- tasksDelete.New(held, files).DeleteTask(ctx, tasksDelete.Input{TaskID: task.ID}) }()
+				go func() {
+					first <- tasksDelete.New(held, files).DeleteTask(ctx, tasksDelete.Input{TaskID: task.ID})
+				}()
 			}
 			awaitTaskLock(t, held)
 			if runFirst {
-				go func() { second <- tasksDelete.New(repo, files).DeleteTask(ctx, tasksDelete.Input{TaskID: task.ID}) }()
+				go func() {
+					second <- tasksDelete.New(repo, files).DeleteTask(ctx, tasksDelete.Input{TaskID: task.ID})
+				}()
 			} else {
 				go func() {
 					second <- tasksRun.New(repo).RunTask(ctx, tasksRun.Input{TaskID: task.ID})
@@ -248,7 +261,11 @@ func TestTaskIntegrationConcurrentCompletionPreservesFirstResult(t *testing.T) {
 	ctx, task := integrationTask(t, repo, domain.TaskStatusRunning)
 	held := &heldTaskRepository{Repository: repo, locked: make(chan struct{}), release: make(chan struct{})}
 	var once sync.Once
-	release := func() { once.Do(func() { close(held.release) }) }
+	release := func() {
+		once.Do(func() {
+			close(held.release)
+		})
+	}
 	defer release()
 	failure := "first error"
 	first := make(chan error, 1)

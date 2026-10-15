@@ -166,12 +166,12 @@ func AppRun(
 	}
 
 	return lifecycle.Run(ctx,
-		lifecycle.Worker{Name: "http server", Run: server.Run},
-		lifecycle.Worker{Name: "tasks.on.run", Run: func(ctx context.Context) error {
+		lifecycle.Worker("http server", server.Run),
+		lifecycle.Worker("tasks.on.run", func(ctx context.Context) error {
 			return tasksOnRunConsumeAdapter.Run(ctx, tasksOnRunConsumer.HandleMessage)
-		}},
-		lifecycle.Worker{Name: "tasks.after.run", Run: func(ctx context.Context) error {
+		}),
+		lifecycle.Worker("tasks.after.run", func(ctx context.Context) error {
 			return tasksAfterRunConsumeAdapter.Run(ctx, tasksAfterRunConsumer.HandleMessage)
-		}},
+		}),
 	)
 }

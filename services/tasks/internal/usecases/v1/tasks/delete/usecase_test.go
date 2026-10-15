@@ -26,8 +26,12 @@ func TestDeleteTaskDoesNotRemoveFilesOnCommitFailure(t *testing.T) {
 			}
 			return failure
 		},
-		GetTaskByIDAndUserIDForUpdateFunc: func(ctx context.Context, id, userID uuid.UUID) (domain.Task, error) { return task, nil },
-		DeleteTaskByIDAndUserIDFunc:       func(ctx context.Context, id, userID uuid.UUID) error { return nil },
+		GetTaskByIDAndUserIDForUpdateFunc: func(ctx context.Context, id, userID uuid.UUID) (domain.Task, error) {
+			return task, nil
+		},
+		DeleteTaskByIDAndUserIDFunc: func(ctx context.Context, id, userID uuid.UUID) error {
+			return nil
+		},
 	}
 	files := &MockFileService{}
 	ctx := auth.WithContext(test.ContextWithZeroLogger())
@@ -49,8 +53,12 @@ func TestDeleteTaskRemovesFilesAfterCommit(t *testing.T) {
 			committed = true
 			return nil
 		},
-		GetTaskByIDAndUserIDForUpdateFunc: func(ctx context.Context, id, userID uuid.UUID) (domain.Task, error) { return task, nil },
-		DeleteTaskByIDAndUserIDFunc:       func(ctx context.Context, id, userID uuid.UUID) error { return nil },
+		GetTaskByIDAndUserIDForUpdateFunc: func(ctx context.Context, id, userID uuid.UUID) (domain.Task, error) {
+			return task, nil
+		},
+		DeleteTaskByIDAndUserIDFunc: func(ctx context.Context, id, userID uuid.UUID) error {
+			return nil
+		},
 	}
 	files := &MockFileService{RemoveAllFunc: func(dir string) error {
 		assert.True(t, committed)

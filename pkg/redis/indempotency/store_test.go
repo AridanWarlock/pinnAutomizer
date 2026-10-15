@@ -2,7 +2,6 @@ package indempotency
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
 	"testing"
 	"time"
@@ -13,49 +12,25 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 )
 
-// Keep the same JSON boundary as the real Redis adapter, so incompatible formats fail.
-type jsonRedis struct {
-	mu   sync.Mutex
-	data map[string][]byte
-}
-
-func (r *jsonRedis) Get(ctx context.Context, key string, target any) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return json.Unmarshal(r.data[key], target)
-}
-func (r *jsonRedis) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
-	data, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.data[key] = data
-	return nil
-}
-func (r *jsonRedis) TryLock(ctx context.Context, key string, value any, ttl time.Duration) (bool, error) {
-	data, err := json.Marshal(value)
-	if err != nil {
-		return false, err
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if _, ok := r.data[key]; ok {
-		return false, nil
-	}
-	r.data[key] = data
-	return true, nil
-}
-func (r *jsonRedis) Delete(ctx context.Context, key string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	delete(r.data, key)
-	return nil
-}
-
 func TestStoreConcurrentPendingCanBeRead(t *testing.T) {
-	store := NewStore(&jsonRedis{data: make(map[string][]byte)}, time.Hour, time.Minute)
+	var held sync.Mutex
+	pending := envelope{Status: core.IdempotencyStatusPending}
+	redis := &MockRedis{
+		TryLockFunc: func(_ context.Context, _ string, value any, ttl time.Duration) (bool, error) {
+			assert.Equal(t, pending, value)
+			assert.Equal(t, time.Minute, ttl)
+			return held.TryLock(), nil
+		},
+		GetFunc: func(_ context.Context, _ string, target any) error {
+			*target.(*envelope) = pending
+			return nil
+		},
+		DeleteFunc: func(context.Context, string) error {
+			held.Unlock()
+			return nil
+		},
+	}
+	store := NewStore(redis, time.Hour, time.Minute)
 	key := core.IdempotencyKey("request")
 	ctx := context.Background()
 	var group sync.WaitGroup
@@ -68,9 +43,7 @@ func TestStoreConcurrentPendingCanBeRead(t *testing.T) {
 			if err == nil && !ok {
 				var status core.IdempotencyStatus
 				status, err = store.Get(ctx, key, nil)
-				if err == nil && status != core.IdempotencyStatusPending {
-					t.Errorf("unexpected status %s", status)
-				}
+				assert.Equal(t, core.IdempotencyStatusPending, status)
 			}
 			failures <- err
 		})
@@ -84,19 +57,37 @@ func TestStoreConcurrentPendingCanBeRead(t *testing.T) {
 			acquired++
 		}
 	}
-	assert.Equal(t, 1, acquired)
+	require.Equal(t, 1, acquired)
 	for err := range failures {
 		require.NoError(t, err)
 	}
+	// The winner keeps ownership until every contender has completed.
+	require.NoError(t, store.Delete(ctx, key))
+	ok, err := store.TryLock(ctx, key)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.NoError(t, store.Delete(ctx, key))
 }
 
 func TestStoreCompletedResultRoundTrip(t *testing.T) {
-	store := NewStore(&jsonRedis{data: make(map[string][]byte)}, time.Hour, time.Minute)
+	var stored envelope
+	redis := &MockRedis{
+		SetFunc: func(_ context.Context, _ string, value any, _ time.Duration) error {
+			stored = value.(envelope)
+			return nil
+		},
+		GetFunc: func(_ context.Context, _ string, target any) error {
+			*target.(*envelope) = stored
+			return nil
+		},
+	}
+	store := NewStore(redis, time.Hour, time.Minute)
 	key := core.IdempotencyKey("request")
 	want := struct {
 		Value string `json:"value"`
 	}{Value: "accepted"}
 	require.NoError(t, store.Set(context.Background(), key, core.IdempotencyStatusCompleted, want))
+	assert.JSONEq(t, `{"value":"accepted"}`, string(stored.Data))
 	var got struct {
 		Value string `json:"value"`
 	}

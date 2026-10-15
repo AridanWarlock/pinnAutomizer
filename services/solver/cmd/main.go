@@ -98,11 +98,11 @@ func AppRun(
 	// consumers
 	runConsumer := tasksRun.NewConsumer(runUsecase, producer)
 	return lifecycle.Run(ctx,
-		lifecycle.Worker{Name: "tasks.run.queue", Run: func(ctx context.Context) error {
+		lifecycle.Worker("tasks.run.queue", func(ctx context.Context) error {
 			return runQueueConsumer.Run(ctx, runConsumer.HandleMessage)
-		}},
-		lifecycle.Worker{Name: "tasks.predict.queue", Run: func(ctx context.Context) error {
+		}),
+		lifecycle.Worker("tasks.predict.queue", func(ctx context.Context) error {
 			return predictQueueConsumer.Run(ctx, runConsumer.HandleMessage)
-		}},
+		}),
 	)
 }

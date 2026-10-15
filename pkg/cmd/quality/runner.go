@@ -83,6 +83,7 @@ func (r runner) environment() ([]string, error) {
 	}
 	return append(env, "GOWORK="+work), nil
 }
+
 func versionLess(a, b string) bool {
 	left, right := strings.Split(a, "."), strings.Split(b, ".")
 	for i := 0; i < 3; i++ {
@@ -99,6 +100,7 @@ func versionLess(a, b string) bool {
 	}
 	return false
 }
+
 func (r runner) logged(name string, args ...string) (int, error) {
 	path := r.logPath(name)
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
@@ -175,6 +177,7 @@ type testEvent struct {
 	Test    string
 	Output  string
 }
+
 type testKey struct {
 	Package string
 	Test    string
@@ -204,6 +207,7 @@ func failedTests(path string) (diagnostics, error) {
 	})
 	return d, err
 }
+
 func (r runner) report(name string, code int, d *diagnostics) (int, error) {
 	if code == 0 {
 		fmt.Fprintf(r.output, "%s: OK\n", name)
@@ -225,6 +229,7 @@ func (r runner) report(name string, code int, d *diagnostics) (int, error) {
 	fmt.Fprintf(r.output, "Full log: out/quality/%s.log\n", name)
 	return code, nil
 }
+
 func (r runner) tests(name string, args []string) (int, error) {
 	if len(args) == 0 {
 		args = r.packages
@@ -242,11 +247,10 @@ func (r runner) tests(name string, args []string) (int, error) {
 		d = &found
 	}
 	code, err = r.report(name, code, d)
-	if code == 0 && name == "test" && os.Getenv("PINN_TEST_POSTGRES_DSN") == "" {
-		fmt.Fprintln(r.output, "PostgreSQL integration: not enabled (PINN_TEST_POSTGRES_DSN is unset)")
-	}
+
 	return code, err
 }
+
 func (r runner) tool() (string, error) {
 	path := filepath.Join(r.root, ".tools", "golangci-lint")
 	data, err := exec.CommandContext(r.ctx, path, "version").CombinedOutput()
@@ -259,6 +263,7 @@ func (r runner) tool() (string, error) {
 	}
 	return path, nil
 }
+
 func (r runner) run(args []string) (int, error) {
 	if len(args) == 0 {
 		return 1, errors.New("usage: quality install|fmt|fmt-check|lint|test|self-test|check [go test arguments]")

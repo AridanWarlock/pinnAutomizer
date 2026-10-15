@@ -97,7 +97,7 @@ var _ Postgres = &MockPostgres{}
 //			GetTaskByIDForUpdateFunc: func(ctx context.Context, id uuid.UUID) (domain.Task, error) {
 //				panic("mock out the GetTaskByIDForUpdate method")
 //			},
-//			InTransactionFunc: func(ctx context.Context, inTx func(ctx context.Context) error) error {
+//			InTransactionFunc: func(ctx context.Context, inTx func(context.Context) error) error {
 //				panic("mock out the InTransaction method")
 //			},
 //			UpdateTaskFunc: func(ctx context.Context, task domain.Task) (domain.Task, error) {
@@ -114,7 +114,7 @@ type MockPostgres struct {
 	GetTaskByIDForUpdateFunc func(ctx context.Context, id uuid.UUID) (domain.Task, error)
 
 	// InTransactionFunc mocks the InTransaction method.
-	InTransactionFunc func(ctx context.Context, inTx func(ctx context.Context) error) error
+	InTransactionFunc func(ctx context.Context, inTx func(context.Context) error) error
 
 	// UpdateTaskFunc mocks the UpdateTask method.
 	UpdateTaskFunc func(ctx context.Context, task domain.Task) (domain.Task, error)
@@ -133,7 +133,7 @@ type MockPostgres struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// InTx is the inTx argument value.
-			InTx func(ctx context.Context) error
+			InTx func(context.Context) error
 		}
 		// UpdateTask holds details about calls to the UpdateTask method.
 		UpdateTask []struct {
@@ -185,13 +185,13 @@ func (mock *MockPostgres) GetTaskByIDForUpdateCalls() []struct {
 }
 
 // InTransaction calls InTransactionFunc.
-func (mock *MockPostgres) InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error {
+func (mock *MockPostgres) InTransaction(ctx context.Context, inTx func(context.Context) error) error {
 	if mock.InTransactionFunc == nil {
 		panic("MockPostgres.InTransactionFunc: method is nil but Postgres.InTransaction was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
-		InTx func(ctx context.Context) error
+		InTx func(context.Context) error
 	}{
 		Ctx:  ctx,
 		InTx: inTx,
@@ -208,11 +208,11 @@ func (mock *MockPostgres) InTransaction(ctx context.Context, inTx func(ctx conte
 //	len(mockedPostgres.InTransactionCalls())
 func (mock *MockPostgres) InTransactionCalls() []struct {
 	Ctx  context.Context
-	InTx func(ctx context.Context) error
+	InTx func(context.Context) error
 } {
 	var calls []struct {
 		Ctx  context.Context
-		InTx func(ctx context.Context) error
+		InTx func(context.Context) error
 	}
 	mock.lockInTransaction.RLock()
 	calls = mock.calls.InTransaction

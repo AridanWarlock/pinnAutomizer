@@ -12,6 +12,3 @@ CREATE TABLE task_run_requests
 COMMENT ON TABLE task_run_requests IS 'Принятые запросы запуска; сохраняются после отправки outbox и удаления задачи';
 COMMENT ON COLUMN task_run_requests.task_id IS 'ID исходной задачи без FK: удаление задачи не отменяет принятого запроса';
 COMMENT ON COLUMN task_run_requests.event_id IS 'ID события запуска, независимый от пользовательского ключа';
-
--- +goose Down
-DROP TABLE task_run_requests;

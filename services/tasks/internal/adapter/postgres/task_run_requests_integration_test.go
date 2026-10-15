@@ -82,14 +82,22 @@ func TestTaskIntegrationConcurrentSameRunRequest(t *testing.T) {
 	ctx, task := integrationTask(t, repo, domain.TaskStatusCreated)
 	held := &heldTaskRepository{Repository: repo, locked: make(chan struct{}), release: make(chan struct{})}
 	var once sync.Once
-	release := func() { once.Do(func() { close(held.release) }) }
+	release := func() {
+		once.Do(func() {
+			close(held.release)
+		})
+	}
 	defer release()
 	first := make(chan error, 1)
 	second := make(chan error, 1)
 	input := tasksRun.Input{TaskID: task.ID}
-	go func() { first <- tasksRun.New(held).RunTask(ctx, input) }()
+	go func() {
+		first <- tasksRun.New(held).RunTask(ctx, input)
+	}()
 	awaitTaskLock(t, held)
-	go func() { second <- tasksRun.New(repo).RunTask(ctx, input) }()
+	go func() {
+		second <- tasksRun.New(repo).RunTask(ctx, input)
+	}()
 	waitTaskLock(t, db)
 	release()
 	require.NoError(t, <-first)
@@ -101,7 +109,9 @@ func TestTaskIntegrationConcurrentSameRunRequest(t *testing.T) {
 	assert.Equal(t, 1, requests)
 }
 
-type failedEventRepository struct{ *Repository }
+type failedEventRepository struct {
+	*Repository
+}
 
 func (r failedEventRepository) PublishEvent(context.Context, domain.Event) (domain.Event, error) {
 	return domain.Event{}, errors.New("outbox insert failed")
@@ -123,7 +133,9 @@ func TestTaskIntegrationRunRequestRollsBackWithEventFailure(t *testing.T) {
 	assert.Equal(t, 1, events)
 }
 
-type ambiguousCommitRepository struct{ *Repository }
+type ambiguousCommitRepository struct {
+	*Repository
+}
 
 func (r ambiguousCommitRepository) InTransaction(ctx context.Context, fn func(context.Context) error) error {
 	if err := r.Repository.InTransaction(ctx, fn); err != nil {

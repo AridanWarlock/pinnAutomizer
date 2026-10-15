@@ -46,17 +46,17 @@ func (u *usecase) RunTask(ctx context.Context, in Input) error {
 		if err != nil {
 			return fmt.Errorf("save run request: %w", err)
 		}
-		if !created {
-			existing, err := u.postgres.GetTaskRunRequest(ctx, auth.UserID, idKey)
-			if err != nil {
-				return fmt.Errorf("get accepted run request: %w", err)
-			}
-			if existing.TaskID != in.TaskID {
-				return fmt.Errorf("%w: idempotency key was used for a different task", errs.ErrConflict)
-			}
-			return nil
+		if created {
+			return u.createAndPublishEvent(ctx, in.TaskID, auth.UserID, core.IdempotencyKey(request.EventID.String()))
 		}
-		return u.createAndPublishEvent(ctx, in.TaskID, auth.UserID, core.IdempotencyKey(request.EventID.String()))
+		existing, err := u.postgres.GetTaskRunRequest(ctx, auth.UserID, idKey)
+		if err != nil {
+			return fmt.Errorf("get accepted run request: %w", err)
+		}
+		if existing.TaskID != in.TaskID {
+			return fmt.Errorf("%w: idempotency key was used for a different task", errs.ErrConflict)
+		}
+		return nil
 	})
 }
 

@@ -15,7 +15,10 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks"
 )
 
-const maxUploadSize = 200 << 20 // 200 MB
+const (
+	maxUploadSize      = 200 << 20 // 200 MB
+	maxMultipartMemory = 8 << 20   // Spill larger multipart parts to temporary files.
+)
 
 type TaskRequest struct {
 	Name        string  `json:"name" example:"Теплопроводность стержня"`
@@ -65,7 +68,7 @@ func (h *HttpHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	rh := httpout.NewHandler(w, log)
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
-	if err := r.ParseMultipartForm(8 << 20); err != nil {
+	if err := r.ParseMultipartForm(maxMultipartMemory); err != nil {
 		rh.ErrorResponse(
 			fmt.Errorf("%w: failed to parse multipart form: %v", errs.ErrInvalidArgument, err),
 			"request body must be multipart/form-data",
