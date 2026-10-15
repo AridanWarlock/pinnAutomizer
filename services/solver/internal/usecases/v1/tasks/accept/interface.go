@@ -13,13 +13,12 @@ type Input struct {
 	TaskID uuid.UUID
 	Mode   string
 }
+
 type Output struct {
 	Attempt domain.Attempt
 	Created bool
 }
-type SQLite interface {
-	RegisterAttempt(context.Context, domain.Attempt) (domain.Attempt, bool, error)
-}
+
 type Usecase interface {
 	AcceptTask(context.Context, Input) (Output, error)
 }

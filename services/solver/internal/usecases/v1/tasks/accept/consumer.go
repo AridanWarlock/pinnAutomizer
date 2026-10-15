@@ -15,9 +15,15 @@ type Message struct {
 	TaskID uuid.UUID `json:"task_id"`
 	Mode   string    `json:"mode"`
 }
-type Consumer struct{ usecase Usecase }
 
-func NewConsumer(usecase Usecase) *Consumer { return &Consumer{usecase: usecase} }
+type Consumer struct {
+	usecase Usecase
+}
+
+func NewConsumer(usecase Usecase) *Consumer {
+	return &Consumer{usecase: usecase}
+}
+
 func (c *Consumer) HandleMessage(ctx context.Context, msg core.KafkaMessage) error {
 	runID, err := uuid.Parse(msg.Headers["X-Idempotency-Key"])
 	if err != nil {

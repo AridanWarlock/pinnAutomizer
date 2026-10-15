@@ -11,11 +11,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pressly/goose/v3"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/adapter/sqlite"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
+	worker "github.com/AridanWarlock/pinnAutomizer/solver/internal/outbox"
 )
 
 type recordingWriter struct {
@@ -37,6 +39,7 @@ func (w *recordingWriter) WriteMessages(ctx context.Context, messages ...core.Ka
 	}
 	return w.err
 }
+
 func setup(t *testing.T) (*sqlite.Repository, sqlite.Config, domain.Event) {
 	t.Helper()
 	cfg := sqlite.Config{Path: filepath.Join(t.TempDir(), "journal.db"), BusyTimeout: time.Second}
@@ -63,10 +66,13 @@ func setup(t *testing.T) (*sqlite.Repository, sqlite.Config, domain.Event) {
 	require.NoError(t, err)
 	return repo, cfg, e
 }
+
 func TestAmbiguousPublishIsRetriedAfterRestart(t *testing.T) {
 	ctx := context.Background()
 	repo, cfg, e := setup(t)
-	defer func() { _ = repo.Close() }()
+	defer func() {
+		_ = repo.Close()
+	}()
 	writer := &recordingWriter{err: errors.New("confirmation lost")}
 	u := New(repo, writer)
 	require.Error(t, u.PublishPending(ctx))
@@ -84,6 +90,7 @@ func TestAmbiguousPublishIsRetriedAfterRestart(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, events)
 }
+
 func TestShutdownWaitsForPublishAndKeepsEvent(t *testing.T) {
 	repo, _, _ := setup(t)
 	defer repo.Close()
@@ -92,7 +99,11 @@ func TestShutdownWaitsForPublishAndKeepsEvent(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)
-	go func() { done <- u.Run(ctx, time.Hour, func(error) {}) }()
+	publisher, err := worker.NewWorker(u, time.Hour, zerolog.Nop())
+	require.NoError(t, err)
+	go func() {
+		done <- publisher.Run(ctx)
+	}()
 	select {
 	case <-writer.entered:
 	case <-time.After(5 * time.Second):

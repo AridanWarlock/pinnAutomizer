@@ -23,10 +23,10 @@ var _ SQLite = &MockSQLite{}
 //
 //		// make and configure a mocked SQLite
 //		mockedSQLite := &MockSQLite{
-//			DeleteEventFunc: func(context1 context.Context, uUID uuid.UUID) error {
+//			DeleteEventFunc: func(ctx context.Context, eventID uuid.UUID) error {
 //				panic("mock out the DeleteEvent method")
 //			},
-//			GetPendingEventsFunc: func(context1 context.Context, n int) ([]domain.Event, error) {
+//			GetPendingEventsFunc: func(ctx context.Context, limit int) ([]domain.Event, error) {
 //				panic("mock out the GetPendingEvents method")
 //			},
 //		}
@@ -37,26 +37,26 @@ var _ SQLite = &MockSQLite{}
 //	}
 type MockSQLite struct {
 	// DeleteEventFunc mocks the DeleteEvent method.
-	DeleteEventFunc func(context1 context.Context, uUID uuid.UUID) error
+	DeleteEventFunc func(ctx context.Context, eventID uuid.UUID) error
 
 	// GetPendingEventsFunc mocks the GetPendingEvents method.
-	GetPendingEventsFunc func(context1 context.Context, n int) ([]domain.Event, error)
+	GetPendingEventsFunc func(ctx context.Context, limit int) ([]domain.Event, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
 		// DeleteEvent holds details about calls to the DeleteEvent method.
 		DeleteEvent []struct {
-			// Context1 is the context1 argument value.
-			Context1 context.Context
-			// UUID is the uUID argument value.
-			UUID uuid.UUID
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// EventID is the eventID argument value.
+			EventID uuid.UUID
 		}
 		// GetPendingEvents holds details about calls to the GetPendingEvents method.
 		GetPendingEvents []struct {
-			// Context1 is the context1 argument value.
-			Context1 context.Context
-			// N is the n argument value.
-			N int
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Limit is the limit argument value.
+			Limit int
 		}
 	}
 	lockDeleteEvent      sync.RWMutex
@@ -64,21 +64,21 @@ type MockSQLite struct {
 }
 
 // DeleteEvent calls DeleteEventFunc.
-func (mock *MockSQLite) DeleteEvent(context1 context.Context, uUID uuid.UUID) error {
+func (mock *MockSQLite) DeleteEvent(ctx context.Context, eventID uuid.UUID) error {
 	if mock.DeleteEventFunc == nil {
 		panic("MockSQLite.DeleteEventFunc: method is nil but SQLite.DeleteEvent was just called")
 	}
 	callInfo := struct {
-		Context1 context.Context
-		UUID     uuid.UUID
+		Ctx     context.Context
+		EventID uuid.UUID
 	}{
-		Context1: context1,
-		UUID:     uUID,
+		Ctx:     ctx,
+		EventID: eventID,
 	}
 	mock.lockDeleteEvent.Lock()
 	mock.calls.DeleteEvent = append(mock.calls.DeleteEvent, callInfo)
 	mock.lockDeleteEvent.Unlock()
-	return mock.DeleteEventFunc(context1, uUID)
+	return mock.DeleteEventFunc(ctx, eventID)
 }
 
 // DeleteEventCalls gets all the calls that were made to DeleteEvent.
@@ -86,12 +86,12 @@ func (mock *MockSQLite) DeleteEvent(context1 context.Context, uUID uuid.UUID) er
 //
 //	len(mockedSQLite.DeleteEventCalls())
 func (mock *MockSQLite) DeleteEventCalls() []struct {
-	Context1 context.Context
-	UUID     uuid.UUID
+	Ctx     context.Context
+	EventID uuid.UUID
 } {
 	var calls []struct {
-		Context1 context.Context
-		UUID     uuid.UUID
+		Ctx     context.Context
+		EventID uuid.UUID
 	}
 	mock.lockDeleteEvent.RLock()
 	calls = mock.calls.DeleteEvent
@@ -100,21 +100,21 @@ func (mock *MockSQLite) DeleteEventCalls() []struct {
 }
 
 // GetPendingEvents calls GetPendingEventsFunc.
-func (mock *MockSQLite) GetPendingEvents(context1 context.Context, n int) ([]domain.Event, error) {
+func (mock *MockSQLite) GetPendingEvents(ctx context.Context, limit int) ([]domain.Event, error) {
 	if mock.GetPendingEventsFunc == nil {
 		panic("MockSQLite.GetPendingEventsFunc: method is nil but SQLite.GetPendingEvents was just called")
 	}
 	callInfo := struct {
-		Context1 context.Context
-		N        int
+		Ctx   context.Context
+		Limit int
 	}{
-		Context1: context1,
-		N:        n,
+		Ctx:   ctx,
+		Limit: limit,
 	}
 	mock.lockGetPendingEvents.Lock()
 	mock.calls.GetPendingEvents = append(mock.calls.GetPendingEvents, callInfo)
 	mock.lockGetPendingEvents.Unlock()
-	return mock.GetPendingEventsFunc(context1, n)
+	return mock.GetPendingEventsFunc(ctx, limit)
 }
 
 // GetPendingEventsCalls gets all the calls that were made to GetPendingEvents.
@@ -122,12 +122,12 @@ func (mock *MockSQLite) GetPendingEvents(context1 context.Context, n int) ([]dom
 //
 //	len(mockedSQLite.GetPendingEventsCalls())
 func (mock *MockSQLite) GetPendingEventsCalls() []struct {
-	Context1 context.Context
-	N        int
+	Ctx   context.Context
+	Limit int
 } {
 	var calls []struct {
-		Context1 context.Context
-		N        int
+		Ctx   context.Context
+		Limit int
 	}
 	mock.lockGetPendingEvents.RLock()
 	calls = mock.calls.GetPendingEvents
@@ -145,7 +145,7 @@ var _ Kafka = &MockKafka{}
 //
 //		// make and configure a mocked Kafka
 //		mockedKafka := &MockKafka{
-//			WriteMessagesFunc: func(context1 context.Context, kafkaMessages ...core.KafkaMessage) error {
+//			WriteMessagesFunc: func(ctx context.Context, messages ...core.KafkaMessage) error {
 //				panic("mock out the WriteMessages method")
 //			},
 //		}
@@ -156,37 +156,37 @@ var _ Kafka = &MockKafka{}
 //	}
 type MockKafka struct {
 	// WriteMessagesFunc mocks the WriteMessages method.
-	WriteMessagesFunc func(context1 context.Context, kafkaMessages ...core.KafkaMessage) error
+	WriteMessagesFunc func(ctx context.Context, messages ...core.KafkaMessage) error
 
 	// calls tracks calls to the methods.
 	calls struct {
 		// WriteMessages holds details about calls to the WriteMessages method.
 		WriteMessages []struct {
-			// Context1 is the context1 argument value.
-			Context1 context.Context
-			// KafkaMessages is the kafkaMessages argument value.
-			KafkaMessages []core.KafkaMessage
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Messages is the messages argument value.
+			Messages []core.KafkaMessage
 		}
 	}
 	lockWriteMessages sync.RWMutex
 }
 
 // WriteMessages calls WriteMessagesFunc.
-func (mock *MockKafka) WriteMessages(context1 context.Context, kafkaMessages ...core.KafkaMessage) error {
+func (mock *MockKafka) WriteMessages(ctx context.Context, messages ...core.KafkaMessage) error {
 	if mock.WriteMessagesFunc == nil {
 		panic("MockKafka.WriteMessagesFunc: method is nil but Kafka.WriteMessages was just called")
 	}
 	callInfo := struct {
-		Context1      context.Context
-		KafkaMessages []core.KafkaMessage
+		Ctx      context.Context
+		Messages []core.KafkaMessage
 	}{
-		Context1:      context1,
-		KafkaMessages: kafkaMessages,
+		Ctx:      ctx,
+		Messages: messages,
 	}
 	mock.lockWriteMessages.Lock()
 	mock.calls.WriteMessages = append(mock.calls.WriteMessages, callInfo)
 	mock.lockWriteMessages.Unlock()
-	return mock.WriteMessagesFunc(context1, kafkaMessages...)
+	return mock.WriteMessagesFunc(ctx, messages...)
 }
 
 // WriteMessagesCalls gets all the calls that were made to WriteMessages.
@@ -194,12 +194,12 @@ func (mock *MockKafka) WriteMessages(context1 context.Context, kafkaMessages ...
 //
 //	len(mockedKafka.WriteMessagesCalls())
 func (mock *MockKafka) WriteMessagesCalls() []struct {
-	Context1      context.Context
-	KafkaMessages []core.KafkaMessage
+	Ctx      context.Context
+	Messages []core.KafkaMessage
 } {
 	var calls []struct {
-		Context1      context.Context
-		KafkaMessages []core.KafkaMessage
+		Ctx      context.Context
+		Messages []core.KafkaMessage
 	}
 	mock.lockWriteMessages.RLock()
 	calls = mock.calls.WriteMessages

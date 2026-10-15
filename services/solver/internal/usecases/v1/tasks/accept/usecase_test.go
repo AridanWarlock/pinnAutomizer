@@ -35,7 +35,9 @@ func TestAcceptTaskDurableReplayAndValidation(t *testing.T) {
 	require.NoError(t, db.Close())
 	repo, err := sqlite.New(cfg)
 	require.NoError(t, err)
-	t.Cleanup(func() { _ = repo.Close() })
+	t.Cleanup(func() {
+		_ = repo.Close()
+	})
 	u := New(repo)
 	in := Input{RunID: uuid.New(), TaskID: uuid.New(), Mode: "train"}
 	first, err := u.AcceptTask(ctx, in)

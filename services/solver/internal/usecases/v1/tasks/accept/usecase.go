@@ -8,9 +8,17 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
-type usecase struct{ sqlite SQLite }
+type SQLite interface {
+	RegisterAttempt(ctx context.Context, attempt domain.Attempt) (domain.Attempt, bool, error)
+}
 
-func New(sqlite SQLite) Usecase { return &usecase{sqlite: sqlite} }
+type usecase struct {
+	sqlite SQLite
+}
+
+func New(sqlite SQLite) Usecase {
+	return &usecase{sqlite: sqlite}
+}
 
 // AcceptTask persists the command before the transport may acknowledge it.
 func (u *usecase) AcceptTask(ctx context.Context, in Input) (Output, error) {

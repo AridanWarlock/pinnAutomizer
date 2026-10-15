@@ -211,6 +211,7 @@ services:
       - PINN_RUNNER_HOST_TASKS_DATA_DIR=${PROJECT_ROOT}/out/pinn/tasks/data
       - PINN_RUNNER_HOST_TASKS_OUTPUT_DIR=${PROJECT_ROOT}/out/pinn/tasks/output
       - PINN_RUNNER_TIMEOUT=30m
+      - PINN_RUNNER_CONTAINER_NAME_PREFIX=${PINN_RUNNER_CONTAINER_NAME_PREFIX:-pinn-solver}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${PROJECT_ROOT}/out/solver/logs:/app/out/logs
@@ -225,7 +226,12 @@ services:
   goose-solver:
     build:
       context: ${PROJECT_ROOT}
-      dockerfile: services/solver/migrations/Dockerfile
+      dockerfile_inline: |
+        FROM kukymbr/goose-docker:3.27.0
+        RUN apk add --no-cache util-linux
+        COPY services/solver/migrations/entrypoint.sh /goose-solver/entrypoint.sh
+        RUN chmod +x /goose-solver/entrypoint.sh
+        ENTRYPOINT ["/goose-solver/entrypoint.sh"]
     profiles: [tools]
     environment:
       - GOOSE_DRIVER=sqlite3

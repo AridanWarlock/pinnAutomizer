@@ -11,78 +11,6 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
-// Ensure that MockSQLite does implement SQLite.
-// If this is not the case, regenerate this file with mockery.
-var _ SQLite = &MockSQLite{}
-
-// MockSQLite is a mock implementation of SQLite.
-//
-//	func TestSomethingThatUsesSQLite(t *testing.T) {
-//
-//		// make and configure a mocked SQLite
-//		mockedSQLite := &MockSQLite{
-//			RegisterAttemptFunc: func(context1 context.Context, attempt domain.Attempt) (domain.Attempt, bool, error) {
-//				panic("mock out the RegisterAttempt method")
-//			},
-//		}
-//
-//		// use mockedSQLite in code that requires SQLite
-//		// and then make assertions.
-//
-//	}
-type MockSQLite struct {
-	// RegisterAttemptFunc mocks the RegisterAttempt method.
-	RegisterAttemptFunc func(context1 context.Context, attempt domain.Attempt) (domain.Attempt, bool, error)
-
-	// calls tracks calls to the methods.
-	calls struct {
-		// RegisterAttempt holds details about calls to the RegisterAttempt method.
-		RegisterAttempt []struct {
-			// Context1 is the context1 argument value.
-			Context1 context.Context
-			// Attempt is the attempt argument value.
-			Attempt domain.Attempt
-		}
-	}
-	lockRegisterAttempt sync.RWMutex
-}
-
-// RegisterAttempt calls RegisterAttemptFunc.
-func (mock *MockSQLite) RegisterAttempt(context1 context.Context, attempt domain.Attempt) (domain.Attempt, bool, error) {
-	if mock.RegisterAttemptFunc == nil {
-		panic("MockSQLite.RegisterAttemptFunc: method is nil but SQLite.RegisterAttempt was just called")
-	}
-	callInfo := struct {
-		Context1 context.Context
-		Attempt  domain.Attempt
-	}{
-		Context1: context1,
-		Attempt:  attempt,
-	}
-	mock.lockRegisterAttempt.Lock()
-	mock.calls.RegisterAttempt = append(mock.calls.RegisterAttempt, callInfo)
-	mock.lockRegisterAttempt.Unlock()
-	return mock.RegisterAttemptFunc(context1, attempt)
-}
-
-// RegisterAttemptCalls gets all the calls that were made to RegisterAttempt.
-// Check the length with:
-//
-//	len(mockedSQLite.RegisterAttemptCalls())
-func (mock *MockSQLite) RegisterAttemptCalls() []struct {
-	Context1 context.Context
-	Attempt  domain.Attempt
-} {
-	var calls []struct {
-		Context1 context.Context
-		Attempt  domain.Attempt
-	}
-	mock.lockRegisterAttempt.RLock()
-	calls = mock.calls.RegisterAttempt
-	mock.lockRegisterAttempt.RUnlock()
-	return calls
-}
-
 // Ensure that MockUsecase does implement Usecase.
 // If this is not the case, regenerate this file with mockery.
 var _ Usecase = &MockUsecase{}
@@ -152,5 +80,77 @@ func (mock *MockUsecase) AcceptTaskCalls() []struct {
 	mock.lockAcceptTask.RLock()
 	calls = mock.calls.AcceptTask
 	mock.lockAcceptTask.RUnlock()
+	return calls
+}
+
+// Ensure that MockSQLite does implement SQLite.
+// If this is not the case, regenerate this file with mockery.
+var _ SQLite = &MockSQLite{}
+
+// MockSQLite is a mock implementation of SQLite.
+//
+//	func TestSomethingThatUsesSQLite(t *testing.T) {
+//
+//		// make and configure a mocked SQLite
+//		mockedSQLite := &MockSQLite{
+//			RegisterAttemptFunc: func(ctx context.Context, attempt domain.Attempt) (domain.Attempt, bool, error) {
+//				panic("mock out the RegisterAttempt method")
+//			},
+//		}
+//
+//		// use mockedSQLite in code that requires SQLite
+//		// and then make assertions.
+//
+//	}
+type MockSQLite struct {
+	// RegisterAttemptFunc mocks the RegisterAttempt method.
+	RegisterAttemptFunc func(ctx context.Context, attempt domain.Attempt) (domain.Attempt, bool, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// RegisterAttempt holds details about calls to the RegisterAttempt method.
+		RegisterAttempt []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Attempt is the attempt argument value.
+			Attempt domain.Attempt
+		}
+	}
+	lockRegisterAttempt sync.RWMutex
+}
+
+// RegisterAttempt calls RegisterAttemptFunc.
+func (mock *MockSQLite) RegisterAttempt(ctx context.Context, attempt domain.Attempt) (domain.Attempt, bool, error) {
+	if mock.RegisterAttemptFunc == nil {
+		panic("MockSQLite.RegisterAttemptFunc: method is nil but SQLite.RegisterAttempt was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Attempt domain.Attempt
+	}{
+		Ctx:     ctx,
+		Attempt: attempt,
+	}
+	mock.lockRegisterAttempt.Lock()
+	mock.calls.RegisterAttempt = append(mock.calls.RegisterAttempt, callInfo)
+	mock.lockRegisterAttempt.Unlock()
+	return mock.RegisterAttemptFunc(ctx, attempt)
+}
+
+// RegisterAttemptCalls gets all the calls that were made to RegisterAttempt.
+// Check the length with:
+//
+//	len(mockedSQLite.RegisterAttemptCalls())
+func (mock *MockSQLite) RegisterAttemptCalls() []struct {
+	Ctx     context.Context
+	Attempt domain.Attempt
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Attempt domain.Attempt
+	}
+	mock.lockRegisterAttempt.RLock()
+	calls = mock.calls.RegisterAttempt
+	mock.lockRegisterAttempt.RUnlock()
 	return calls
 }
