@@ -26,7 +26,7 @@ func TestMigrationsReopenDoesNotReapplyAndPreservesData(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, stored.Matches(a))
 	var count int
-	require.NoError(t, repo.db.QueryRow("SELECT COUNT(*) FROM goose_db_version WHERE version_id>0 AND is_applied=1").Scan(&count))
+	require.NoError(t, repo.sqlite.Database().QueryRow("SELECT COUNT(*) FROM goose_db_version WHERE version_id>0 AND is_applied=1").Scan(&count))
 	require.Equal(t, 1, count)
 }
 
@@ -48,16 +48,16 @@ func TestPendingMigrationRunsOnce(t *testing.T) {
 CREATE TABLE migration_probe(value TEXT NOT NULL);
 INSERT INTO migration_probe(value) VALUES('once');
 `)}
-	require.ErrorContains(t, repo.client.CheckMigrations(ctx, files), "pending")
-	require.NoError(t, applyMigrations(ctx, repo.db, files))
-	require.NoError(t, applyMigrations(ctx, repo.db, files))
+	require.ErrorContains(t, repo.sqlite.CheckMigrations(ctx, files), "pending")
+	require.NoError(t, applyMigrations(ctx, repo.sqlite.Database(), files))
+	require.NoError(t, applyMigrations(ctx, repo.sqlite.Database(), files))
 	var count int
-	require.NoError(t, repo.db.QueryRow("SELECT COUNT(*) FROM migration_probe").Scan(&count))
+	require.NoError(t, repo.sqlite.Database().QueryRow("SELECT COUNT(*) FROM migration_probe").Scan(&count))
 	require.Equal(t, 1, count)
 	stored, err := repo.GetAttempt(ctx, a.RunID)
 	require.NoError(t, err)
 	require.True(t, stored.Matches(a))
-	require.ErrorContains(t, repo.client.CheckMigrations(ctx, os.DirFS(configDir(t))), "newer than migration files")
+	require.ErrorContains(t, repo.sqlite.CheckMigrations(ctx, os.DirFS(configDir(t))), "newer than migration files")
 
 }
 
@@ -79,16 +79,16 @@ func TestFailedPendingMigrationKeepsDataAndVersion(t *testing.T) {
 CREATE TABLE partial_migration(value TEXT);
 INSERT INTO missing_table(value) VALUES('failure');
 `)}
-	require.Error(t, applyMigrations(ctx, repo.db, files))
+	require.Error(t, applyMigrations(ctx, repo.sqlite.Database(), files))
 	var count int
-	require.NoError(t, repo.db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE name='partial_migration'").Scan(&count))
+	require.NoError(t, repo.sqlite.Database().QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE name='partial_migration'").Scan(&count))
 	require.Zero(t, count)
-	require.NoError(t, repo.db.QueryRow("SELECT COUNT(*) FROM goose_db_version WHERE version_id>0 AND is_applied=1").Scan(&count))
+	require.NoError(t, repo.sqlite.Database().QueryRow("SELECT COUNT(*) FROM goose_db_version WHERE version_id>0 AND is_applied=1").Scan(&count))
 	require.Equal(t, 1, count)
 	stored, err := repo.GetAttempt(ctx, a.RunID)
 	require.NoError(t, err)
 	require.True(t, stored.Matches(a))
-	require.NoError(t, repo.client.CheckMigrations(ctx, os.DirFS(configDir(t))))
+	require.NoError(t, repo.sqlite.CheckMigrations(ctx, os.DirFS(configDir(t))))
 }
 
 func configDir(t *testing.T) string {
@@ -97,6 +97,7 @@ func configDir(t *testing.T) string {
 	require.NoError(t, err)
 	return dir
 }
+
 func applyMigrations(ctx context.Context, db *sql.DB, files fs.FS) error {
 	provider, err := goose.NewProvider(goose.DialectSQLite3, db, files, goose.WithDisableGlobalRegistry(true))
 	if err != nil {
@@ -105,6 +106,7 @@ func applyMigrations(ctx context.Context, db *sql.DB, files fs.FS) error {
 	_, err = provider.Up(ctx)
 	return err
 }
+
 func migrate(t *testing.T, path string, files fs.FS) {
 	t.Helper()
 	db, err := sql.Open("sqlite", path)

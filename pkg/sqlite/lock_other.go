@@ -7,4 +7,6 @@ import (
 	"os"
 )
 
-func lock(*os.File) error { return fmt.Errorf("SQLite ownership is supported on Linux/macOS") }
+func lock(*os.File) error {
+	return fmt.Errorf("SQLite ownership is supported on Linux/macOS")
+}

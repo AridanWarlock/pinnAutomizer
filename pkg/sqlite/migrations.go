@@ -8,6 +8,7 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
+// Goose is linked as a Go library: this check does not execute the goose CLI.
 // CheckMigrations only verifies the externally applied schema; it never runs Up.
 func (s *SQLite) CheckMigrations(ctx context.Context, files fs.FS) error {
 	var present int64

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"sync"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -12,6 +13,7 @@ import (
 var ErrAlreadyOwned = errors.New("SQLite database already owned")
 
 type SQLite struct {
+	timeout  time.Duration
 	db       *sql.DB
 	owner    *os.File
 	once     sync.Once
@@ -30,4 +32,6 @@ func (r *SQLite) Close() error {
 	return r.closeErr
 }
 
-func (s *SQLite) Database() *sql.DB { return s.db }
+func (s *SQLite) Database() *sql.DB {
+	return s.db
+}

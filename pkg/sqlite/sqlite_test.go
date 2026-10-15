@@ -31,6 +31,7 @@ func TestLifecycleAndNoSchemaCreation(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, client.Close())
 }
+
 func TestMissingDatabaseReleasesLock(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "missing.db")
 	cfg := Config{Path: path, BusyTimeout: time.Second}

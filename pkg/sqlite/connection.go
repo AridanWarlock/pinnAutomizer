@@ -15,6 +15,12 @@ import (
 )
 
 func New(cfg Config) (result *SQLite, err error) {
+	if cfg.Timeout == 0 {
+		cfg.Timeout = defaultTimeout
+	}
+	if cfg.Timeout < 0 {
+		return nil, fmt.Errorf("%w: invalid SQLite timeout", errs.ErrInvalidArgument)
+	}
 	if cfg.Path == "" || cfg.Path == ":memory:" || cfg.BusyTimeout < time.Millisecond {
 		return nil, fmt.Errorf("%w: database path and positive busy timeout required", errs.ErrInvalidArgument)
 	}
@@ -26,7 +32,7 @@ func New(cfg Config) (result *SQLite, err error) {
 	if err != nil {
 		return nil, err
 	}
-	client := &SQLite{owner: owner}
+	client := &SQLite{owner: owner, timeout: cfg.Timeout}
 	// Ownership transfers to the caller only after complete initialization.
 	defer func() {
 		if result == nil {
@@ -92,7 +98,9 @@ func checkDatabaseFile(path string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { err = errors.Join(err, file.Close()) }()
+	defer func() {
+		err = errors.Join(err, file.Close())
+	}()
 	return nil
 }
 

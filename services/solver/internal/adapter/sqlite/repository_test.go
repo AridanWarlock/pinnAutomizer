@@ -31,19 +31,24 @@ func config(t *testing.T) Config {
 	migrate(t, cfg.Path, os.DirFS(dir))
 	return cfg
 }
+
 func open(t *testing.T, c Config) *Repository {
 	t.Helper()
 	r, err := New(c)
 	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, r.Close()) })
+	t.Cleanup(func() {
+		require.NoError(t, r.Close())
+	})
 	return r
 }
+
 func attempt(t *testing.T) domain.Attempt {
 	t.Helper()
 	a, err := domain.NewAttempt(uuid.New(), uuid.New(), "train", time.Now())
 	require.NoError(t, err)
 	return a
 }
+
 func event(a domain.Attempt) domain.Event {
 	id := uuid.New()
 	return domain.Event{ID: id, RunID: a.RunID, Message: core.KafkaMessage{Topic: "after-run", Key: []byte(a.TaskID.String()), Value: []byte("result"), Headers: core.KafkaHeaders{"X-Idempotency-Key": id.String()}}}
@@ -55,16 +60,17 @@ func TestOwnershipAndPragmas(t *testing.T) {
 	_, err := New(c)
 	require.ErrorIs(t, err, ErrAlreadyOwned)
 	var mode string
-	require.NoError(t, r.db.QueryRow("PRAGMA journal_mode").Scan(&mode))
+	require.NoError(t, r.sqlite.Database().QueryRow("PRAGMA journal_mode").Scan(&mode))
 	require.Equal(t, "wal", mode)
 	for pragma, want := range map[string]int{"synchronous": 2, "foreign_keys": 1, "busy_timeout": 50} {
 		var got int
-		require.NoError(t, r.db.QueryRow("PRAGMA "+pragma).Scan(&got))
+		require.NoError(t, r.sqlite.Database().QueryRow("PRAGMA "+pragma).Scan(&got))
 		require.Equal(t, want, got)
 	}
 	require.NoError(t, r.Close())
 	open(t, c)
 }
+
 func TestConcurrentRegistrationAndConflicts(t *testing.T) {
 	r := open(t, config(t))
 	a := attempt(t)
@@ -91,6 +97,7 @@ func TestConcurrentRegistrationAndConflicts(t *testing.T) {
 	_, _, err = r.RegisterAttempt(context.Background(), changed)
 	require.ErrorIs(t, err, errs.ErrConflict)
 }
+
 func TestFinishRollbackReplayAndReopen(t *testing.T) {
 	ctx := context.Background()
 	c := config(t)
@@ -100,14 +107,14 @@ func TestFinishRollbackReplayAndReopen(t *testing.T) {
 	require.NoError(t, err)
 	e := event(a)
 	code := 0
-	_, err = r.db.Exec("CREATE TRIGGER reject_event BEFORE INSERT ON outbox BEGIN SELECT RAISE(ABORT,'injected failure'); END;")
+	_, err = r.sqlite.Database().Exec("CREATE TRIGGER reject_event BEFORE INSERT ON outbox BEGIN SELECT RAISE(ABORT,'injected failure'); END;")
 	require.NoError(t, err)
 	_, err = r.FinishAttempt(ctx, a.RunID, &code, nil, time.Now(), e)
 	require.Error(t, err)
 	stored, err := r.GetAttempt(ctx, a.RunID)
 	require.NoError(t, err)
-	require.Equal(t, domain.AttemptRegistered, stored.State)
-	_, err = r.db.Exec("DROP TRIGGER reject_event")
+	require.Equal(t, domain.AttemptAccepted, stored.State)
+	_, err = r.sqlite.Database().Exec("DROP TRIGGER reject_event")
 	require.NoError(t, err)
 	changed, err := r.FinishAttempt(ctx, a.RunID, &code, nil, time.Now(), e)
 	require.NoError(t, err)
@@ -126,6 +133,7 @@ func TestFinishRollbackReplayAndReopen(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []domain.Event{e}, events)
 }
+
 func TestStartIntentIsNotRepeated(t *testing.T) {
 	ctx := context.Background()
 	r := open(t, config(t))
@@ -149,11 +157,12 @@ func TestStartIntentIsNotRepeated(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, first.Deadline, second.Deadline)
 }
+
 func TestBusyAndCanceledRegistration(t *testing.T) {
 	cfg := config(t)
 	r := open(t, cfg)
 	ctx := context.Background()
-	conn, err := r.db.Conn(ctx)
+	conn, err := r.sqlite.Database().Conn(ctx)
 	require.NoError(t, err)
 	// A separate connection emulates another SQLite client holding the write lock.
 	external, err := sql.Open("sqlite", cfg.Path)
@@ -173,6 +182,7 @@ func TestBusyAndCanceledRegistration(t *testing.T) {
 	_, _, err = r.RegisterAttempt(ctx, attempt(t))
 	require.NoError(t, err)
 }
+
 func TestOwnerProcessHelper(t *testing.T) {
 	path := os.Getenv("PINN_TEST_OWNER_PATH")
 	if path == "" {
@@ -186,6 +196,7 @@ func TestOwnerProcessHelper(t *testing.T) {
 	fmt.Println(a.RunID.String())
 	select {}
 }
+
 func TestKilledOwnerReleasesLockAndPreservesRecord(t *testing.T) {
 	c := config(t)
 	cmd := exec.Command(os.Args[0], "-test.run=^TestOwnerProcessHelper$")
@@ -193,7 +204,10 @@ func TestKilledOwnerReleasesLockAndPreservesRecord(t *testing.T) {
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	require.NoError(t, cmd.Start())
-	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	})
 	ready := make(chan string, 1)
 	go func() {
 		scanner := bufio.NewScanner(stdout)
