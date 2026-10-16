@@ -129,3 +129,41 @@ func TestTransactionContextDoesNotLeakToAnotherClient(t *testing.T) {
 	require.NoError(t, second.Getx(ctx, &count, sq.Select("COUNT(*)").From("records")))
 	require.Equal(t, 1, count)
 }
+
+func TestTransactionsKeepBindingsAcrossClients(t *testing.T) {
+	first := queryClient(t)
+	second := queryClient(t)
+	failure := errors.New("rollback first only")
+	err := first.InTransaction(context.Background(), func(ctx context.Context) error {
+		if err := second.InTransaction(ctx, func(ctx context.Context) error {
+			if _, err := first.Execx(ctx, sq.Insert("records").Columns("id", "full_name").Values(1, "first")); err != nil {
+				return err
+			}
+			_, err := second.Execx(ctx, sq.Insert("records").Columns("id", "full_name").Values(1, "second"))
+			return err
+		}); err != nil {
+			return err
+		}
+		return failure
+	})
+	require.ErrorIs(t, err, failure)
+	var count int
+	require.NoError(t, first.Getx(context.Background(), &count, sq.Select("COUNT(*)").From("records")))
+	require.Zero(t, count)
+	require.NoError(t, second.Getx(context.Background(), &count, sq.Select("COUNT(*)").From("records")))
+	require.Equal(t, 1, count)
+}
+
+func TestNestedTransactionIsRejectedAcrossAnotherClient(t *testing.T) {
+	first := queryClient(t)
+	second := queryClient(t)
+	err := first.InTransaction(context.Background(), func(ctx context.Context) error {
+		return second.InTransaction(ctx, func(ctx context.Context) error {
+			return first.InTransaction(ctx, func(context.Context) error {
+				t.Error("nested transaction callback must not run")
+				return nil
+			})
+		})
+	})
+	require.ErrorIs(t, err, errs.ErrInvalidArgument)
+}

@@ -35,16 +35,13 @@ type executor interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }
 
-type transactionKey struct{}
-
-type transaction struct {
+type transactionKey struct {
 	sqlite *SQLite
-	tx     *sql.Tx
 }
 
 func (s *SQLite) executor(ctx context.Context) executor {
-	if binding, ok := ctx.Value(transactionKey{}).(transaction); ok && binding.sqlite == s {
-		return binding.tx
+	if tx, ok := ctx.Value(transactionKey{sqlite: s}).(*sql.Tx); ok {
+		return tx
 	}
 	return s.db
 }
@@ -92,7 +89,7 @@ func (s *SQLite) InTransaction(ctx context.Context, inTx func(context.Context) e
 	if inTx == nil {
 		return fmt.Errorf("%w: nil transaction callback", errs.ErrInvalidArgument)
 	}
-	if binding, ok := ctx.Value(transactionKey{}).(transaction); ok && binding.sqlite == s {
+	if _, ok := ctx.Value(transactionKey{sqlite: s}).(*sql.Tx); ok {
 		return fmt.Errorf("%w: nested SQLite transaction", errs.ErrInvalidArgument)
 	}
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
@@ -107,7 +104,7 @@ func (s *SQLite) InTransaction(ctx context.Context, inTx func(context.Context) e
 			err = errors.Join(err, rollbackErr)
 		}
 	}()
-	ctx = context.WithValue(ctx, transactionKey{}, transaction{sqlite: s, tx: tx})
+	ctx = context.WithValue(ctx, transactionKey{sqlite: s}, tx)
 	if err = inTx(ctx); err != nil {
 		return err
 	}
