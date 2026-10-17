@@ -93,7 +93,7 @@ var _ SQLite = &MockSQLite{}
 //
 //		// make and configure a mocked SQLite
 //		mockedSQLite := &MockSQLite{
-//			RegisterAttemptFunc: func(ctx context.Context, attempt domain.Attempt) (domain.Attempt, bool, error) {
+//			RegisterAttemptFunc: func(ctx context.Context, attempt domain.Attempt) (domain.Attempt, domain.Created, error) {
 //				panic("mock out the RegisterAttempt method")
 //			},
 //		}
@@ -104,7 +104,7 @@ var _ SQLite = &MockSQLite{}
 //	}
 type MockSQLite struct {
 	// RegisterAttemptFunc mocks the RegisterAttempt method.
-	RegisterAttemptFunc func(ctx context.Context, attempt domain.Attempt) (domain.Attempt, bool, error)
+	RegisterAttemptFunc func(ctx context.Context, attempt domain.Attempt) (domain.Attempt, domain.Created, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -120,7 +120,7 @@ type MockSQLite struct {
 }
 
 // RegisterAttempt calls RegisterAttemptFunc.
-func (mock *MockSQLite) RegisterAttempt(ctx context.Context, attempt domain.Attempt) (domain.Attempt, bool, error) {
+func (mock *MockSQLite) RegisterAttempt(ctx context.Context, attempt domain.Attempt) (domain.Attempt, domain.Created, error) {
 	if mock.RegisterAttemptFunc == nil {
 		panic("MockSQLite.RegisterAttemptFunc: method is nil but SQLite.RegisterAttempt was just called")
 	}

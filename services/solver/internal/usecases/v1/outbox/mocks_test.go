@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 	"github.com/google/uuid"
 )
@@ -23,10 +24,10 @@ var _ SQLite = &MockSQLite{}
 //
 //		// make and configure a mocked SQLite
 //		mockedSQLite := &MockSQLite{
-//			DeleteEventFunc: func(ctx context.Context, eventID uuid.UUID) error {
-//				panic("mock out the DeleteEvent method")
+//			DeleteEventsFunc: func(ctx context.Context, eventIDs []uuid.UUID) error {
+//				panic("mock out the DeleteEvents method")
 //			},
-//			GetPendingEventsFunc: func(ctx context.Context, limit int) ([]domain.Event, error) {
+//			GetPendingEventsFunc: func(ctx context.Context, batch limit.Limit) ([]domain.Event, error) {
 //				panic("mock out the GetPendingEvents method")
 //			},
 //		}
@@ -36,85 +37,85 @@ var _ SQLite = &MockSQLite{}
 //
 //	}
 type MockSQLite struct {
-	// DeleteEventFunc mocks the DeleteEvent method.
-	DeleteEventFunc func(ctx context.Context, eventID uuid.UUID) error
+	// DeleteEventsFunc mocks the DeleteEvents method.
+	DeleteEventsFunc func(ctx context.Context, eventIDs []uuid.UUID) error
 
 	// GetPendingEventsFunc mocks the GetPendingEvents method.
-	GetPendingEventsFunc func(ctx context.Context, limit int) ([]domain.Event, error)
+	GetPendingEventsFunc func(ctx context.Context, batch limit.Limit) ([]domain.Event, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// DeleteEvent holds details about calls to the DeleteEvent method.
-		DeleteEvent []struct {
+		// DeleteEvents holds details about calls to the DeleteEvents method.
+		DeleteEvents []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// EventID is the eventID argument value.
-			EventID uuid.UUID
+			// EventIDs is the eventIDs argument value.
+			EventIDs []uuid.UUID
 		}
 		// GetPendingEvents holds details about calls to the GetPendingEvents method.
 		GetPendingEvents []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Limit is the limit argument value.
-			Limit int
+			// Batch is the batch argument value.
+			Batch limit.Limit
 		}
 	}
-	lockDeleteEvent      sync.RWMutex
+	lockDeleteEvents     sync.RWMutex
 	lockGetPendingEvents sync.RWMutex
 }
 
-// DeleteEvent calls DeleteEventFunc.
-func (mock *MockSQLite) DeleteEvent(ctx context.Context, eventID uuid.UUID) error {
-	if mock.DeleteEventFunc == nil {
-		panic("MockSQLite.DeleteEventFunc: method is nil but SQLite.DeleteEvent was just called")
+// DeleteEvents calls DeleteEventsFunc.
+func (mock *MockSQLite) DeleteEvents(ctx context.Context, eventIDs []uuid.UUID) error {
+	if mock.DeleteEventsFunc == nil {
+		panic("MockSQLite.DeleteEventsFunc: method is nil but SQLite.DeleteEvents was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		EventID uuid.UUID
+		Ctx      context.Context
+		EventIDs []uuid.UUID
 	}{
-		Ctx:     ctx,
-		EventID: eventID,
+		Ctx:      ctx,
+		EventIDs: eventIDs,
 	}
-	mock.lockDeleteEvent.Lock()
-	mock.calls.DeleteEvent = append(mock.calls.DeleteEvent, callInfo)
-	mock.lockDeleteEvent.Unlock()
-	return mock.DeleteEventFunc(ctx, eventID)
+	mock.lockDeleteEvents.Lock()
+	mock.calls.DeleteEvents = append(mock.calls.DeleteEvents, callInfo)
+	mock.lockDeleteEvents.Unlock()
+	return mock.DeleteEventsFunc(ctx, eventIDs)
 }
 
-// DeleteEventCalls gets all the calls that were made to DeleteEvent.
+// DeleteEventsCalls gets all the calls that were made to DeleteEvents.
 // Check the length with:
 //
-//	len(mockedSQLite.DeleteEventCalls())
-func (mock *MockSQLite) DeleteEventCalls() []struct {
-	Ctx     context.Context
-	EventID uuid.UUID
+//	len(mockedSQLite.DeleteEventsCalls())
+func (mock *MockSQLite) DeleteEventsCalls() []struct {
+	Ctx      context.Context
+	EventIDs []uuid.UUID
 } {
 	var calls []struct {
-		Ctx     context.Context
-		EventID uuid.UUID
+		Ctx      context.Context
+		EventIDs []uuid.UUID
 	}
-	mock.lockDeleteEvent.RLock()
-	calls = mock.calls.DeleteEvent
-	mock.lockDeleteEvent.RUnlock()
+	mock.lockDeleteEvents.RLock()
+	calls = mock.calls.DeleteEvents
+	mock.lockDeleteEvents.RUnlock()
 	return calls
 }
 
 // GetPendingEvents calls GetPendingEventsFunc.
-func (mock *MockSQLite) GetPendingEvents(ctx context.Context, limit int) ([]domain.Event, error) {
+func (mock *MockSQLite) GetPendingEvents(ctx context.Context, batch limit.Limit) ([]domain.Event, error) {
 	if mock.GetPendingEventsFunc == nil {
 		panic("MockSQLite.GetPendingEventsFunc: method is nil but SQLite.GetPendingEvents was just called")
 	}
 	callInfo := struct {
 		Ctx   context.Context
-		Limit int
+		Batch limit.Limit
 	}{
 		Ctx:   ctx,
-		Limit: limit,
+		Batch: batch,
 	}
 	mock.lockGetPendingEvents.Lock()
 	mock.calls.GetPendingEvents = append(mock.calls.GetPendingEvents, callInfo)
 	mock.lockGetPendingEvents.Unlock()
-	return mock.GetPendingEventsFunc(ctx, limit)
+	return mock.GetPendingEventsFunc(ctx, batch)
 }
 
 // GetPendingEventsCalls gets all the calls that were made to GetPendingEvents.
@@ -123,11 +124,11 @@ func (mock *MockSQLite) GetPendingEvents(ctx context.Context, limit int) ([]doma
 //	len(mockedSQLite.GetPendingEventsCalls())
 func (mock *MockSQLite) GetPendingEventsCalls() []struct {
 	Ctx   context.Context
-	Limit int
+	Batch limit.Limit
 } {
 	var calls []struct {
 		Ctx   context.Context
-		Limit int
+		Batch limit.Limit
 	}
 	mock.lockGetPendingEvents.RLock()
 	calls = mock.calls.GetPendingEvents
@@ -204,5 +205,64 @@ func (mock *MockKafka) WriteMessagesCalls() []struct {
 	mock.lockWriteMessages.RLock()
 	calls = mock.calls.WriteMessages
 	mock.lockWriteMessages.RUnlock()
+	return calls
+}
+
+// Ensure that mockpartialDelivery does implement partialDelivery.
+// If this is not the case, regenerate this file with mockery.
+var _ partialDelivery = &mockpartialDelivery{}
+
+// mockpartialDelivery is a mock implementation of partialDelivery.
+//
+//	func TestSomethingThatUsespartialDelivery(t *testing.T) {
+//
+//		// make and configure a mocked partialDelivery
+//		mockedpartialDelivery := &mockpartialDelivery{
+//			ConfirmedFunc: func() []int {
+//				panic("mock out the Confirmed method")
+//			},
+//		}
+//
+//		// use mockedpartialDelivery in code that requires partialDelivery
+//		// and then make assertions.
+//
+//	}
+type mockpartialDelivery struct {
+	// ConfirmedFunc mocks the Confirmed method.
+	ConfirmedFunc func() []int
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Confirmed holds details about calls to the Confirmed method.
+		Confirmed []struct {
+		}
+	}
+	lockConfirmed sync.RWMutex
+}
+
+// Confirmed calls ConfirmedFunc.
+func (mock *mockpartialDelivery) Confirmed() []int {
+	if mock.ConfirmedFunc == nil {
+		panic("mockpartialDelivery.ConfirmedFunc: method is nil but partialDelivery.Confirmed was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockConfirmed.Lock()
+	mock.calls.Confirmed = append(mock.calls.Confirmed, callInfo)
+	mock.lockConfirmed.Unlock()
+	return mock.ConfirmedFunc()
+}
+
+// ConfirmedCalls gets all the calls that were made to Confirmed.
+// Check the length with:
+//
+//	len(mockedpartialDelivery.ConfirmedCalls())
+func (mock *mockpartialDelivery) ConfirmedCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockConfirmed.RLock()
+	calls = mock.calls.Confirmed
+	mock.lockConfirmed.RUnlock()
 	return calls
 }

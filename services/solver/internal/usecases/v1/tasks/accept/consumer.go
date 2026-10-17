@@ -25,7 +25,11 @@ func NewConsumer(usecase Usecase) *Consumer {
 }
 
 func (c *Consumer) HandleMessage(ctx context.Context, msg core.KafkaMessage) error {
-	runID, err := uuid.Parse(msg.Headers["X-Idempotency-Key"])
+	idKey, err := msg.IdKey()
+	if err != nil {
+		return fmt.Errorf("%w: missing run ID", errs.ErrInvalidArgument)
+	}
+	runID, err := uuid.Parse(idKey.String())
 	if err != nil {
 		return fmt.Errorf("%w: missing or invalid run ID", errs.ErrInvalidArgument)
 	}
@@ -33,6 +37,10 @@ func (c *Consumer) HandleMessage(ctx context.Context, msg core.KafkaMessage) err
 	if err = json.Unmarshal(msg.Value, &message); err != nil {
 		return fmt.Errorf("%w: decode solver command: %v", errs.ErrInvalidArgument, err)
 	}
-	_, err = c.usecase.AcceptTask(ctx, Input{RunID: runID, TaskID: message.TaskID, Mode: message.Mode})
+	in := Input{RunID: runID, TaskID: message.TaskID, Mode: message.Mode}
+	if err := in.Validate(); err != nil {
+		return err
+	}
+	_, err = c.usecase.AcceptTask(ctx, in)
 	return err
 }

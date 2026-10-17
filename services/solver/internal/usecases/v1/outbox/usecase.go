@@ -2,19 +2,23 @@ package outbox
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
 const publishBatchSize = 32
 
+var publishBatchLimit = limit.MustNew(publishBatchSize)
+
 type SQLite interface {
-	GetPendingEvents(ctx context.Context, limit int) ([]domain.Event, error)
-	DeleteEvent(ctx context.Context, eventID uuid.UUID) error
+	GetPendingEvents(ctx context.Context, batch limit.Limit) ([]domain.Event, error)
+	DeleteEvents(ctx context.Context, eventIDs []uuid.UUID) error
 }
 
 // Kafka must confirm delivery synchronously. Async writers cannot drain an outbox safely.
@@ -32,17 +36,53 @@ func New(sqlite SQLite, kafka Kafka) *usecase {
 }
 
 func (u *usecase) PublishPending(ctx context.Context) error {
-	events, err := u.sqlite.GetPendingEvents(ctx, publishBatchSize)
+	events, err := u.sqlite.GetPendingEvents(ctx, publishBatchLimit)
 	if err != nil {
 		return fmt.Errorf("read solver outbox: %w", err)
 	}
-	for _, e := range events {
-		if err = u.kafka.WriteMessages(ctx, e.Message); err != nil {
-			return fmt.Errorf("publish solver event %s: %w", e.ID, err)
-		}
-		if err = u.sqlite.DeleteEvent(ctx, e.ID); err != nil {
-			return fmt.Errorf("acknowledge solver event %s: %w", e.ID, err)
+	if len(events) == 0 {
+		return nil
+	}
+	messages := make([]core.KafkaMessage, len(events))
+	for i, event := range events {
+		messages[i] = event.Message
+	}
+	publishErr := u.kafka.WriteMessages(ctx, messages...)
+	ids := confirmedEvents(events, publishErr)
+	if len(ids) > 0 {
+		if err := u.sqlite.DeleteEvents(ctx, ids); err != nil {
+			return errors.Join(publishErr, fmt.Errorf("acknowledge solver events: %w", err))
 		}
 	}
-	return nil
+	return publishErr
+}
+
+// The Kafka adapter exposes confirmation positions without leaking driver types.
+type partialDelivery interface {
+	Confirmed() []int
+}
+
+func confirmedEvents(events []domain.Event, publishErr error) []uuid.UUID {
+	if publishErr == nil {
+		ids := make([]uuid.UUID, len(events))
+		for i, event := range events {
+			ids[i] = event.ID
+		}
+		return ids
+	}
+	var partial partialDelivery
+	if !errors.As(publishErr, &partial) {
+		return nil
+	}
+	indices := partial.Confirmed()
+	ids := make([]uuid.UUID, 0, len(indices))
+	seen := make(map[int]bool, len(indices))
+	for _, index := range indices {
+		if index < 0 || index >= len(events) || seen[index] {
+			return nil
+		}
+		seen[index] = true
+		ids = append(ids, events[index].ID)
+	}
+	return ids
 }

@@ -149,7 +149,7 @@ func (r *Consumer) runAtLeastOnce(
 			return fmt.Errorf("get idempotency key from headers: %w", err)
 		}
 
-		message := core.NewConsumeKafkaMessage(
+		message, err := core.NewConsumeKafkaMessage(
 			msg.Topic,
 			msg.Partition,
 			msg.Offset,
@@ -157,6 +157,9 @@ func (r *Consumer) runAtLeastOnce(
 			msg.Value,
 			msg.Headers,
 		)
+		if err != nil {
+			return err
+		}
 
 		return handler(idKey.WithContext(ctx), message)
 	}
@@ -189,7 +192,7 @@ func (r *Consumer) runAtMostOnce(
 	}()
 
 	handlerFunc := func(ctx context.Context, msg segmentio.Message) error {
-		message := core.NewConsumeKafkaMessage(
+		message, err := core.NewConsumeKafkaMessage(
 			msg.Topic,
 			msg.Partition,
 			msg.Offset,
@@ -197,6 +200,9 @@ func (r *Consumer) runAtMostOnce(
 			msg.Value,
 			msg.Headers,
 		)
+		if err != nil {
+			return err
+		}
 
 		return handler(ctx, message)
 	}

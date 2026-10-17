@@ -9,7 +9,7 @@ import (
 )
 
 type SQLite interface {
-	RegisterAttempt(ctx context.Context, attempt domain.Attempt) (domain.Attempt, bool, error)
+	RegisterAttempt(ctx context.Context, attempt domain.Attempt) (stored domain.Attempt, created domain.Created, err error)
 }
 
 type usecase struct {
@@ -22,6 +22,9 @@ func New(sqlite SQLite) Usecase {
 
 // AcceptTask persists the command before the transport may acknowledge it.
 func (u *usecase) AcceptTask(ctx context.Context, in Input) (Output, error) {
+	if err := in.Validate(); err != nil {
+		return Output{}, err
+	}
 	a, err := domain.NewAttempt(in.RunID, in.TaskID, in.Mode, time.Now())
 	if err != nil {
 		return Output{}, err
@@ -30,5 +33,5 @@ func (u *usecase) AcceptTask(ctx context.Context, in Input) (Output, error) {
 	if err != nil {
 		return Output{}, fmt.Errorf("register solver attempt: %w", err)
 	}
-	return Output{Attempt: stored, Created: created}, nil
+	return Output{Attempt: stored, Created: bool(created)}, nil
 }

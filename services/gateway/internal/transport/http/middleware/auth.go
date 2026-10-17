@@ -45,7 +45,8 @@ type auth struct {
 	parser TokenParser
 	writer KafkaWriter
 
-	publicPaths    map[string]struct{}
+	publicPaths map[string]struct {
+	}
 	publicPrefixes []string
 
 	compromisedTopic string
@@ -57,7 +58,8 @@ func Auth(
 	writer KafkaWriter,
 	compromisedTopic string,
 ) httpmv.Middleware {
-	publicPaths := map[string]struct{}{
+	publicPaths := map[string]struct {
+	}{
 		"/api/v1/auth/login":    {},
 		"/api/v1/auth/register": {},
 		"/api/v1/auth/refresh":  {},
@@ -200,12 +202,15 @@ func (a *auth) handleCompromisedSession(ctx context.Context, jti core.Jti) error
 		panic(fmt.Errorf("marshal compromised message err: %w", err))
 	}
 
-	kafkaMsg := core.NewProduceKafkaMessage(
+	kafkaMsg, err := core.NewProduceKafkaMessage(
 		a.compromisedTopic,
 		[]byte(jti.String()),
 		msgValue,
 		nil,
 	)
+	if err != nil {
+		return err
+	}
 
 	if err := a.writer.WriteMessages(ctx, kafkaMsg); err != nil {
 		return fmt.Errorf("write compromised session message: %w", err)

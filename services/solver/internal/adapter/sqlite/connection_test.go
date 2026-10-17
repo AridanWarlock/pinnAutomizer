@@ -23,7 +23,7 @@ func TestFailedJournalFileCreationReleasesOwner(t *testing.T) {
 func TestUnsupportedSchemaReleasesOwner(t *testing.T) {
 	cfg := config(t)
 	repo := open(t, cfg)
-	_, err := repo.sqlite.Database().Exec("INSERT INTO goose_db_version(version_id,is_applied) VALUES(99999999999999,1)")
+	_, err := sqliteClient(repo).Database().Exec("INSERT INTO goose_db_version(version_id,is_applied) VALUES(99999999999999,1)")
 	require.NoError(t, err)
 	require.NoError(t, repo.Close())
 	_, err = New(cfg)

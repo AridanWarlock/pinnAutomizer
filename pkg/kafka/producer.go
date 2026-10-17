@@ -26,6 +26,9 @@ func NewProducer(cfg ProducerConfig, log zerolog.Logger) *Producer {
 func (w *Producer) WriteMessages(ctx context.Context, msgs ...core.KafkaMessage) error {
 	messages := make([]segmentio.Message, len(msgs))
 	for i, msg := range msgs {
+		if err := msg.ValidateOutgoing(); err != nil {
+			return err
+		}
 		messages[i] = segmentio.NewProduceMessage(
 			msg.Topic,
 			msg.Key,
@@ -34,7 +37,7 @@ func (w *Producer) WriteMessages(ctx context.Context, msgs ...core.KafkaMessage)
 		)
 	}
 
-	return w.producer.WriteMessages(ctx, messages...)
+	return deliveryError(w.producer.WriteMessages(ctx, messages...), len(messages))
 }
 
 func (w *Producer) Close() error {

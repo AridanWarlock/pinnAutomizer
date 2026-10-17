@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -34,8 +35,9 @@ type Worker struct {
 	writer   Writer
 
 	stop context.CancelFunc
-	done chan struct{}
-	log  zerolog.Logger
+	done chan struct {
+	}
+	log zerolog.Logger
 }
 
 func NewWorker(postgres Postgres, writer Writer, log zerolog.Logger) *Worker {
@@ -46,8 +48,9 @@ func NewWorker(postgres Postgres, writer Writer, log zerolog.Logger) *Worker {
 		writer:   writer,
 		postgres: postgres,
 		stop:     stop,
-		done:     make(chan struct{}),
-		log:      log.With().Str("component", "outbox worker").Logger(),
+		done: make(chan struct {
+		}),
+		log: log.With().Str("component", "outbox worker").Logger(),
 	}
 
 	go func() {
@@ -88,30 +91,32 @@ func (w *Worker) getAndPublishEvents(ctx context.Context) error {
 
 	msgs := make([]core.KafkaMessage, 0, len(events))
 	for _, event := range events {
-		msgs = append(msgs, core.KafkaMessage{
-			Topic: event.Topic,
-			Value: event.Data,
-			Headers: map[string]string{
-				HeaderIdempotencyKey: event.IdKey.String(),
-			},
+		message, err := core.NewProduceKafkaMessage(event.Topic, nil, event.Data, core.KafkaHeaders{
+			HeaderIdempotencyKey: event.IdKey.String(),
 		})
+		if err != nil {
+			return err
+		}
+		msgs = append(msgs, message)
 	}
 
 	var deliveredEvents []core.IdempotencyKey
 
-	switch err := w.writer.WriteMessages(ctx, msgs...).(type) {
-	case nil:
+	publishErr := w.writer.WriteMessages(ctx, msgs...)
+	var failures kafka.WriteErrors
+	switch {
+	case publishErr == nil:
 		for _, event := range events {
 			deliveredEvents = append(deliveredEvents, event.IdKey)
 		}
-	case kafka.WriteErrors:
+	case errors.As(publishErr, &failures) && len(failures) == len(events):
 		for i, event := range events {
-			if err[i] == nil {
+			if failures[i] == nil {
 				deliveredEvents = append(deliveredEvents, event.IdKey)
 			}
 		}
 	default:
-		return fmt.Errorf("write messages to kafka: %w", err)
+		return fmt.Errorf("write messages to kafka: %w", publishErr)
 	}
 
 	if err = w.postgres.DeleteEventsByIdKeys(ctx, deliveredEvents); err != nil {

@@ -30,7 +30,10 @@ func TestAttemptRequiredFieldsAndMode(t *testing.T) {
 
 func TestEventRequiresOutgoingPayloadAndStableIdentity(t *testing.T) {
 	id := uuid.New()
-	valid := Event{ID: id, RunID: uuid.New(), Message: core.KafkaMessage{Topic: "after-run", Value: []byte("result"), Headers: core.KafkaHeaders{"X-Idempotency-Key": id.String()}}}
+	message, err := core.NewProduceKafkaMessage("after-run", nil, []byte("result"), core.KafkaHeaders{core.KafkaIdempotencyHeader: id.String()})
+	require.NoError(t, err)
+	valid, err := NewEvent(id, uuid.New(), message)
+	require.NoError(t, err)
 	require.NoError(t, valid.Validate())
 	for _, change := range []func(*Event){func(e *Event) {
 		e.ID = uuid.Nil

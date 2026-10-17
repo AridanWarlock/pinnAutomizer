@@ -15,15 +15,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/adapter/sqlite"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 	worker "github.com/AridanWarlock/pinnAutomizer/solver/internal/outbox"
 )
 
 type recordingWriter struct {
-	messages  []core.KafkaMessage
-	err       error
-	entered   chan struct{}
+	messages []core.KafkaMessage
+	err      error
+	entered  chan struct {
+	}
 	failAfter int
 }
 
@@ -34,8 +36,8 @@ func (w *recordingWriter) WriteMessages(ctx context.Context, messages ...core.Ka
 		return ctx.Err()
 	}
 	w.messages = append(w.messages, messages...)
-	if w.failAfter > 0 && len(w.messages) < w.failAfter {
-		return nil
+	if w.err != nil && w.failAfter > 0 {
+		return partialFailure{error: w.err, confirmed: []int{0}}
 	}
 	return w.err
 }
@@ -60,7 +62,10 @@ func setup(t *testing.T) (*sqlite.Repository, sqlite.Config, domain.Event) {
 	_, _, err = repo.RegisterAttempt(context.Background(), a)
 	require.NoError(t, err)
 	id := uuid.New()
-	e := domain.Event{ID: id, RunID: a.RunID, Message: core.KafkaMessage{Topic: "after-run", Key: []byte(a.TaskID.String()), Value: []byte("done"), Headers: core.KafkaHeaders{"X-Idempotency-Key": id.String()}}}
+	message, err := core.NewProduceKafkaMessage("after-run", []byte(a.TaskID.String()), []byte("done"), core.KafkaHeaders{core.KafkaIdempotencyHeader: id.String()})
+	require.NoError(t, err)
+	e, err := domain.NewEvent(id, a.RunID, message)
+	require.NoError(t, err)
 	code := 0
 	_, err = repo.FinishAttempt(context.Background(), a.RunID, &code, nil, time.Now(), e)
 	require.NoError(t, err)
@@ -76,7 +81,7 @@ func TestAmbiguousPublishIsRetriedAfterRestart(t *testing.T) {
 	writer := &recordingWriter{err: errors.New("confirmation lost")}
 	u := New(repo, writer)
 	require.Error(t, u.PublishPending(ctx))
-	events, err := repo.GetPendingEvents(ctx, 10)
+	events, err := repo.GetPendingEvents(ctx, limit.MustNew(10))
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.NoError(t, repo.Close())
@@ -86,7 +91,7 @@ func TestAmbiguousPublishIsRetriedAfterRestart(t *testing.T) {
 	u = New(repo, writer)
 	require.NoError(t, u.PublishPending(ctx))
 	require.Equal(t, []core.KafkaMessage{e.Message, e.Message}, writer.messages)
-	events, err = repo.GetPendingEvents(ctx, 10)
+	events, err = repo.GetPendingEvents(ctx, limit.MustNew(10))
 	require.NoError(t, err)
 	require.Empty(t, events)
 }
@@ -94,7 +99,8 @@ func TestAmbiguousPublishIsRetriedAfterRestart(t *testing.T) {
 func TestShutdownWaitsForPublishAndKeepsEvent(t *testing.T) {
 	repo, _, _ := setup(t)
 	defer repo.Close()
-	writer := &recordingWriter{entered: make(chan struct{})}
+	writer := &recordingWriter{entered: make(chan struct {
+	})}
 	u := New(repo, writer)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -116,7 +122,7 @@ func TestShutdownWaitsForPublishAndKeepsEvent(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("publisher did not stop")
 	}
-	events, err := repo.GetPendingEvents(context.Background(), 10)
+	events, err := repo.GetPendingEvents(context.Background(), limit.MustNew(10))
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 }
@@ -129,17 +135,18 @@ func TestPartialPublicationKeepsRemainingEvent(t *testing.T) {
 	require.NoError(t, err)
 	_, _, err = repo.RegisterAttempt(ctx, a)
 	require.NoError(t, err)
-	second := first
-	second.ID = uuid.New()
-	second.RunID = a.RunID
-	second.Message.Headers = core.KafkaHeaders{"X-Idempotency-Key": second.ID.String()}
+	id := uuid.New()
+	message, err := first.Message.WithIdKey(core.IdempotencyKey(id.String()))
+	require.NoError(t, err)
+	second, err := domain.NewEvent(id, a.RunID, message)
+	require.NoError(t, err)
 	code := 0
 	_, err = repo.FinishAttempt(ctx, a.RunID, &code, nil, time.Now(), second)
 	require.NoError(t, err)
 	writer := &recordingWriter{err: errors.New("broker unavailable"), failAfter: 2}
 	u := New(repo, writer)
 	require.Error(t, u.PublishPending(ctx))
-	remaining, err := repo.GetPendingEvents(ctx, 10)
+	remaining, err := repo.GetPendingEvents(ctx, limit.MustNew(10))
 	require.NoError(t, err)
 	require.Equal(t, []domain.Event{second}, remaining)
 	writer.err = nil

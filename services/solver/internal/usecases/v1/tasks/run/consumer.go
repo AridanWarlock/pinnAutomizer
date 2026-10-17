@@ -79,12 +79,16 @@ func (c *Consumer) writeOnRunEvent(ctx context.Context, msg core.KafkaMessage, t
 		return fmt.Errorf("marshal response: %w", err)
 	}
 
-	err = c.writer.WriteMessages(ctx, core.NewProduceKafkaMessage(
+	message, err := core.NewProduceKafkaMessage(
 		"tasks.on.run",
 		msg.Key,
 		bytes,
 		msg.Headers,
-	))
+	)
+	if err != nil {
+		return err
+	}
+	err = c.writer.WriteMessages(ctx, message)
 
 	if err != nil {
 		return fmt.Errorf("publish event: %w", err)
@@ -105,12 +109,16 @@ func (c *Consumer) writeAfterRunEvent(ctx context.Context, msg core.KafkaMessage
 		return fmt.Errorf("marshal event: %w", err)
 	}
 
-	err = c.writer.WriteMessages(ctx, core.NewProduceKafkaMessage(
+	message, err := core.NewProduceKafkaMessage(
 		"tasks.after.run",
 		msg.Key,
 		bytes,
 		msg.Headers,
-	))
+	)
+	if err != nil {
+		return err
+	}
+	err = c.writer.WriteMessages(ctx, message)
 
 	if err != nil {
 		return fmt.Errorf("publish event: %w", err)
