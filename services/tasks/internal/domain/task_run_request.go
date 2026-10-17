@@ -15,7 +15,8 @@ const TaskRunRequestIdKeyMaxBytes = 256
 
 // TaskRunRequest records an accepted run independently of outbox delivery and task deletion.
 type TaskRunRequest struct {
-	UserID uuid.UUID           `validate:"required,uuid"`
+	UserID uuid.UUID `validate:"required,uuid"`
+	// IdKey is the caller's request key, scoped to this user and operation.
 	IdKey  core.IdempotencyKey `validate:"required"`
 	TaskID uuid.UUID           `validate:"required,uuid"`
 	// EventID is the stable Kafka idempotency/run identity, not a foreign key to an outbox row.

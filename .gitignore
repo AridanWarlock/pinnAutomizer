@@ -28,7 +28,8 @@ go.work.sum
 .env
 out
 
-# Docker volumes
-docker
+# Local IDE settings
+.idea/
+.vscode/
 # Local quality tools
 .tools/
