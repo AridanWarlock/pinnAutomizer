@@ -1,11 +1,11 @@
 ---
 id: TASK-13
 title: 'Применить третий раунд review PR 16: доверие инвариантам и API'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-17 20:26'
-updated_date: '2026-10-17 20:30'
+updated_date: '2026-10-17 20:32'
 labels: []
 dependencies: []
 ordinal: 18000
@@ -19,7 +19,7 @@ ordinal: 18000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Все 13 замечаний обработаны, ответы Codex опубликованы без resolve
+- [x] #1 Все 13 замечаний обработаны, ответы Codex опубликованы без resolve
 - [x] #2 Готовые сущности не перевалидируются в WithIdKey/RegisterAttempt; общие типы в core, row-конструкторы/конверторы разделены
 - [x] #3 Нарушения внутренних row/partial-index контрактов явно проверены тестами, штатные I/O ошибки остаются ошибками
 - [x] #4 make check, адресные race и релевантные интеграции пройдены, docs обновлены
@@ -38,3 +38,9 @@ ordinal: 18000
 
 Финальный make check с Docker PostgreSQL/Kafka/Goose и адресные race для core/kafka/sqlite/solver прошли. Тестовые контейнеры остановлены. Нормальные SQL I/O errors не превращены в panic; fail-fast только при нарушении row-conversion/partial-index контрактов. Валидные фикстуры WithIdKey используют NewIdempotencyKey; метод без error, headers копируются. Осталось опубликовать ответы на все 13 обсуждений без resolve.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Все 13 новых замечаний PR16 обработаны, ответы [Codex] опубликованы без resolve. f07db92: WithIdKey без error/повторной валидации, shared core.Created/Changed/PartialErr, CanRegister, row-конструкторы и converters.go, shared SQLite Returning, раздельные schema constants, slices.Clone, compact empty struct. row-to-domain и нарушение partial-index контракта паникуют; обычные I/O ошибки сохранены. Добавлены roundtrip/invalid-row/real-SQL-panic-rollback тесты, обновлены unit-тесты и моки Mockery 3.7.1. 30259a9: AGENTS/docs уточняют доверие готовым сущностям, fail-fast и пределы DB CHECK. Полный make check с Docker PostgreSQL/Kafka/Goose и адресные race прошли; тестовые контейнеры остановлены. Runtime solver/PINN не менялись, merge не выполнялся.
+<!-- SECTION:FINAL_SUMMARY:END -->
