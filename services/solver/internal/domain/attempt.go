@@ -13,12 +13,6 @@ import (
 
 type AttemptState string
 
-// Created distinguishes a new durable command from a successful replay.
-type Created bool
-
-// Changed is true only for the caller that applied a durable transition.
-type Changed bool
-
 // Stored values remain compatible with the existing SQL migration.
 const (
 	// AttemptAccepted means the command is durably recorded; no container exists yet.
@@ -99,7 +93,7 @@ func (a Attempt) StartAlreadyHandled() bool {
 	return a.State == AttemptStartRequested || a.State == AttemptRunning || a.State == AttemptFinished
 }
 
-func (a *Attempt) RecordContainer(containerID string) (Changed, error) {
+func (a *Attempt) RecordContainer(containerID string) (core.Changed, error) {
 	if containerID == "" {
 		return false, errs.ErrInvalidArgument
 	}
@@ -115,7 +109,7 @@ func (a *Attempt) RecordContainer(containerID string) (Changed, error) {
 	return a.apply(next)
 }
 
-func (a *Attempt) RequestStart(now time.Time, timeout time.Duration) (Changed, error) {
+func (a *Attempt) RequestStart(now time.Time, timeout time.Duration) (core.Changed, error) {
 	if now.IsZero() || timeout <= 0 {
 		return false, errs.ErrInvalidArgument
 	}
@@ -132,7 +126,7 @@ func (a *Attempt) RequestStart(now time.Time, timeout time.Duration) (Changed, e
 	return a.apply(next)
 }
 
-func (a *Attempt) Finish(code *int, failure *string, now time.Time) (Changed, error) {
+func (a *Attempt) Finish(code *int, failure *string, now time.Time) (core.Changed, error) {
 	if now.IsZero() || (failure == nil && (code == nil || *code != 0)) {
 		return false, errs.ErrInvalidArgument
 	}
@@ -154,7 +148,7 @@ func (a *Attempt) Finish(code *int, failure *string, now time.Time) (Changed, er
 	return a.apply(next)
 }
 
-func (a *Attempt) apply(next Attempt) (Changed, error) {
+func (a *Attempt) apply(next Attempt) (core.Changed, error) {
 	if err := next.Validate(); err != nil {
 		return false, err
 	}
@@ -164,6 +158,10 @@ func (a *Attempt) apply(next Attempt) (Changed, error) {
 
 func (a Attempt) Matches(other Attempt) bool {
 	return a.RunID == other.RunID && a.TaskID == other.TaskID && a.Mode == other.Mode
+}
+
+func (a Attempt) CanRegister() bool {
+	return a.State == AttemptAccepted
 }
 
 // Event preserves a stable identity and wire payload across outbox retries.

@@ -22,7 +22,7 @@ func TestRecordContainerDoesNotReportChangedWhenCommitFails(t *testing.T) {
 	a := attempt(t)
 	client := &MockSQLite{
 		GetxFunc: func(_ context.Context, dst any, _ shared.Sqlizer) error {
-			*dst.(*attemptRow) = fromAttempt(a)
+			*dst.(*attemptRow) = newAttemptRow(a)
 			return nil
 		},
 		ExecxFunc: func(context.Context, shared.Sqlizer) (shared.Tag, error) {

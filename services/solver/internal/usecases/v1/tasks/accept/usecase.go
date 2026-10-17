@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
 type SQLite interface {
-	RegisterAttempt(ctx context.Context, attempt domain.Attempt) (stored domain.Attempt, created domain.Created, err error)
+	RegisterAttempt(ctx context.Context, attempt domain.Attempt) (stored domain.Attempt, created core.Created, err error)
 }
 
 type usecase struct {

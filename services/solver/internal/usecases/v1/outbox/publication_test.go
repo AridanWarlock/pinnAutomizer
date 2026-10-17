@@ -19,8 +19,9 @@ func pendingEvent(t *testing.T) domain.Event {
 	id := uuid.New()
 	message, err := core.NewProduceKafkaMessage("tasks.after.run", []byte("task"), []byte(`{"result":"done"}`), nil)
 	require.NoError(t, err)
-	message, err = message.WithIdKey(core.IdempotencyKey(id.String()))
+	idKey, err := core.NewIdempotencyKey(id.String())
 	require.NoError(t, err)
+	message = message.WithIdKey(idKey)
 	event, err := domain.NewEvent(id, uuid.New(), message)
 	require.NoError(t, err)
 	return event
@@ -127,13 +128,14 @@ func TestPublishPendingDeletesOnlyConfirmedPositions(t *testing.T) {
 		name      string
 		positions []int
 		want      []int
+		panics    bool
 	}{
-		{"first confirmed", []int{0}, []int{0}},
-		{"second confirmed", []int{1}, []int{1}},
-		{"all failed", nil, nil},
-		{"negative position", []int{-1}, nil},
-		{"out of range", []int{0, 2}, nil},
-		{"duplicate position", []int{0, 0}, nil},
+		{"first confirmed", []int{0}, []int{0}, false},
+		{"second confirmed", []int{1}, []int{1}, false},
+		{"all failed", nil, nil, false},
+		{"negative position", []int{-1}, nil, true},
+		{"out of range", []int{0, 2}, nil, true},
+		{"duplicate position", []int{0, 0}, nil, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -151,6 +153,13 @@ func TestPublishPendingDeletesOnlyConfirmedPositions(t *testing.T) {
 			kafka := &MockKafka{WriteMessagesFunc: func(context.Context, ...core.KafkaMessage) error {
 				return fmt.Errorf("wrapped: %w", partialFailure{error: failure, confirmed: tc.positions})
 			}}
+			if tc.panics {
+				require.Panics(t, func() {
+					_ = New(sqlite, kafka).PublishPending(context.Background())
+				})
+				require.Empty(t, sqlite.DeleteEventsCalls())
+				return
+			}
 			require.ErrorIs(t, New(sqlite, kafka).PublishPending(context.Background()), failure)
 			if len(tc.want) == 0 {
 				require.Empty(t, sqlite.DeleteEventsCalls())

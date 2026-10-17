@@ -45,8 +45,7 @@ type auth struct {
 	parser TokenParser
 	writer KafkaWriter
 
-	publicPaths map[string]struct {
-	}
+	publicPaths    map[string]struct{}
 	publicPrefixes []string
 
 	compromisedTopic string
@@ -58,8 +57,7 @@ func Auth(
 	writer KafkaWriter,
 	compromisedTopic string,
 ) httpmv.Middleware {
-	publicPaths := map[string]struct {
-	}{
+	publicPaths := map[string]struct{}{
 		"/api/v1/auth/login":    {},
 		"/api/v1/auth/register": {},
 		"/api/v1/auth/refresh":  {},

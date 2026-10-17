@@ -77,20 +77,14 @@ func (m KafkaMessage) IdKey() (IdempotencyKey, error) {
 }
 
 // WithIdKey copies headers so changing one event cannot mutate another event.
-func (m KafkaMessage) WithIdKey(key IdempotencyKey) (KafkaMessage, error) {
-	if err := m.Validate(); err != nil {
-		return KafkaMessage{}, err
-	}
-	if _, err := NewIdempotencyKey(key.String()); err != nil {
-		return KafkaMessage{}, err
-	}
-	headers := make(KafkaHeaders, len(m.Headers)+1)
-	for k, v := range m.Headers {
-		headers[k] = v
+func (m KafkaMessage) WithIdKey(key IdempotencyKey) KafkaMessage {
+	headers := maps.Clone(m.Headers)
+	if headers == nil {
+		headers = make(KafkaHeaders, 1)
 	}
 	headers[KafkaIdempotencyHeader] = key.String()
 	m.Headers = headers
-	return m, nil
+	return m
 }
 
 func (m KafkaMessage) ValidateOutgoing() error {

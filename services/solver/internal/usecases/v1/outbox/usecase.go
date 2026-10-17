@@ -57,11 +57,6 @@ func (u *usecase) PublishPending(ctx context.Context) error {
 	return publishErr
 }
 
-// The Kafka adapter exposes confirmation positions without leaking driver types.
-type partialDelivery interface {
-	Confirmed() []int
-}
-
 func confirmedEvents(events []domain.Event, publishErr error) []uuid.UUID {
 	if publishErr == nil {
 		ids := make([]uuid.UUID, len(events))
@@ -70,7 +65,7 @@ func confirmedEvents(events []domain.Event, publishErr error) []uuid.UUID {
 		}
 		return ids
 	}
-	var partial partialDelivery
+	var partial core.PartialErr
 	if !errors.As(publishErr, &partial) {
 		return nil
 	}
@@ -78,8 +73,8 @@ func confirmedEvents(events []domain.Event, publishErr error) []uuid.UUID {
 	ids := make([]uuid.UUID, 0, len(indices))
 	seen := make(map[int]bool, len(indices))
 	for _, index := range indices {
-		if index < 0 || index >= len(events) || seen[index] {
-			return nil
+		if seen[index] {
+			panic("partial delivery contains a duplicate confirmation index")
 		}
 		seen[index] = true
 		ids = append(ids, events[index].ID)

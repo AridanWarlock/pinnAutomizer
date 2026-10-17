@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"errors"
+	"slices"
 
 	kafkago "github.com/segmentio/kafka-go"
 )
@@ -20,7 +21,7 @@ func (e *publishError) Unwrap() error {
 }
 
 func (e *publishError) Confirmed() []int {
-	return append([]int(nil), e.confirmed...)
+	return slices.Clone(e.confirmed)
 }
 
 func deliveryError(err error, count int) error {

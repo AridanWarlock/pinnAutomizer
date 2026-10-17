@@ -55,8 +55,7 @@ func TestProducerBatchAcrossTopicsIntegration(t *testing.T) {
 		require.NoError(t, err)
 		message, err := core.NewProduceKafkaMessage(topic, []byte("task"), []byte("result"), nil)
 		require.NoError(t, err)
-		message, err = message.WithIdKey(key)
-		require.NoError(t, err)
+		message = message.WithIdKey(key)
 		messages = append(messages, message)
 	}
 	require.NoError(t, producer.WriteMessages(ctx, messages...))

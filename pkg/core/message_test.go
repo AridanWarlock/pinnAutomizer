@@ -13,10 +13,8 @@ func TestMessageIdKeyDoesNotMutateAnotherMessage(t *testing.T) {
 	require.NoError(t, err)
 	first, err := NewProduceKafkaMessage("topic", nil, []byte("value"), KafkaHeaders{"trace": "trace-id"})
 	require.NoError(t, err)
-	first, err = first.WithIdKey(firstKey)
-	require.NoError(t, err)
-	second, err := first.WithIdKey(secondKey)
-	require.NoError(t, err)
+	first = first.WithIdKey(firstKey)
+	second := first.WithIdKey(secondKey)
 	key, err := first.IdKey()
 	require.NoError(t, err)
 	require.Equal(t, firstKey, key)
@@ -31,9 +29,19 @@ func TestMessageRejectsMissingIdKey(t *testing.T) {
 	require.NoError(t, err)
 	_, err = message.IdKey()
 	require.Error(t, err)
-	_, err = message.WithIdKey("")
-	require.Error(t, err)
 	require.NoError(t, message.ValidateOutgoing())
+}
+
+func TestWithIdKeyCreatesHeadersWithoutChangingOriginal(t *testing.T) {
+	message, err := NewProduceKafkaMessage("topic", nil, []byte("value"), nil)
+	require.NoError(t, err)
+	key, err := NewIdempotencyKey("operation")
+	require.NoError(t, err)
+	result := message.WithIdKey(key)
+	require.Nil(t, message.Headers)
+	actual, err := result.IdKey()
+	require.NoError(t, err)
+	require.Equal(t, key, actual)
 }
 
 func TestMessageConstructorsRejectInvalidInputAndCopyBuffers(t *testing.T) {

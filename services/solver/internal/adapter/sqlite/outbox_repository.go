@@ -7,25 +7,20 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
 // FinishAttempt stores the result and its outbox event in one transaction.
-func (r *Repository) FinishAttempt(ctx context.Context, id uuid.UUID, code *int, failure *string, now time.Time, event domain.Event) (domain.Changed, error) {
+func (r *Repository) FinishAttempt(ctx context.Context, id uuid.UUID, code *int, failure *string, now time.Time, event domain.Event) (core.Changed, error) {
 	if event.RunID != id {
 		return false, errs.ErrInvalidArgument
 	}
-	if err := event.Validate(); err != nil {
-		return false, err
-	}
-	row, err := fromEvent(event)
-	if err != nil {
-		return false, err
-	}
-	var changed domain.Changed
-	err = r.sqlite.InTransaction(ctx, func(ctx context.Context) error {
+	row := newEventRow(event)
+	var changed core.Changed
+	err := r.sqlite.InTransaction(ctx, func(ctx context.Context) error {
 		a, err := r.GetAttempt(ctx, id)
 		if err != nil {
 			return err
@@ -64,11 +59,7 @@ func (r *Repository) GetPendingEvents(ctx context.Context, batch limit.Limit) ([
 	}
 	events := make([]domain.Event, 0, len(rows))
 	for _, row := range rows {
-		event, err := row.toDomain()
-		if err != nil {
-			return nil, err
-		}
-		events = append(events, event)
+		events = append(events, row.toDomain())
 	}
 	return events, nil
 }

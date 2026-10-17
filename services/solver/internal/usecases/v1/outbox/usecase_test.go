@@ -136,8 +136,9 @@ func TestPartialPublicationKeepsRemainingEvent(t *testing.T) {
 	_, _, err = repo.RegisterAttempt(ctx, a)
 	require.NoError(t, err)
 	id := uuid.New()
-	message, err := first.Message.WithIdKey(core.IdempotencyKey(id.String()))
+	idKey, err := core.NewIdempotencyKey(id.String())
 	require.NoError(t, err)
+	message := first.Message.WithIdKey(idKey)
 	second, err := domain.NewEvent(id, a.RunID, message)
 	require.NoError(t, err)
 	code := 0

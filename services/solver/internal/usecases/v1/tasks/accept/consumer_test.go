@@ -76,7 +76,7 @@ func TestAcceptTaskReturnsPersistedAttemptOnReplay(t *testing.T) {
 	require.NoError(t, err)
 	_, err = stored.RecordContainer("existing-container")
 	require.NoError(t, err)
-	sqlite := &MockSQLite{RegisterAttemptFunc: func(_ context.Context, candidate domain.Attempt) (domain.Attempt, domain.Created, error) {
+	sqlite := &MockSQLite{RegisterAttemptFunc: func(_ context.Context, candidate domain.Attempt) (domain.Attempt, core.Created, error) {
 		require.True(t, stored.Matches(candidate))
 		return stored, false, nil
 	}}
@@ -109,7 +109,7 @@ func TestAcceptTaskReturnsJournalFailuresWithoutOutput(t *testing.T) {
 	for _, failure := range []error{errs.ErrConflict, context.Canceled} {
 		t.Run(failure.Error(), func(t *testing.T) {
 			t.Parallel()
-			sqlite := &MockSQLite{RegisterAttemptFunc: func(context.Context, domain.Attempt) (domain.Attempt, domain.Created, error) {
+			sqlite := &MockSQLite{RegisterAttemptFunc: func(context.Context, domain.Attempt) (domain.Attempt, core.Created, error) {
 				return domain.Attempt{}, false, failure
 			}}
 			out, err := New(sqlite).AcceptTask(context.Background(), Input{RunID: uuid.New(), TaskID: uuid.New(), Mode: "train"})

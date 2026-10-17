@@ -8,7 +8,9 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	shared "github.com/AridanWarlock/pinnAutomizer/pkg/sqlite"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
@@ -20,29 +22,25 @@ func (r *Repository) GetAttempt(ctx context.Context, id uuid.UUID) (domain.Attem
 	if err := r.sqlite.Getx(ctx, &row, query); err != nil {
 		return domain.Attempt{}, err
 	}
-	return row.toDomain()
+	return row.toDomain(), nil
 }
 
-func (r *Repository) RegisterAttempt(ctx context.Context, a domain.Attempt) (stored domain.Attempt, created domain.Created, err error) {
-	if err := a.Validate(); err != nil {
-		return domain.Attempt{}, false, err
-	}
-	if a.State != domain.AttemptAccepted {
+func (r *Repository) RegisterAttempt(ctx context.Context, a domain.Attempt) (stored domain.Attempt, created core.Created, err error) {
+	if !a.CanRegister() {
 		return domain.Attempt{}, false, errs.ErrInvalidArgument
 	}
 	err = r.sqlite.InTransaction(ctx, func(ctx context.Context) error {
 		query := r.sb.Insert(attemptsTable).
 			Columns(attemptColumns...).
-			Values(fromAttempt(a).Values()...).
+			Values(newAttemptRow(a).Values()...).
 			Suffix("ON CONFLICT(" + attemptsRunID + ") DO NOTHING").
-			Suffix("RETURNING " + joinColumns(attemptColumns))
+			Suffix(shared.Returning(attemptColumns...))
 		var row attemptRow
 		insertErr := r.sqlite.Getx(ctx, &row, query)
 		if insertErr == nil {
-			var err error
-			stored, err = row.toDomain()
+			stored = row.toDomain()
 			created = true
-			return err
+			return nil
 		}
 		if !errors.Is(insertErr, errs.ErrNotFound) {
 			return insertErr
@@ -64,20 +62,20 @@ func (r *Repository) RegisterAttempt(ctx context.Context, a domain.Attempt) (sto
 	return stored, created, nil
 }
 
-func (r *Repository) RecordContainer(ctx context.Context, id uuid.UUID, containerID string) (changed domain.Changed, err error) {
-	return r.transition(ctx, id, func(a *domain.Attempt) (domain.Changed, error) {
+func (r *Repository) RecordContainer(ctx context.Context, id uuid.UUID, containerID string) (changed core.Changed, err error) {
+	return r.transition(ctx, id, func(a *domain.Attempt) (core.Changed, error) {
 		return a.RecordContainer(containerID)
 	})
 }
 
-func (r *Repository) RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration) (changed domain.Changed, err error) {
-	return r.transition(ctx, id, func(a *domain.Attempt) (domain.Changed, error) {
+func (r *Repository) RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration) (changed core.Changed, err error) {
+	return r.transition(ctx, id, func(a *domain.Attempt) (core.Changed, error) {
 		return a.RequestStart(now, timeout)
 	})
 }
 
-func (r *Repository) transition(ctx context.Context, id uuid.UUID, change func(*domain.Attempt) (domain.Changed, error)) (domain.Changed, error) {
-	var changed domain.Changed
+func (r *Repository) transition(ctx context.Context, id uuid.UUID, change func(*domain.Attempt) (core.Changed, error)) (core.Changed, error) {
+	var changed core.Changed
 	err := r.sqlite.InTransaction(ctx, func(ctx context.Context) error {
 		a, err := r.GetAttempt(ctx, id)
 		if err != nil {
@@ -97,7 +95,7 @@ func (r *Repository) transition(ctx context.Context, id uuid.UUID, change func(*
 }
 
 func (r *Repository) saveTransition(ctx context.Context, a domain.Attempt, previous domain.AttemptState) error {
-	row := fromAttempt(a)
+	row := newAttemptRow(a)
 	query := r.sb.Update(attemptsTable).
 		SetMap(sq.Eq{
 			attemptsState:       row.State,
