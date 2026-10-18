@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-18 12:30'
+updated_date: '2026-10-18 17:41'
 labels: []
 dependencies: []
 priority: high
@@ -44,4 +44,6 @@ Review checkpoint: TASK-3.1/3.2/3.3 завершены отдельными ко
 По согласованному review выполнено механическое переименование Kafka-обёрток обоих уровней: Consumer/Producer, ConsumerConfig/ProducerConfig, NewConsumer/NewProducer и WithProducer. Места подключения во всех четырёх сервисах обновлены. Env prefixes KAFKA_READER_/KAFKA_WRITER_ сохранены для совместимости развёртывания; библиотечные kafka-go.Reader/Writer остаются внутри segmentio-адаптера. Интерфейсы и сигнатуры методов зависимостей не изменены, существующие моки не требуют перегенерации.
 
 По запросу пользователя env также переименован: KAFKA_CONSUMER_/KAFKA_PRODUCER_ в Go config и docker-compose.yaml. .env.example документирует новые service keys. В игнорируемом локальном .env старые Kafka prefixes отсутствуют; секреты не выводились. Старые env names больше не поддерживаются; при review учитывать обновление внешней конфигурации запуска.
+
+Этап безопасного Docker-запуска: PR https://github.com/AridanWarlock/pinnAutomizer/pull/17. make check, адресные race, SQLite concurrency/reopen и Docker CPU-тест прошли; fault injection Create/Start/cancel покрыт unit-тестами. Runtime не подключён; recovery, итог/outbox и cleanup остаются следующими этапами. PostgreSQL/Kafka в этом раунде не запускались.
 <!-- SECTION:NOTES:END -->
