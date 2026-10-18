@@ -25,7 +25,7 @@ require (
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/containerd/errdefs v1.0.0 // indirect
+	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect

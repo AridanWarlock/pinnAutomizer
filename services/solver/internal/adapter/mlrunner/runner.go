@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/mount"
 	"github.com/moby/moby/client"
@@ -19,9 +20,10 @@ import (
 type PinnRunner struct {
 	cli *client.Client
 
-	pinnImage          string
-	hostTasksDataDir   string
-	hostTasksOutputDir string
+	containerNamePrefix string
+	pinnImage           string
+	hostTasksDataDir    string
+	hostTasksOutputDir  string
 
 	timeout time.Duration
 
@@ -37,9 +39,10 @@ func NewPinnRunner(cfg Config, log zerolog.Logger) (*PinnRunner, error) {
 	return &PinnRunner{
 		cli: cli,
 
-		pinnImage:          cfg.Image,
-		hostTasksDataDir:   cfg.HostTasksDataDir,
-		hostTasksOutputDir: cfg.HostTasksOutputDir,
+		containerNamePrefix: cfg.ContainerNamePrefix,
+		pinnImage:           cfg.Image,
+		hostTasksDataDir:    cfg.HostTasksDataDir,
+		hostTasksOutputDir:  cfg.HostTasksOutputDir,
 
 		timeout: cfg.Timeout,
 
@@ -67,7 +70,7 @@ func (r *PinnRunner) Run(ctx context.Context, task domain.MlTask) (int, error) {
 }
 
 func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []string) (int, error) {
-	createOpts := r.setupContainer(task, command)
+	createOpts := r.setupContainer(task.TaskID, task.Mode, command)
 	resp, err := r.cli.ContainerCreate(ctx, createOpts)
 	if err != nil {
 		return 0, fmt.Errorf("create container: %w", err)
@@ -110,7 +113,7 @@ func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []stri
 	}
 }
 
-func (r *PinnRunner) setupContainer(task domain.MlTask, command []string) client.ContainerCreateOptions {
+func (r *PinnRunner) setupContainer(taskID uuid.UUID, mode string, command []string) client.ContainerCreateOptions {
 	env := []string{
 		// Python
 		"PYTHONUNBUFFERED=1",
@@ -146,8 +149,8 @@ func (r *PinnRunner) setupContainer(task domain.MlTask, command []string) client
 		Env: env,
 	}
 
-	hostDataPath := filepath.Join(r.hostTasksDataDir, task.TaskID.String())
-	hostOutputPath := filepath.Join(r.hostTasksOutputDir, task.TaskID.String())
+	hostDataPath := filepath.Join(r.hostTasksDataDir, taskID.String())
+	hostOutputPath := filepath.Join(r.hostTasksOutputDir, taskID.String())
 
 	mounts := []mount.Mount{
 		{
@@ -227,7 +230,7 @@ func (r *PinnRunner) setupContainer(task domain.MlTask, command []string) client
 	}
 
 	var deviceRequests []container.DeviceRequest
-	switch task.Mode {
+	switch mode {
 	case domain.MlTaskModeTrain, domain.MlTaskModeRetrain:
 		deviceRequests = append(deviceRequests, container.DeviceRequest{
 			Driver: "nvidia",
@@ -257,7 +260,7 @@ func (r *PinnRunner) setupContainer(task domain.MlTask, command []string) client
 	createOptions := client.ContainerCreateOptions{
 		Config:     containerConfig,
 		HostConfig: hostConfig,
-		Name:       fmt.Sprintf("pinn-solver-%s-%d", task.TaskID, time.Now().Unix()),
+		Name:       fmt.Sprintf("pinn-solver-%s-%d", taskID, time.Now().Unix()),
 	}
 
 	return createOptions
