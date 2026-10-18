@@ -1,11 +1,11 @@
 ---
 id: TASK-14
 title: 'Применить четвёртый раунд review PR 16: schema и Kafka API'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-18 12:07'
-updated_date: '2026-10-18 12:10'
+updated_date: '2026-10-18 12:11'
 labels: []
 dependencies: []
 ordinal: 19000
@@ -19,7 +19,7 @@ ordinal: 19000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Все шесть замечаний исправлены и получили ответ Codex без resolve
+- [x] #1 Все шесть замечаний исправлены и получили ответ Codex без resolve
 - [x] #2 Типы, моки, тесты и docs согласованы; проверки пройдены
 <!-- AC:END -->
 
@@ -36,3 +36,9 @@ ordinal: 19000
 
 Финальные make fmt и make check прошли. Адресные race-тесты Kafka, SQLite, outbox и accept прошли. Внешние интеграции в этом раунде не повторялись.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Все шесть замечаний исправлены коммитом 799f176 и опубликованы в PR #16. В каждом обсуждении оставлен ответ [Codex]; обсуждения не закрывались. Обновлены AGENTS.md, архитектура и правила review. make check и адресные race-тесты прошли; внешние интеграции не повторялись.
+<!-- SECTION:FINAL_SUMMARY:END -->
