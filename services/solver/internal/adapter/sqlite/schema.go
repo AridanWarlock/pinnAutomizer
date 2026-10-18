@@ -63,6 +63,16 @@ var eventColumns = []string{
 	outboxID, outboxRunID, outboxTopic, outboxKey, outboxValue, outboxHeaders,
 }
 
+type eventRow struct {
+	ID    uuid.UUID `db:"event_id"`
+	RunID uuid.UUID `db:"run_id"`
+	messageRow
+}
+
+func (r eventRow) Values() []any {
+	return append([]any{r.ID, r.RunID}, r.messageRow.Values()...)
+}
+
 type messageRow struct {
 	Topic   string `db:"topic"`
 	Key     []byte `db:"message_key"`
@@ -72,14 +82,4 @@ type messageRow struct {
 
 func (r messageRow) Values() []any {
 	return []any{r.Topic, r.Key, r.Value, r.Headers}
-}
-
-type eventRow struct {
-	ID    uuid.UUID `db:"event_id"`
-	RunID uuid.UUID `db:"run_id"`
-	messageRow
-}
-
-func (r eventRow) Values() []any {
-	return append([]any{r.ID, r.RunID}, r.messageRow.Values()...)
 }
