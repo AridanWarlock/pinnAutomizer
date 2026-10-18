@@ -8,6 +8,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/pagination"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	"github.com/google/uuid"
 )
@@ -94,11 +95,11 @@ var _ Postgres = &MockPostgres{}
 //
 //		// make and configure a mocked Postgres
 //		mockedPostgres := &MockPostgres{
-//			GetEquationsByIDsFunc: func(ctx context.Context, ids []uuid.UUID) ([]domain.Equation, error) {
-//				panic("mock out the GetEquationsByIDs method")
+//			GetTasksByUserIDFunc: func(ctx context.Context, userID uuid.UUID, opts *pagination.Options) ([]domain.Task, error) {
+//				panic("mock out the GetTasksByUserID method")
 //			},
-//			GetTasksByIDsFunc: func(ctx context.Context, ids []uuid.UUID, userID uuid.UUID) ([]domain.Task, error) {
-//				panic("mock out the GetTasksByIDs method")
+//			GetTasksCountFunc: func(ctx context.Context, userID uuid.UUID) (int, error) {
+//				panic("mock out the GetTasksCount method")
 //			},
 //		}
 //
@@ -107,107 +108,107 @@ var _ Postgres = &MockPostgres{}
 //
 //	}
 type MockPostgres struct {
-	// GetEquationsByIDsFunc mocks the GetEquationsByIDs method.
-	GetEquationsByIDsFunc func(ctx context.Context, ids []uuid.UUID) ([]domain.Equation, error)
+	// GetTasksByUserIDFunc mocks the GetTasksByUserID method.
+	GetTasksByUserIDFunc func(ctx context.Context, userID uuid.UUID, opts *pagination.Options) ([]domain.Task, error)
 
-	// GetTasksByIDsFunc mocks the GetTasksByIDs method.
-	GetTasksByIDsFunc func(ctx context.Context, ids []uuid.UUID, userID uuid.UUID) ([]domain.Task, error)
+	// GetTasksCountFunc mocks the GetTasksCount method.
+	GetTasksCountFunc func(ctx context.Context, userID uuid.UUID) (int, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// GetEquationsByIDs holds details about calls to the GetEquationsByIDs method.
-		GetEquationsByIDs []struct {
+		// GetTasksByUserID holds details about calls to the GetTasksByUserID method.
+		GetTasksByUserID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Ids is the ids argument value.
-			Ids []uuid.UUID
+			// UserID is the userID argument value.
+			UserID uuid.UUID
+			// Opts is the opts argument value.
+			Opts *pagination.Options
 		}
-		// GetTasksByIDs holds details about calls to the GetTasksByIDs method.
-		GetTasksByIDs []struct {
+		// GetTasksCount holds details about calls to the GetTasksCount method.
+		GetTasksCount []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Ids is the ids argument value.
-			Ids []uuid.UUID
 			// UserID is the userID argument value.
 			UserID uuid.UUID
 		}
 	}
-	lockGetEquationsByIDs sync.RWMutex
-	lockGetTasksByIDs     sync.RWMutex
+	lockGetTasksByUserID sync.RWMutex
+	lockGetTasksCount    sync.RWMutex
 }
 
-// GetEquationsByIDs calls GetEquationsByIDsFunc.
-func (mock *MockPostgres) GetEquationsByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.Equation, error) {
-	if mock.GetEquationsByIDsFunc == nil {
-		panic("MockPostgres.GetEquationsByIDsFunc: method is nil but Postgres.GetEquationsByIDs was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-		Ids []uuid.UUID
-	}{
-		Ctx: ctx,
-		Ids: ids,
-	}
-	mock.lockGetEquationsByIDs.Lock()
-	mock.calls.GetEquationsByIDs = append(mock.calls.GetEquationsByIDs, callInfo)
-	mock.lockGetEquationsByIDs.Unlock()
-	return mock.GetEquationsByIDsFunc(ctx, ids)
-}
-
-// GetEquationsByIDsCalls gets all the calls that were made to GetEquationsByIDs.
-// Check the length with:
-//
-//	len(mockedPostgres.GetEquationsByIDsCalls())
-func (mock *MockPostgres) GetEquationsByIDsCalls() []struct {
-	Ctx context.Context
-	Ids []uuid.UUID
-} {
-	var calls []struct {
-		Ctx context.Context
-		Ids []uuid.UUID
-	}
-	mock.lockGetEquationsByIDs.RLock()
-	calls = mock.calls.GetEquationsByIDs
-	mock.lockGetEquationsByIDs.RUnlock()
-	return calls
-}
-
-// GetTasksByIDs calls GetTasksByIDsFunc.
-func (mock *MockPostgres) GetTasksByIDs(ctx context.Context, ids []uuid.UUID, userID uuid.UUID) ([]domain.Task, error) {
-	if mock.GetTasksByIDsFunc == nil {
-		panic("MockPostgres.GetTasksByIDsFunc: method is nil but Postgres.GetTasksByIDs was just called")
+// GetTasksByUserID calls GetTasksByUserIDFunc.
+func (mock *MockPostgres) GetTasksByUserID(ctx context.Context, userID uuid.UUID, opts *pagination.Options) ([]domain.Task, error) {
+	if mock.GetTasksByUserIDFunc == nil {
+		panic("MockPostgres.GetTasksByUserIDFunc: method is nil but Postgres.GetTasksByUserID was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Ids    []uuid.UUID
+		UserID uuid.UUID
+		Opts   *pagination.Options
+	}{
+		Ctx:    ctx,
+		UserID: userID,
+		Opts:   opts,
+	}
+	mock.lockGetTasksByUserID.Lock()
+	mock.calls.GetTasksByUserID = append(mock.calls.GetTasksByUserID, callInfo)
+	mock.lockGetTasksByUserID.Unlock()
+	return mock.GetTasksByUserIDFunc(ctx, userID, opts)
+}
+
+// GetTasksByUserIDCalls gets all the calls that were made to GetTasksByUserID.
+// Check the length with:
+//
+//	len(mockedPostgres.GetTasksByUserIDCalls())
+func (mock *MockPostgres) GetTasksByUserIDCalls() []struct {
+	Ctx    context.Context
+	UserID uuid.UUID
+	Opts   *pagination.Options
+} {
+	var calls []struct {
+		Ctx    context.Context
+		UserID uuid.UUID
+		Opts   *pagination.Options
+	}
+	mock.lockGetTasksByUserID.RLock()
+	calls = mock.calls.GetTasksByUserID
+	mock.lockGetTasksByUserID.RUnlock()
+	return calls
+}
+
+// GetTasksCount calls GetTasksCountFunc.
+func (mock *MockPostgres) GetTasksCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	if mock.GetTasksCountFunc == nil {
+		panic("MockPostgres.GetTasksCountFunc: method is nil but Postgres.GetTasksCount was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
 		UserID uuid.UUID
 	}{
 		Ctx:    ctx,
-		Ids:    ids,
 		UserID: userID,
 	}
-	mock.lockGetTasksByIDs.Lock()
-	mock.calls.GetTasksByIDs = append(mock.calls.GetTasksByIDs, callInfo)
-	mock.lockGetTasksByIDs.Unlock()
-	return mock.GetTasksByIDsFunc(ctx, ids, userID)
+	mock.lockGetTasksCount.Lock()
+	mock.calls.GetTasksCount = append(mock.calls.GetTasksCount, callInfo)
+	mock.lockGetTasksCount.Unlock()
+	return mock.GetTasksCountFunc(ctx, userID)
 }
 
-// GetTasksByIDsCalls gets all the calls that were made to GetTasksByIDs.
+// GetTasksCountCalls gets all the calls that were made to GetTasksCount.
 // Check the length with:
 //
-//	len(mockedPostgres.GetTasksByIDsCalls())
-func (mock *MockPostgres) GetTasksByIDsCalls() []struct {
+//	len(mockedPostgres.GetTasksCountCalls())
+func (mock *MockPostgres) GetTasksCountCalls() []struct {
 	Ctx    context.Context
-	Ids    []uuid.UUID
 	UserID uuid.UUID
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Ids    []uuid.UUID
 		UserID uuid.UUID
 	}
-	mock.lockGetTasksByIDs.RLock()
-	calls = mock.calls.GetTasksByIDs
-	mock.lockGetTasksByIDs.RUnlock()
+	mock.lockGetTasksCount.RLock()
+	calls = mock.calls.GetTasksCount
+	mock.lockGetTasksCount.RUnlock()
 	return calls
 }

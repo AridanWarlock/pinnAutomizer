@@ -8,13 +8,14 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
+	"github.com/rs/zerolog"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpmv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpout"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 )
 
 var (
@@ -199,12 +200,15 @@ func (a *auth) handleCompromisedSession(ctx context.Context, jti core.Jti) error
 		panic(fmt.Errorf("marshal compromised message err: %w", err))
 	}
 
-	kafkaMsg := core.NewProduceKafkaMessage(
+	kafkaMsg, err := core.NewProduceKafkaMessage(
 		a.compromisedTopic,
 		[]byte(jti.String()),
 		msgValue,
 		nil,
 	)
+	if err != nil {
+		return err
+	}
 
 	if err := a.writer.WriteMessages(ctx, kafkaMsg); err != nil {
 		return fmt.Errorf("write compromised session message: %w", err)

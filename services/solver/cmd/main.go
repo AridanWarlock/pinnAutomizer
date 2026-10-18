@@ -6,12 +6,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/lifecycle"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/adapter/mlrunner"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/config"
 	tasksRun "github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/run"
-	"github.com/rs/zerolog"
 )
 
 // @title		PINN Automizer SolverService
@@ -60,18 +62,18 @@ func AppRun(
 	}()
 	log.Info().Msg("pinn runner connected")
 	// kafka producer
-	writer := kafka.NewWriter(cfg.KafkaWriter, log)
+	producer := kafka.NewProducer(cfg.KafkaProducer, log)
 	defer func() {
-		if err := writer.Close(); err != nil {
+		if err := producer.Close(); err != nil {
 			log.Error().Err(err).Msg("kafka producer shutdown error")
 			return
 		}
 		log.Info().Msg("kafka producer shutdown gracefully")
 	}()
 	log.Info().Msg("kafka producer connected")
-	// kafka reader
-	runQueueReader, err := kafka.NewReader(
-		cfg.KafkaReader,
+	// kafka consumer
+	runQueueConsumer, err := kafka.NewConsumer(
+		cfg.KafkaConsumer,
 		"tasks.run.queue",
 		kafka.StrategyAtMostOnce,
 		log,
@@ -79,8 +81,8 @@ func AppRun(
 	if err != nil {
 		return fmt.Errorf("start on run kafka reader: %w", err)
 	}
-	predictQueueReader, err := kafka.NewReader(
-		cfg.KafkaReader,
+	predictQueueConsumer, err := kafka.NewConsumer(
+		cfg.KafkaConsumer,
 		"tasks.predict.queue",
 		kafka.StrategyAtMostOnce,
 		log,
@@ -94,22 +96,13 @@ func AppRun(
 	runUsecase := tasksRun.New(runner)
 
 	// consumers
-	runConsumer := tasksRun.NewConsumer(runUsecase, writer)
-	go func() {
-		err = runQueueReader.Run(ctx, runConsumer.HandleMessage)
-		if err != nil {
-			log.Error().Err(err).Msg("run queue error")
-		}
-	}()
-	go func() {
-		err = predictQueueReader.Run(ctx, runConsumer.HandleMessage)
-		if err != nil {
-			log.Error().Err(err).Msg("predict queue error")
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		return nil
-	}
+	runConsumer := tasksRun.NewConsumer(runUsecase, producer)
+	return lifecycle.Run(ctx,
+		lifecycle.Worker("tasks.run.queue", func(ctx context.Context) error {
+			return runQueueConsumer.Run(ctx, runConsumer.HandleMessage)
+		}),
+		lifecycle.Worker("tasks.predict.queue", func(ctx context.Context) error {
+			return predictQueueConsumer.Run(ctx, runConsumer.HandleMessage)
+		}),
+	)
 }

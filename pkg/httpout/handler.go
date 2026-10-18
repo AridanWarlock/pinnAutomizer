@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/rs/zerolog"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
 
 type Handler struct {

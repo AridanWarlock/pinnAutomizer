@@ -3,18 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/fileservice"
-	tasksOnRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/onRun"
 	"os/signal"
 	"syscall"
-	"time"
+
+	"github.com/rs/zerolog"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/lifecycle"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/redis"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/indempotency"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/fileservice"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/filestore"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/filewriter"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/postgres"
@@ -25,10 +23,10 @@ import (
 	tasksCreate "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/create"
 	tasksDelete "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/delete"
 	tasksGet "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/get"
+	tasksOnRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/onRun"
 	tasksPlot "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/plot"
 	tasksResults "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/results"
 	tasksRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/run"
-	"github.com/rs/zerolog"
 )
 
 // @title		PINN Automizer App
@@ -75,22 +73,8 @@ func AppRun(
 		log.Info().Msg("postgres pool shutdown gracefully")
 	}()
 	log.Info().Msg("postgres connected")
-	// redis
-	redisClient, err := goRedis.New(cfg.Redis)
-	if err != nil {
-		return fmt.Errorf("redis connect: %w", err)
-	}
-	defer func() {
-		if err := redisClient.Close(); err != nil {
-			log.Error().Err(err).Msg("shutdown redis error")
-			return
-		}
-		log.Info().Msg("redis shutdown gracefully")
-	}()
-	redisAdapter := redis.NewRedis(redisClient)
-	redisIdempotencyStore := indempotency.NewStore(redisAdapter, time.Hour, 3*time.Minute)
 	// kafka producer
-	producer := kafka.NewWriter(cfg.KafkaWriter, log)
+	producer := kafka.NewProducer(cfg.KafkaProducer, log)
 	defer func() {
 		if err := producer.Close(); err != nil {
 			log.Error().Err(err).Msg("kafka producer shutdown error")
@@ -99,11 +83,11 @@ func AppRun(
 		log.Info().Msg("kafka producer shutdown gracefully")
 	}()
 	log.Info().Msg("kafka_produce connected")
-	// outbox writer
-	writer := outbox.NewWorker(postgresAdapter, producer, log)
+	// outbox worker
+	outboxWorker := outbox.NewWorker(postgresAdapter, producer, log)
 	defer func() {
-		writer.Close()
-		log.Info().Msg("outbox writer shutdown gracefully")
+		outboxWorker.Close()
+		log.Info().Msg("outbox worker shutdown gracefully")
 	}()
 	log.Info().Msg("outbox worker started")
 	// file store
@@ -121,7 +105,7 @@ func AppRun(
 	tasksGetUsecase := tasksGet.New(postgresAdapter)
 	tasksPlotUsecase := tasksPlot.New(postgresAdapter, fileWriter)
 	tasksResultsUsecase := tasksResults.New(postgresAdapter, zip)
-	tasksRunUsecase := tasksRun.New(postgresAdapter, redisIdempotencyStore)
+	tasksRunUsecase := tasksRun.New(postgresAdapter)
 	tasksAfterRunUsecase := tasksAfterRun.New(postgresAdapter, fileService)
 	tasksOnRunUsecase := tasksOnRun.New(postgresAdapter)
 	tasksDeleteUsecase := tasksDelete.New(postgresAdapter, fileService)
@@ -157,44 +141,37 @@ func AppRun(
 	// kafka consumers
 	// tasks-on-run
 	tasksOnRunConsumer := tasksOnRun.NewConsumer(tasksOnRunUsecase, log)
-	tasksOnRunConsumeAdapter, err := kafka.NewReader(
-		cfg.KafkaReader,
+	tasksOnRunConsumeAdapter, err := kafka.NewConsumer(
+		cfg.KafkaConsumer,
 		"tasks.on.run",
 		kafka.StrategyAtLeastOnce,
 		log,
-		kafka.WithWriter(producer),
+		kafka.WithProducer(producer),
 	)
 	if err != nil {
 		return fmt.Errorf("tasks.on.run reader init: %w", err)
 	}
-	go func() {
-		err := tasksOnRunConsumeAdapter.Run(ctx, tasksOnRunConsumer.HandleMessage)
-		if err != nil {
-			log.Error().Err(err).Msg("tasks.on.run consume error")
-			return
-		}
-		log.Error().Err(err).Msg("tasks.on.run consume closed")
-	}()
+
 	// tasks-after-run
 	tasksAfterRunConsumer := tasksAfterRun.NewConsumer(tasksAfterRunUsecase, log)
-	tasksAfterRunConsumeAdapter, err := kafka.NewReader(
-		cfg.KafkaReader,
+	tasksAfterRunConsumeAdapter, err := kafka.NewConsumer(
+		cfg.KafkaConsumer,
 		"tasks.after.run",
 		kafka.StrategyAtLeastOnce,
 		log,
-		kafka.WithWriter(producer),
+		kafka.WithProducer(producer),
 	)
 	if err != nil {
 		return fmt.Errorf("tasks.after.run reader init: %w", err)
 	}
-	go func() {
-		err := tasksAfterRunConsumeAdapter.Run(ctx, tasksAfterRunConsumer.HandleMessage)
-		if err != nil {
-			log.Error().Err(err).Msg("tasks.after.run consume error")
-			return
-		}
-		log.Error().Err(err).Msg("tasks.after.run consume closed")
-	}()
 
-	return server.Run(ctx)
+	return lifecycle.Run(ctx,
+		lifecycle.Worker("http server", server.Run),
+		lifecycle.Worker("tasks.on.run", func(ctx context.Context) error {
+			return tasksOnRunConsumeAdapter.Run(ctx, tasksOnRunConsumer.HandleMessage)
+		}),
+		lifecycle.Worker("tasks.after.run", func(ctx context.Context) error {
+			return tasksAfterRunConsumeAdapter.Run(ctx, tasksAfterRunConsumer.HandleMessage)
+		}),
+	)
 }

@@ -9,12 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 )
 
 func TestHttpHandler_Login(t *testing.T) {

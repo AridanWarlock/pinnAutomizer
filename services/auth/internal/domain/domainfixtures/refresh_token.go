@@ -3,10 +3,11 @@ package domainfixtures
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
-	"github.com/google/uuid"
 )
 
 func NewRefreshToken(mods ...corefixtures.Mod[domain.RefreshToken]) domain.RefreshToken {

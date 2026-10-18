@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 )
 
 func (r *Repository) GetRoleByTitle(ctx context.Context, title string) (core.Role, error) {

@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
-	"github.com/rs/zerolog"
-
-	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/mount"
 	"github.com/moby/moby/client"
+	"github.com/rs/zerolog"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
 type PinnRunner struct {

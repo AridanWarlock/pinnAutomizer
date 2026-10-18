@@ -3,13 +3,14 @@ package config
 import (
 	"fmt"
 
+	"github.com/caarlos0/env/v11"
+
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
-	"github.com/caarlos0/env/v11"
 )
 
 type App struct {
@@ -18,12 +19,12 @@ type App struct {
 
 type Config struct {
 	App                  App
-	HTTP                 httpsrv.Config     `envPrefix:"HTTP_"`
-	Log                  logger.Config      `envPrefix:"LOGGER_"`
-	Postgres             postgres.Config    `envPrefix:"POSTGRES_"`
-	Redis                goRedis.Config     `envPrefix:"REDIS_"`
-	AccessTokenGenerator jwt.Config         `envPrefix:"JWT_"`
-	KafkaReader          kafka.ReaderConfig `envPrefix:"KAFKA_READER_"`
+	HTTP                 httpsrv.Config       `envPrefix:"HTTP_"`
+	Log                  logger.Config        `envPrefix:"LOGGER_"`
+	Postgres             postgres.Config      `envPrefix:"POSTGRES_"`
+	Redis                goRedis.Config       `envPrefix:"REDIS_"`
+	AccessTokenGenerator jwt.Config           `envPrefix:"JWT_"`
+	KafkaConsumer        kafka.ConsumerConfig `envPrefix:"KAFKA_CONSUMER_"`
 }
 
 func InitConfig() (Config, error) {

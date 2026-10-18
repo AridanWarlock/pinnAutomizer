@@ -20,7 +20,7 @@ services:
       # Tokens
       - JWT_SECRET=${JWT_SECRET}
       # Kafka
-      - KAFKA_WRITER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_PRODUCER_BROKER=kafka:${KAFKA_PORT}
       # Redis
       - REDIS_ADDR=redis:${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -68,8 +68,8 @@ services:
       # Tokens
       - JWT_SECRET=${JWT_SECRET}
       # Kafka
-      - KAFKA_READER_BROKER=kafka:${KAFKA_PORT}
-      - KAFKA_READER_GROUP_ID=pinn-auth-services
+      - KAFKA_CONSUMER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_CONSUMER_GROUP_ID=pinn-auth-services
       # Redis
       - REDIS_ADDR=redis:${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -145,19 +145,9 @@ services:
       - POSTGRES_DB=${TASKS_POSTGRES_DB}
       - POSTGRES_TIMEOUT=${TASKS_POSTGRES_TIMEOUT}
       # Kafka
-      - KAFKA_WRITER_BROKER=kafka:${KAFKA_PORT}
-      - KAFKA_READER_BROKER=kafka:${KAFKA_PORT}
-      - KAFKA_READER_GROUP_ID=pinn-tasks-services
-      # Redis
-      - REDIS_ADDR=redis:${REDIS_PORT}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - REDIS_DB=${REDIS_DB}
-      - REDIS_DIAL_TIMEOUT=${REDIS_DIAL_TIMEOUT}
-      - REDIS_READ_TIMEOUT=${REDIS_READ_TIMEOUT}
-      - REDIS_WRITE_TIMEOUT=${REDIS_WRITE_TIMEOUT}
-      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE}
-      - REDIS_MIN_IDLE_CONNECTIONS=${REDIS_MIN_IDLE_CONNECTIONS}
-      - REDIS_POOL_TIMEOUT=${REDIS_POOL_TIMEOUT}
+      - KAFKA_PRODUCER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_CONSUMER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_CONSUMER_GROUP_ID=pinn-tasks-services
     volumes:
       - ${PROJECT_ROOT}/out/tasks/logs:/app/out/logs
       # PINN data
@@ -213,23 +203,37 @@ services:
       - LOGGER_LEVEL=${LOGGER_LEVEL}
       - LOGGER_FOLDER=/app/out/logs
       # Kafka
-      - KAFKA_WRITER_BROKER=kafka:${KAFKA_PORT}
-      - KAFKA_READER_BROKER=kafka:${KAFKA_PORT}
-      - KAFKA_READER_GROUP_ID=pinn-solver-services
+      - KAFKA_PRODUCER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_CONSUMER_BROKER=kafka:${KAFKA_PORT}
+      - KAFKA_CONSUMER_GROUP_ID=pinn-solver-services
       # PINN runner
       - PINN_RUNNER_IMAGE=pinn-runner-image:latest
       - PINN_RUNNER_HOST_TASKS_DATA_DIR=${PROJECT_ROOT}/out/pinn/tasks/data
       - PINN_RUNNER_HOST_TASKS_OUTPUT_DIR=${PROJECT_ROOT}/out/pinn/tasks/output
       - PINN_RUNNER_TIMEOUT=30m
+      - PINN_RUNNER_CONTAINER_NAME_PREFIX=${PINN_RUNNER_CONTAINER_NAME_PREFIX:-pinn-solver}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${PROJECT_ROOT}/out/solver/logs:/app/out/logs
+      - ${PROJECT_ROOT}/out/solver/journal:/journal
     deploy:
       restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
         window: 120s
+
+  goose-solver:
+    image: kukymbr/goose-docker:3.27.0
+    entrypoint: ["/bin/sh", "/goose-solver/entrypoint.sh"]
+    profiles: [tools]
+    environment:
+      - GOOSE_DRIVER=sqlite3
+      - GOOSE_DBSTRING=file:/journal/journal.db?_pragma=journal_mode(WAL)&_pragma=synchronous(FULL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)
+    volumes:
+      - ${PROJECT_ROOT}/services/solver/migrations/entrypoint.sh:/goose-solver/entrypoint.sh:ro
+      - ${PROJECT_ROOT}/services/solver/migrations:/migrations
+      - ${PROJECT_ROOT}/out/solver/journal:/journal
 
   swagger:
     build:
@@ -251,6 +255,14 @@ services:
     volumes:
       - ${PROJECT_ROOT}:/src
     working_dir: /src
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        cd "$$(mktemp -d)"
+        export GOWORK="$$PWD/go.work"
+        go work init /src/pkg /src/services/auth /src/services/tasks /src/services/solver /src/services/gateway
+        cd /src
+        exec mockery --config /src/.mockery.yml
 
   redis:
     image: redis:7-alpine

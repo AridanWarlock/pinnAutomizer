@@ -3,8 +3,9 @@ package postgres
 import (
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 )
 
 type TaskRow struct {

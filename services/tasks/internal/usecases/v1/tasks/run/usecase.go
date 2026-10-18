@@ -5,95 +5,59 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
+	"github.com/google/uuid"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-	"github.com/google/uuid"
 )
 
 type Postgres interface {
-	GetTaskByIDAndUserID(ctx context.Context, id, userID uuid.UUID) (domain.Task, error)
+	CreateTaskRunRequest(ctx context.Context, request domain.TaskRunRequest) (bool, error)
+	GetTaskRunRequest(ctx context.Context, userID uuid.UUID, idKey core.IdempotencyKey) (domain.TaskRunRequest, error)
+	GetTaskByIDAndUserIDForUpdate(ctx context.Context, id, userID uuid.UUID) (domain.Task, error)
 	UpdateTaskStatusByID(ctx context.Context, id uuid.UUID, newStatus, oldStatus domain.TaskStatus) error
 	PublishEvent(ctx context.Context, event domain.Event) (domain.Event, error)
 
 	poolx.TxManager
 }
 
-type Redis interface {
-	Get(ctx context.Context, idKey core.IdempotencyKey, target any) (core.IdempotencyStatus, error)
-	Set(ctx context.Context, idKey core.IdempotencyKey, status core.IdempotencyStatus, value any) error
-	TryLock(ctx context.Context, idKey core.IdempotencyKey) (bool, error)
-	Delete(ctx context.Context, idKey core.IdempotencyKey) error
-}
-
 type usecase struct {
 	postgres Postgres
-	redis    Redis
 }
 
-func New(
-	postgres Postgres,
-	redis Redis,
-) Usecase {
-	return &usecase{
-		postgres: postgres,
-		redis:    redis,
-	}
+func New(postgres Postgres) Usecase {
+	return &usecase{postgres: postgres}
 }
 
 func (u *usecase) RunTask(ctx context.Context, in Input) error {
-	log := logger.FromContext(ctx)
-
 	if err := in.Validate(); err != nil {
 		return fmt.Errorf("%w: %v", errs.ErrInvalidArgument, err)
 	}
 	auth := core.MustAuthInfoFromContext(ctx)
-
 	idKey := core.MustIdempotencyKeyFromContext(ctx)
-	ok, err := u.redis.TryLock(ctx, idKey)
+	request, err := domain.NewTaskRunRequest(auth.UserID, in.TaskID, idKey)
 	if err != nil {
-		return fmt.Errorf("redis try lock: %w", err)
+		return fmt.Errorf("create run request: %w", err)
 	}
-	if !ok {
-		status, err := u.redis.Get(ctx, idKey, nil)
+	return u.postgres.InTransaction(ctx, func(ctx context.Context) error {
+		created, err := u.postgres.CreateTaskRunRequest(ctx, request)
 		if err != nil {
-			return fmt.Errorf("redis get key: %w", err)
+			return fmt.Errorf("save run request: %w", err)
 		}
-		if status == core.IdempotencyStatusCompleted {
-			return nil
+		if created {
+			return u.createAndPublishEvent(ctx, in.TaskID, auth.UserID, core.IdempotencyKey(request.EventID.String()))
 		}
-
-		return errs.ErrOperationInProgress
-	}
-
-	var success bool
-	defer func() {
-		if success {
-			return
+		existing, err := u.postgres.GetTaskRunRequest(ctx, auth.UserID, idKey)
+		if err != nil {
+			return fmt.Errorf("get accepted run request: %w", err)
 		}
-
-		if err := u.redis.Delete(ctx, idKey); err != nil {
-			log.Error().Err(err).Msg("redis: cleanup key error")
+		if existing.TaskID != in.TaskID {
+			return fmt.Errorf("%w: idempotency key was used for a different task", errs.ErrConflict)
 		}
-	}()
-
-	err = u.postgres.InTransaction(ctx, func(ctx context.Context) error {
-		return u.createAndPublishEvent(ctx, in.TaskID, auth.UserID, idKey)
+		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	success = true
-
-	if err := u.redis.Set(ctx, idKey, core.IdempotencyStatusCompleted, nil); err != nil {
-		log.Warn().Err(err).Msg("redis: set key error")
-	}
-
-	return nil
 }
 
 func (u *usecase) createAndPublishEvent(
@@ -101,7 +65,7 @@ func (u *usecase) createAndPublishEvent(
 	taskID, userID uuid.UUID,
 	idKey core.IdempotencyKey,
 ) error {
-	task, err := u.postgres.GetTaskByIDAndUserID(ctx, taskID, userID)
+	task, err := u.postgres.GetTaskByIDAndUserIDForUpdate(ctx, taskID, userID)
 	if err != nil {
 		return fmt.Errorf("getting task by id and user id: %w", err)
 	}

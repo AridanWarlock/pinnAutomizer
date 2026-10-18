@@ -1,8 +1,9 @@
 package postgres
 
 import (
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 )
 
 type RoleRaw struct {

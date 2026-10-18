@@ -3,8 +3,9 @@ package core
 import (
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
 
 type RedisSession struct {

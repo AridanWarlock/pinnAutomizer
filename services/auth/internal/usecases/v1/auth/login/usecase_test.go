@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain/domainfixtures"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/google/uuid"
 )
 
 func TestUsecase_Login(t *testing.T) {
@@ -242,7 +242,9 @@ func TestUsecase_Login(t *testing.T) {
 				f.postgres.GetUserByLoginFunc = func(ctx context.Context, l string) (domain.User, error) {
 					return fixedUser, nil
 				}
-				f.hasher.CompareHashAndPasswordFunc = func(h, p string) error { return nil }
+				f.hasher.CompareHashAndPasswordFunc = func(h, p string) error {
+					return nil
+				}
 				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, id uuid.UUID) ([]core.Role, error) {
 					return fixedRoles, nil
 				}

@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 )
 
 var (
@@ -51,6 +52,7 @@ func (g *Generator) GenerateAndGetClaims(userID uuid.UUID) (core.AccessToken, co
 	}
 	return token, jwtClaims, nil
 }
+
 func (g *Generator) generateAndGetClaims(userID uuid.UUID) (core.AccessToken, Claims, error) {
 	issuedAt := time.Now()
 

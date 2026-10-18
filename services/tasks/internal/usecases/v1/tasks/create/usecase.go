@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
-
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 )
 

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
-
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
 
 type TaskStatus string
@@ -92,4 +92,42 @@ func (t Task) IsRunning() bool {
 
 func (t Task) Validate() error {
 	return validate.V.Struct(t)
+}
+
+// MarkRunning ignores duplicate starts and starts delivered after completion.
+func (t *Task) MarkRunning() (bool, error) {
+	if t.IsRunning() || t.IsEnded() {
+		return false, nil
+	}
+	if !t.InQueue() {
+		return false, ErrInvalidTaskTransition
+	}
+	t.Status = TaskStatusRunning
+	return true, nil
+}
+
+// Complete accepts a result before the start event, but never overwrites a final result.
+func (t *Task) Complete(runError *string) (bool, error) {
+	if t.IsEnded() {
+		return false, nil
+	}
+	if !t.InQueue() && !t.IsRunning() {
+		return false, ErrInvalidTaskTransition
+	}
+	t.Error = runError
+	if runError == nil {
+		t.Status = TaskStatusDone
+	} else {
+		t.Status = TaskStatusError
+	}
+	return true, nil
+}
+
+func (t Task) CanDelete() bool {
+	switch t.Status {
+	case TaskStatusCreated, TaskStatusDone, TaskStatusError:
+		return true
+	default:
+		return false
+	}
 }

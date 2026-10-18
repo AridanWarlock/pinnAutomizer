@@ -3,11 +3,12 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"github.com/rs/zerolog"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 	sq "github.com/Masterminds/squirrel"
+	"github.com/rs/zerolog"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 )
 
 type Config struct {

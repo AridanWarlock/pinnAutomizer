@@ -3,8 +3,9 @@ package corefixtures
 import (
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 )
 
 func NewRedisSession(mods ...Mod[core.RedisSession]) core.RedisSession {

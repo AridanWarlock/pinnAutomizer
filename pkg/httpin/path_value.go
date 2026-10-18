@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/google/uuid"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
 
 func Path(r *http.Request, key string) (string, error) {

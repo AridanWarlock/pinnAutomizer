@@ -5,17 +5,19 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/google/uuid"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
-	"github.com/google/uuid"
 )
 
 type Postgres interface {
-	GetTaskByID(ctx context.Context, id uuid.UUID) (domain.Task, error)
+	GetTaskByIDForUpdate(ctx context.Context, id uuid.UUID) (domain.Task, error)
 	UpdateTask(ctx context.Context, task domain.Task) (domain.Task, error)
 
-	InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error
+	poolx.TxManager
 }
 
 type FileService interface {
@@ -58,21 +60,22 @@ func (u *usecase) UpdateTaskAfterRun(ctx context.Context, in Input) error {
 }
 
 func (u *usecase) updateTaskAfterRun(ctx context.Context, in Input) error {
-	task, err := u.postgres.GetTaskByID(ctx, in.ID)
+	task, err := u.postgres.GetTaskByIDForUpdate(ctx, in.ID)
 	if err != nil {
 		return fmt.Errorf("get task from postgres: %w", err)
+	}
+
+	changed, err := task.Complete(in.Error)
+	if err != nil {
+		return fmt.Errorf("%w: %v", errs.ErrConflict, err)
+	}
+	if !changed {
+		return nil
 	}
 
 	plotPath := filepath.Join(task.OutputPath, "fig.pdf")
 	if u.fileService.Exists(plotPath) {
 		task.PlotPath = &plotPath
-	}
-
-	if in.Error != nil {
-		task.Status = domain.TaskStatusError
-		task.Error = in.Error
-	} else {
-		task.Status = domain.TaskStatusDone
 	}
 
 	_, err = u.postgres.UpdateTask(ctx, task)

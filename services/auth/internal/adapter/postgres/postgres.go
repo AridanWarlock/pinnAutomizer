@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 	sq "github.com/Masterminds/squirrel"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
 )
 
 type Config struct {

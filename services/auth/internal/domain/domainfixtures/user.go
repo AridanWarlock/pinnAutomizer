@@ -1,10 +1,11 @@
 package domainfixtures
 
 import (
-	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
 )
 
 func NewUser(mods ...corefixtures.Mod[domain.User]) domain.User {
