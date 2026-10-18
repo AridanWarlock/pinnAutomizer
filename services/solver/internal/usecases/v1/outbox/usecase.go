@@ -9,6 +9,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
@@ -65,18 +66,18 @@ func confirmedEvents(events []domain.Event, publishErr error) []uuid.UUID {
 		}
 		return ids
 	}
-	var partial core.PartialErr
+	var partial kafka.PartialErr
 	if !errors.As(publishErr, &partial) {
 		return nil
 	}
 	indices := partial.Confirmed()
 	ids := make([]uuid.UUID, 0, len(indices))
-	seen := make(map[int]bool, len(indices))
+	seen := make(map[int]struct{}, len(indices))
 	for _, index := range indices {
-		if seen[index] {
+		if _, duplicate := seen[index]; duplicate {
 			panic("partial delivery contains a duplicate confirmation index")
 		}
-		seen[index] = true
+		seen[index] = struct{}{}
 		ids = append(ids, events[index].ID)
 	}
 	return ids

@@ -42,14 +42,14 @@ func TestAcceptTaskDurableReplayAndValidation(t *testing.T) {
 	in := Input{RunID: uuid.New(), TaskID: uuid.New(), Mode: "train"}
 	first, err := u.AcceptTask(ctx, in)
 	require.NoError(t, err)
-	require.True(t, first.Created)
+	require.Equal(t, core.Created(true), first.Created)
 	require.NoError(t, repo.Close())
 	repo, err = sqlite.New(cfg)
 	require.NoError(t, err)
 	u = New(repo)
 	replay, err := u.AcceptTask(ctx, in)
 	require.NoError(t, err)
-	require.False(t, replay.Created)
+	require.Equal(t, core.Created(false), replay.Created)
 	require.Equal(t, first.Attempt, replay.Attempt)
 	changed := in
 	changed.Mode = "predict"

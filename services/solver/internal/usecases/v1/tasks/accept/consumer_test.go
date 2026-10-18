@@ -82,7 +82,7 @@ func TestAcceptTaskReturnsPersistedAttemptOnReplay(t *testing.T) {
 	}}
 	out, err := New(sqlite).AcceptTask(context.Background(), Input{RunID: stored.RunID, TaskID: stored.TaskID, Mode: stored.Mode})
 	require.NoError(t, err)
-	require.False(t, out.Created)
+	require.Equal(t, core.Created(false), out.Created)
 	require.Equal(t, stored, out.Attempt)
 }
 

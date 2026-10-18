@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
@@ -26,7 +27,7 @@ func (in Input) Validate() error {
 
 type Output struct {
 	Attempt domain.Attempt
-	Created bool
+	Created core.Created
 }
 
 type Usecase interface {

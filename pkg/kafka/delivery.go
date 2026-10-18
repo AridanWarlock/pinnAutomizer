@@ -7,6 +7,14 @@ import (
 	kafkago "github.com/segmentio/kafka-go"
 )
 
+// PartialErr reports confirmed positions from the original Kafka batch.
+// Implementations must return unique indices in [0, batch size).
+// A violation is a programming error, not a retryable transport failure.
+type PartialErr interface {
+	error
+	Confirmed() []int
+}
+
 type publishError struct {
 	cause     error
 	confirmed []int

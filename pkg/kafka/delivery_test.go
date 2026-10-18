@@ -7,15 +7,13 @@ import (
 
 	kafkago "github.com/segmentio/kafka-go"
 	"github.com/stretchr/testify/require"
-
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 )
 
 func TestDeliveryErrorExposesOnlyConfirmedPositions(t *testing.T) {
 	failure := errors.New("broker rejected message")
 	writerErr := kafkago.WriteErrors{nil, failure, nil}
 	err := deliveryError(fmt.Errorf("wrapped: %w", writerErr), 3)
-	var partial core.PartialErr
+	var partial PartialErr
 	require.ErrorAs(t, err, &partial)
 	require.Equal(t, []int{0, 2}, partial.Confirmed())
 	positions := partial.Confirmed()
@@ -31,6 +29,6 @@ func TestDeliveryErrorDoesNotInventConfirmation(t *testing.T) {
 	require.ErrorIs(t, deliveryError(unknown, 2), unknown)
 	require.Nil(t, deliveryError(nil, 2))
 	err := deliveryError(kafkago.WriteErrors{nil}, 2)
-	var partial core.PartialErr
+	var partial PartialErr
 	require.False(t, errors.As(err, &partial))
 }

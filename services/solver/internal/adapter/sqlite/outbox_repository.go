@@ -46,9 +46,6 @@ func (r *Repository) FinishAttempt(ctx context.Context, id uuid.UUID, code *int,
 }
 
 func (r *Repository) GetPendingEvents(ctx context.Context, batch limit.Limit) ([]domain.Event, error) {
-	if err := batch.Validate(); err != nil {
-		return nil, err
-	}
 	query := r.sb.Select(eventColumns...).
 		From(outboxTable).
 		OrderBy(outboxSequence).

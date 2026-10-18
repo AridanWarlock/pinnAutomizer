@@ -34,5 +34,5 @@ func (u *usecase) AcceptTask(ctx context.Context, in Input) (Output, error) {
 	if err != nil {
 		return Output{}, fmt.Errorf("register solver attempt: %w", err)
 	}
-	return Output{Attempt: stored, Created: bool(created)}, nil
+	return Output{Attempt: stored, Created: created}, nil
 }

@@ -27,22 +27,6 @@ var attemptColumns = []string{
 	attemptsCreatedAt, attemptsDeadline, attemptsCompletedAt, attemptsExitCode, attemptsError,
 }
 
-const outboxTable = "outbox"
-
-const (
-	outboxID       = "event_id"
-	outboxRunID    = "run_id"
-	outboxTopic    = "topic"
-	outboxKey      = "message_key"
-	outboxValue    = "value"
-	outboxHeaders  = "headers"
-	outboxSequence = "sequence"
-)
-
-var eventColumns = []string{
-	outboxID, outboxRunID, outboxTopic, outboxKey, outboxValue, outboxHeaders,
-}
-
 type attemptRow struct {
 	RunID       uuid.UUID           `db:"run_id"`
 	TaskID      uuid.UUID           `db:"task_id"`
@@ -63,11 +47,31 @@ func (r attemptRow) Values() []any {
 	}
 }
 
+const outboxTable = "outbox"
+
+const (
+	outboxID       = "event_id"
+	outboxRunID    = "run_id"
+	outboxTopic    = "topic"
+	outboxKey      = "message_key"
+	outboxValue    = "value"
+	outboxHeaders  = "headers"
+	outboxSequence = "sequence"
+)
+
+var eventColumns = []string{
+	outboxID, outboxRunID, outboxTopic, outboxKey, outboxValue, outboxHeaders,
+}
+
 type messageRow struct {
 	Topic   string `db:"topic"`
 	Key     []byte `db:"message_key"`
 	Value   []byte `db:"value"`
 	Headers string `db:"headers"`
+}
+
+func (r messageRow) Values() []any {
+	return []any{r.Topic, r.Key, r.Value, r.Headers}
 }
 
 type eventRow struct {
@@ -77,5 +81,5 @@ type eventRow struct {
 }
 
 func (r eventRow) Values() []any {
-	return []any{r.ID, r.RunID, r.Topic, r.Key, r.Value, r.Headers}
+	return append([]any{r.ID, r.RunID}, r.messageRow.Values()...)
 }
