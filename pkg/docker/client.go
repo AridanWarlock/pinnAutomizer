@@ -102,6 +102,8 @@ func (c *Client) Close() error {
 
 func dockerError(err error) error {
 	switch {
+	case err == nil:
+		return nil
 	case errdefs.IsNotFound(err):
 		return fmt.Errorf("%w: %w", errs.ErrNotFound, err)
 	case errdefs.IsConflict(err):

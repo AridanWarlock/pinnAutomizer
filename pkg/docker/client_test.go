@@ -3,12 +3,14 @@ package docker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 	"github.com/stretchr/testify/require"
@@ -130,7 +132,9 @@ func TestInspectTranslatesOnlyKnownErrors(t *testing.T) {
 			require.ErrorIs(t, err, errs.ErrConflict)
 		}
 		if status == 503 {
-			require.NotErrorIs(t, err, errs.ErrNotFound)
+			require.ErrorContains(t, err, "unexpected docker error:")
+			require.ErrorContains(t, err, "failure")
+			require.True(t, errdefs.IsUnavailable(err), "preserve the original Docker error category")
 		}
 	}
 }
@@ -150,4 +154,24 @@ func TestWaitMapsExitAndCancellation(t *testing.T) {
 	cancel()
 	_, err = c.Wait(ctx, "id")
 	require.ErrorIs(t, err, context.Canceled)
+}
+
+func TestDockerErrorPreservesSuccess(t *testing.T) {
+	t.Parallel()
+	require.NoError(t, dockerError(nil))
+}
+
+func TestDockerErrorPreservesContext(t *testing.T) {
+	t.Parallel()
+	for _, original := range []error{context.Canceled, context.DeadlineExceeded} {
+		require.Equal(t, original, dockerError(original))
+	}
+}
+
+func TestDockerErrorWrapsUnknownFailure(t *testing.T) {
+	t.Parallel()
+	original := errors.New("connection lost")
+	err := dockerError(original)
+	require.ErrorIs(t, err, original)
+	require.EqualError(t, err, "unexpected docker error: connection lost")
 }
