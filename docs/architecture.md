@@ -116,6 +116,11 @@ Solver outbox отправляет порцию сообщений одним в
 ошибками репозитория. Общие `Created`, `Changed` находятся в core и сохраняют тип
 в Output; Kafka-специфичный `PartialErr` — в pkg/kafka, SQL RETURNING — в shared SQLite.
 
+Общий `pkg/docker` скрывает Moby SDK за собственными DTO `Config`, `Container` и
+`Exit`; предоставляет Create/Inspect/Start/Wait/Logs/Remove/Close. Известные ошибки
+not found/conflict переводятся в `errs`, неизвестные сохраняются. Этот слой пока
+не подключён в solver: перенос PinnRunner на интерфейс Docker выполняется после review.
+
 ## Развёртывание и границы доверия
 
 Compose связывает tasks с каталогами host и даёт solver доступ к Docker socket.
