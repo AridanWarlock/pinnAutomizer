@@ -11,20 +11,14 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain/fixtures"
 )
-
-func newAttempt(t *testing.T) domain.Attempt {
-	t.Helper()
-	a, err := domain.NewAttempt(uuid.New(), uuid.New(), "predict", time.Now())
-	require.NoError(t, err)
-	return a
-}
 
 func TestStartTaskPersistsIntentBeforeDockerStart(t *testing.T) {
 	t.Parallel()
 	for _, failureAt := range []string{"none", "ensure", "record", "intent", "reload", "start"} {
 		t.Run(failureAt, func(t *testing.T) {
-			a := newAttempt(t)
+			a := fixtures.NewAttempt(t)
 			failure := errors.New("injected failure")
 			fail := func(stage string) error {
 				if stage == failureAt {
@@ -97,7 +91,7 @@ func TestStartTaskPersistsIntentBeforeDockerStart(t *testing.T) {
 
 func TestStartTaskSkipsDockerWhenAnotherCallerClaimsStart(t *testing.T) {
 	t.Parallel()
-	a := newAttempt(t)
+	a := fixtures.NewAttempt(t)
 	_, err := a.RecordContainer("container")
 	require.NoError(t, err)
 	sqlite := &MockSQLite{

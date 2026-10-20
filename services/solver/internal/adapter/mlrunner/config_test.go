@@ -9,9 +9,9 @@ import (
 
 func TestContainerNameUsesConfiguredPrefixAndRunIdentity(t *testing.T) {
 	id := uuid.New()
-	require.Equal(t, "pinn-solver-"+id.String(), (Config{}).ContainerName(id))
-	cfg := Config{ContainerNamePrefix: "experiment"}
-	require.Equal(t, "experiment-"+id.String(), cfg.ContainerName(id))
-	require.Equal(t, cfg.ContainerName(id), cfg.ContainerName(id))
-	require.NotEqual(t, cfg.ContainerName(id), cfg.ContainerName(uuid.New()))
+	require.Equal(t, "pinn-solver-"+id.String(), (&PinnRunner{}).containerName(id))
+	runner := &PinnRunner{containerNamePrefix: "experiment"}
+	require.Equal(t, "experiment-"+id.String(), runner.containerName(id))
+	require.Equal(t, runner.containerName(id), runner.containerName(id))
+	require.NotEqual(t, runner.containerName(id), runner.containerName(uuid.New()))
 }

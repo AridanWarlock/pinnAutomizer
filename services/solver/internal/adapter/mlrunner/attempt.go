@@ -7,10 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/containerd/errdefs"
-	"github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/client"
-
+	"github.com/AridanWarlock/pinnAutomizer/pkg/docker"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
@@ -30,26 +27,26 @@ func (r *PinnRunner) EnsureContainer(ctx context.Context, a domain.Attempt) (str
 }
 
 func (r *PinnRunner) ensureContainer(ctx context.Context, a domain.Attempt, command []string) (string, error) {
-	name := r.attemptName(a)
+	name := r.containerName(a.RunID)
 	existing, err := r.inspectAttempt(ctx, name, a)
 	if err == nil {
 		return existing.ID, nil
 	}
-	if !errdefs.IsNotFound(err) {
+	if !errors.Is(err, errs.ErrNotFound) {
 		return "", err
 	}
 
 	opts := r.setupContainer(a.TaskID, a.Mode, command)
 	opts.Name = name
-	opts.Config.Labels = map[string]string{
+	opts.Labels = map[string]string{
 		runLabel:  a.RunID.String(),
 		taskLabel: a.TaskID.String(),
 		modeLabel: a.Mode,
 	}
-	opts.HostConfig.AutoRemove = false
-	resp, createErr := r.cli.ContainerCreate(ctx, opts)
+	opts.AutoRemove = false
+	id, createErr := r.docker.Create(ctx, opts)
 	if createErr == nil {
-		return resp.ID, nil
+		return id, nil
 	}
 
 	// Create may have succeeded even when its response was lost or a competing
@@ -66,7 +63,7 @@ func (r *PinnRunner) ensureContainer(ctx context.Context, a domain.Attempt, comm
 // StartContainer must only be called by the winner of persisted RequestStart.
 // It never retries Start, including after a transport error or cancellation.
 func (r *PinnRunner) StartContainer(ctx context.Context, a domain.Attempt) error {
-	if a.State != domain.AttemptStartRequested {
+	if !a.CanSendStart() {
 		return fmt.Errorf("%w: attempt has no start intent", errs.ErrConflict)
 	}
 	ctx, cancel := context.WithDeadline(ctx, *a.Deadline)
@@ -78,57 +75,39 @@ func (r *PinnRunner) StartContainer(ctx context.Context, a domain.Attempt) error
 	if err != nil {
 		return fmt.Errorf("inspect before start: %w", err)
 	}
-	if hasStarted(existing.State) {
+	if existing.HasStarted() {
 		return nil
 	}
-	if existing.State.Status != container.StateCreated {
-		return fmt.Errorf("%w: container state %q", domain.ErrStartOutcomeUnknown, existing.State.Status)
+	if !existing.IsCreated() {
+		return fmt.Errorf("%w: container state %q", domain.ErrStartOutcomeUnknown, existing.State)
 	}
-	if _, err = r.cli.ContainerStart(ctx, a.ContainerID, client.ContainerStartOptions{}); err == nil {
+	if err = r.docker.Start(ctx, a.ContainerID); err == nil {
 		return nil
 	}
 
 	reconcile, stop := context.WithTimeout(context.Background(), reconcileTimeout)
 	defer stop()
 	existing, inspectErr := r.inspectAttempt(reconcile, a.ContainerID, a)
-	if inspectErr == nil && hasStarted(existing.State) {
+	if inspectErr == nil && existing.HasStarted() {
 		return nil
 	}
 	return fmt.Errorf("%w: start container: %w", domain.ErrStartOutcomeUnknown, errors.Join(err, inspectErr))
 }
 
-func (r *PinnRunner) attemptName(a domain.Attempt) string {
-	return (Config{ContainerNamePrefix: r.containerNamePrefix}).ContainerName(a.RunID)
-}
-
-func (r *PinnRunner) inspectAttempt(ctx context.Context, id string, a domain.Attempt) (container.InspectResponse, error) {
-	resp, err := r.cli.ContainerInspect(ctx, id, client.ContainerInspectOptions{})
+func (r *PinnRunner) inspectAttempt(ctx context.Context, id string, a domain.Attempt) (docker.Container, error) {
+	c, err := r.docker.Inspect(ctx, id)
 	if err != nil {
-		return container.InspectResponse{}, fmt.Errorf("inspect attempt container: %w", err)
+		return docker.Container{}, fmt.Errorf("inspect attempt container: %w", err)
 	}
-	c := resp.Container
 	if !r.containerMatchAttempt(c, a) {
-		return container.InspectResponse{}, fmt.Errorf("%w: container does not match attempt", errs.ErrConflict)
+		return docker.Container{}, fmt.Errorf("%w: container does not match attempt", errs.ErrConflict)
 	}
 	return c, nil
 }
 
-func (r *PinnRunner) containerMatchAttempt(c container.InspectResponse, a domain.Attempt) bool {
-	return c.ID != "" && c.Config != nil && c.HostConfig != nil && c.State != nil &&
-		strings.TrimPrefix(c.Name, "/") == r.attemptName(a) &&
-		c.Config.Labels[runLabel] == a.RunID.String() &&
-		c.Config.Labels[taskLabel] == a.TaskID.String() &&
-		c.Config.Labels[modeLabel] == a.Mode &&
-		c.Config.Image == r.pinnImage && c.HostConfig.AutoRemove &&
-		(c.HostConfig.RestartPolicy.Name == "" || c.HostConfig.RestartPolicy.Name == container.RestartPolicyDisabled)
-}
-
-func hasStarted(state *container.State) bool {
-	// Exited containers must never be restarted. A non-zero StartedAt is evidence
-	// of execution even if the command completed before we could observe running.
-	if state.Running {
-		return true
-	}
-	started, err := time.Parse(time.RFC3339Nano, state.StartedAt)
-	return err == nil && !started.IsZero()
+func (r *PinnRunner) containerMatchAttempt(c docker.Container, a domain.Attempt) bool {
+	return c.ID != "" && strings.TrimPrefix(c.Name, "/") == r.containerName(a.RunID) &&
+		c.Labels[runLabel] == a.RunID.String() && c.Labels[taskLabel] == a.TaskID.String() &&
+		c.Labels[modeLabel] == a.Mode && c.Image == r.pinnImage && !c.AutoRemove &&
+		(c.RestartPolicy == "" || c.RestartPolicy == "no")
 }

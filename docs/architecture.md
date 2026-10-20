@@ -72,7 +72,7 @@ flowchart LR
 | Попытки и атомарное завершение с outbox | `solver/internal/adapter/sqlite` | Recovery, взаимодействие с Docker |
 | Устойчивый приём команды | `solver/internal/usecases/v1/tasks/accept` | Подключение после готовности восстановления |
 | Публикация сохранённых результатов | `solver/internal/usecases/v1/outbox`, `solver/internal/outbox` | Подключение worker под lifecycle |
-| Детерминированное имя по run ID | `mlrunner.Config.ContainerName` | Использование новым Docker-адаптером; старый runner имеет прежнее имя |
+| Детерминированное имя по run ID | `PinnRunner.containerName` | Используется новым путём попыток; старый Run имеет прежнее имя |
 
 `AttemptAccepted`, `AttemptContainerCreated`, `AttemptStartRequested`,
 `AttemptRunning`, `AttemptFinished` описывают стадии попытки исполнения.
@@ -118,8 +118,10 @@ Solver outbox отправляет порцию сообщений одним в
 
 Общий `pkg/docker` скрывает Moby SDK за собственными DTO `Config`, `Container` и
 `Exit`; предоставляет Create/Inspect/Start/Wait/Logs/Remove/Close. Известные ошибки
-not found/conflict переводятся в `errs`, неизвестные сохраняются. Этот слой пока
-не подключён в solver: перенос PinnRunner на интерфейс Docker выполняется после review.
+not found/conflict переводятся в `errs`, исходная причина неизвестных сохраняется.
+PinnRunner использует этот API через интерфейс Docker; его unit-тесты работают с
+Mockery-моком, а SDK/HTTP проверяется в pkg/docker. Проверки стадий попытки принадлежат
+методам Attempt. Новый tasks/start пока не подключён к runtime.
 
 ## Развёртывание и границы доверия
 

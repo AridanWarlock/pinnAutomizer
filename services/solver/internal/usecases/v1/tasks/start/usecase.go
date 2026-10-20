@@ -47,7 +47,7 @@ func (u *usecase) StartTask(ctx context.Context, in Input) (Output, error) {
 	if a.StartAlreadyHandled() {
 		return Output{StartRequested: false}, nil
 	}
-	if a.State == domain.AttemptAccepted {
+	if a.NeedsContainer() {
 		id, err := u.pinnRunner.EnsureContainer(ctx, a)
 		if err != nil {
 			return Output{}, fmt.Errorf("ensure container: %w", err)

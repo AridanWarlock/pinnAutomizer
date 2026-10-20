@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/client"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
+
+	"github.com/AridanWarlock/pinnAutomizer/pkg/docker"
+	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain/fixtures"
 )
 
 func TestAttemptDockerCreateReplayAndExitedContainerIntegration(t *testing.T) {
@@ -19,7 +20,7 @@ func TestAttemptDockerCreateReplayAndExitedContainerIntegration(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
-	a := testAttempt(t)
+	a := fixtures.NewAttempt(t)
 	root := t.TempDir()
 	data := filepath.Join(root, "data")
 	output := filepath.Join(root, "output")
@@ -40,7 +41,7 @@ func TestAttemptDockerCreateReplayAndExitedContainerIntegration(t *testing.T) {
 	defer func() {
 		cleanup, stop := context.WithTimeout(context.Background(), 10*time.Second)
 		defer stop()
-		_, err := runner.cli.ContainerRemove(cleanup, runner.attemptName(a), client.ContainerRemoveOptions{Force: true})
+		err := runner.docker.(*docker.Client).Remove(cleanup, runner.containerName(a.RunID))
 		require.NoError(t, err)
 	}()
 	command := []string{"sh", "-c", "echo executed >> /task_output/executions"}
@@ -54,22 +55,16 @@ func TestAttemptDockerCreateReplayAndExitedContainerIntegration(t *testing.T) {
 	_, err = a.RequestStart(time.Now(), time.Minute)
 	require.NoError(t, err)
 	require.NoError(t, runner.StartContainer(ctx, a))
-	wait := runner.cli.ContainerWait(ctx, id, client.ContainerWaitOptions{Condition: container.WaitConditionNotRunning})
-	select {
-	case result := <-wait.Result:
-		require.EqualValues(t, 0, result.StatusCode)
-	case err := <-wait.Error:
-		require.NoError(t, err)
-	case <-ctx.Done():
-		t.Fatal(ctx.Err())
-	}
+	exit, err := runner.docker.Wait(ctx, id)
+	require.NoError(t, err)
+	require.Zero(t, exit.Code)
 	before, err := runner.inspectAttempt(ctx, id, a)
 	require.NoError(t, err)
-	require.Equal(t, container.StateExited, before.State.Status)
+	require.Equal(t, "exited", before.State)
 	require.NoError(t, runner.StartContainer(ctx, a))
 	after, err := runner.inspectAttempt(ctx, id, a)
 	require.NoError(t, err)
-	require.Equal(t, before.State.StartedAt, after.State.StartedAt)
+	require.Equal(t, before.StartedAt, after.StartedAt)
 	contents, err := os.ReadFile(filepath.Join(output, a.TaskID.String(), "executions"))
 	require.NoError(t, err)
 	require.Equal(t, "executed\n", string(contents))

@@ -16,9 +16,9 @@ type Config struct {
 	Timeout             time.Duration `env:"TIMEOUT,required"`
 }
 
-// ContainerName identifies an attempt for future Docker recovery, independently of task IDs.
-func (c Config) ContainerName(runID uuid.UUID) string {
-	prefix := c.ContainerNamePrefix
+// containerName identifies an attempt independently of task IDs.
+func (r *PinnRunner) containerName(runID uuid.UUID) string {
+	prefix := r.containerNamePrefix
 	if prefix == "" {
 		prefix = DefaultContainerNamePrefix
 	}

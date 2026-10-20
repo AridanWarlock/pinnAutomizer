@@ -16,6 +16,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/adapter/sqlite"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain/fixtures"
 )
 
 func TestStartTaskConcurrentCallersAndReplayOnDisk(t *testing.T) {
@@ -33,7 +34,7 @@ func TestStartTaskConcurrentCallersAndReplayOnDisk(t *testing.T) {
 	repo, err := sqlite.New(cfg)
 	require.NoError(t, err)
 	defer repo.Close()
-	a := newAttempt(t)
+	a := fixtures.NewAttempt(t)
 	_, _, err = repo.RegisterAttempt(t.Context(), a)
 	require.NoError(t, err)
 	runner := &MockPinnRunner{

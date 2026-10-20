@@ -2,251 +2,183 @@ package mlrunner
 
 import (
 	"context"
-	"encoding/json"
-	"io"
-	"net/http"
-	"strings"
+	"errors"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/client"
 	"github.com/stretchr/testify/require"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/docker"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain/fixtures"
 )
 
-type dockerTransport func(*http.Request) (*http.Response, error)
-
-func (f dockerTransport) RoundTrip(r *http.Request) (*http.Response, error) {
-	return f(r)
-}
-
-func dockerResponse(t *testing.T, status int, body any) *http.Response {
-	t.Helper()
-	data, err := json.Marshal(body)
-	require.NoError(t, err)
-	return &http.Response{
-		StatusCode: status,
-		Header:     http.Header{"Content-Type": {"application/json"}},
-		Body:       io.NopCloser(strings.NewReader(string(data))),
-	}
-}
-
-func testAttempt(t *testing.T) domain.Attempt {
-	t.Helper()
-	a, err := domain.NewAttempt(uuid.New(), uuid.New(), domain.MlTaskModePredict, time.Now())
-	require.NoError(t, err)
-	return a
-}
-
-func testRunner(t *testing.T, transport dockerTransport) *PinnRunner {
-	t.Helper()
-	cli, err := client.New(client.WithHost("http://docker.test"), client.WithVersion("1.52"),
-		client.WithHTTPClient(&http.Client{Transport: transport}))
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, cli.Close()) })
-	return &PinnRunner{cli: cli, pinnImage: "test-image"}
-}
-
-func ownedContainer(a domain.Attempt) container.InspectResponse {
-	return container.InspectResponse{
-		ID:   "container-id",
-		Name: "/" + (Config{}).ContainerName(a.RunID),
-		Config: &container.Config{
-			Image: "test-image",
-			Labels: map[string]string{
-				runLabel:  a.RunID.String(),
-				taskLabel: a.TaskID.String(),
-				modeLabel: a.Mode,
-			},
+func ownedContainer(a domain.Attempt) docker.Container {
+	return docker.Container{
+		ID:    "container-id",
+		Name:  "/" + (&PinnRunner{}).containerName(a.RunID),
+		Image: "test-image",
+		State: "created",
+		Labels: map[string]string{
+			runLabel:  a.RunID.String(),
+			taskLabel: a.TaskID.String(),
+			modeLabel: a.Mode,
 		},
-		HostConfig: &container.HostConfig{},
-		State:      &container.State{Status: container.StateCreated},
 	}
 }
 
 func TestEnsureContainerReconcilesLostCreateResponse(t *testing.T) {
 	t.Parallel()
-	a := testAttempt(t)
+	a := fixtures.NewAttempt(t)
 	existing := ownedContainer(a)
-	created := false
-	creates := 0
-	runner := testRunner(t, func(req *http.Request) (*http.Response, error) {
-		if req.Method == http.MethodGet {
-			if !created {
-				return dockerResponse(t, http.StatusNotFound, map[string]string{"message": "missing"}), nil
+	for _, scenario := range []struct {
+		name          string
+		cancelRequest bool
+	}{
+		{name: "lost response"},
+		{name: "canceled response", cancelRequest: true},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			created := false
+			client := &MockDocker{
+				InspectFunc: func(ctx context.Context, id string) (docker.Container, error) {
+					require.NoError(t, ctx.Err())
+					require.Equal(t, existing.Name[1:], id)
+					if !created {
+						return docker.Container{}, errs.ErrNotFound
+					}
+					return existing, nil
+				},
+				CreateFunc: func(_ context.Context, cfg docker.Config) (string, error) {
+					require.Equal(t, existing.Name[1:], cfg.Name)
+					require.False(t, cfg.AutoRemove)
+					require.Equal(t, a.RunID.String(), cfg.Labels[runLabel])
+					require.Equal(t, []string{"python", "run.py", "--mod=predict"}, cfg.Command)
+					created = true
+					if scenario.cancelRequest {
+						cancel()
+						return "", context.Canceled
+					}
+					return "", errors.New("lost response")
+				},
 			}
-			return dockerResponse(t, http.StatusOK, existing), nil
-		}
-		require.Equal(t, "/v1.52/containers/create", req.URL.Path)
-		require.Equal(t, (Config{}).ContainerName(a.RunID), req.URL.Query().Get("name"))
-		var body struct {
-			container.Config
-			HostConfig container.HostConfig
-		}
-		require.NoError(t, json.NewDecoder(req.Body).Decode(&body))
-		require.False(t, body.HostConfig.AutoRemove)
-		require.Equal(t, a.RunID.String(), body.Labels[runLabel])
-		require.Equal(t, []string{"python", "run.py", "--mod=predict"}, body.Cmd)
-		creates++
-		created = true
-		return dockerResponse(t, http.StatusServiceUnavailable, map[string]string{"message": "response lost"}), nil
-	})
-	for range 2 {
-		id, err := runner.EnsureContainer(t.Context(), a)
-		require.NoError(t, err)
-		require.Equal(t, existing.ID, id)
+			runner := &PinnRunner{docker: client, pinnImage: "test-image"}
+			id, err := runner.EnsureContainer(ctx, a)
+			require.NoError(t, err)
+			require.Equal(t, existing.ID, id)
+			id, err = runner.EnsureContainer(t.Context(), a)
+			require.NoError(t, err)
+			require.Equal(t, existing.ID, id)
+			require.Len(t, client.CreateCalls(), 1)
+		})
 	}
-	require.Equal(t, 1, creates)
 }
 
 func TestEnsureContainerDoesNotCreateOnUnavailableInspect(t *testing.T) {
 	t.Parallel()
-	runner := testRunner(t, func(req *http.Request) (*http.Response, error) {
-		require.Equal(t, http.MethodGet, req.Method)
-		return dockerResponse(t, http.StatusServiceUnavailable, map[string]string{"message": "unavailable"}), nil
-	})
-	_, err := runner.EnsureContainer(t.Context(), testAttempt(t))
-	require.Error(t, err)
+	failure := errors.New("unavailable")
+	client := &MockDocker{
+		InspectFunc: func(context.Context, string) (docker.Container, error) { return docker.Container{}, failure },
+	}
+	_, err := (&PinnRunner{docker: client}).EnsureContainer(t.Context(), fixtures.NewAttempt(t))
+	require.ErrorIs(t, err, failure)
+	require.Empty(t, client.CreateCalls())
 }
 
 func TestEnsureContainerRejectsForeignOrUnsafeContainer(t *testing.T) {
 	t.Parallel()
 	for _, scenario := range []struct {
 		name   string
-		change func(*container.InspectResponse)
+		change func(*docker.Container)
 	}{
-		{"foreign run", func(c *container.InspectResponse) { c.Config.Labels[runLabel] = uuid.NewString() }},
-		{"different mode", func(c *container.InspectResponse) { c.Config.Labels[modeLabel] = "train" }},
-		{"different image", func(c *container.InspectResponse) { c.Config.Image = "other" }},
-		{"automatic removal", func(c *container.InspectResponse) { c.HostConfig.AutoRemove = true }},
-		{"automatic restart", func(c *container.InspectResponse) { c.HostConfig.RestartPolicy.Name = container.RestartPolicyAlways }},
+		{"foreign run", func(c *docker.Container) { c.Labels[runLabel] = "other" }},
+		{"different mode", func(c *docker.Container) { c.Labels[modeLabel] = "train" }},
+		{"different image", func(c *docker.Container) { c.Image = "other" }},
+		{"automatic removal", func(c *docker.Container) { c.AutoRemove = true }},
+		{"automatic restart", func(c *docker.Container) { c.RestartPolicy = "always" }},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
-			a := testAttempt(t)
+			a := fixtures.NewAttempt(t)
 			existing := ownedContainer(a)
 			scenario.change(&existing)
-			runner := testRunner(t, func(req *http.Request) (*http.Response, error) {
-				require.Equal(t, http.MethodGet, req.Method)
-				return dockerResponse(t, http.StatusOK, existing), nil
-			})
-			_, err := runner.EnsureContainer(t.Context(), a)
+			client := &MockDocker{
+				InspectFunc: func(context.Context, string) (docker.Container, error) { return existing, nil },
+			}
+			_, err := (&PinnRunner{docker: client, pinnImage: "test-image"}).EnsureContainer(t.Context(), a)
 			require.ErrorIs(t, err, errs.ErrConflict)
+			require.Empty(t, client.CreateCalls())
 		})
 	}
 }
 
 func TestStartContainerNeverRetriesStart(t *testing.T) {
 	t.Parallel()
-	for _, state := range []container.ContainerState{container.StateRunning, container.StateExited, container.StateCreated} {
-		t.Run(string(state), func(t *testing.T) {
-			a := testAttempt(t)
-			_, err := a.RecordContainer("container-id")
-			require.NoError(t, err)
-			_, err = a.RequestStart(time.Now(), time.Minute)
-			require.NoError(t, err)
+	for _, state := range []string{"running", "exited", "created", "unavailable"} {
+		t.Run(state, func(t *testing.T) {
+			a := fixtures.NewAttempt(t, fixtures.WithContainer("container-id"), fixtures.WithStartRequested())
 			existing := ownedContainer(a)
-			starts := 0
-			runner := testRunner(t, func(req *http.Request) (*http.Response, error) {
-				if req.Method == http.MethodGet {
-					return dockerResponse(t, http.StatusOK, existing), nil
+			client := &MockDocker{}
+			client.InspectFunc = func(context.Context, string) (docker.Container, error) {
+				if len(client.StartCalls()) > 0 && state == "unavailable" {
+					return docker.Container{}, errors.New("inspect unavailable")
 				}
-				require.Equal(t, "/v1.52/containers/container-id/start", req.URL.Path)
-				starts++
-				existing.State.Status = state
-				if state != container.StateCreated {
-					existing.State.StartedAt = time.Now().UTC().Format(time.RFC3339Nano)
+				return existing, nil
+			}
+			client.StartFunc = func(context.Context, string) error {
+				existing.State = state
+				if state == "running" || state == "exited" {
+					existing.StartedAt = time.Now()
 				}
-				return dockerResponse(t, http.StatusServiceUnavailable, map[string]string{"message": "lost response"}), nil
-			})
-			err = runner.StartContainer(t.Context(), a)
-			if state == container.StateCreated {
+				return errors.New("lost start response")
+			}
+			runner := &PinnRunner{docker: client, pinnImage: "test-image"}
+			err := runner.StartContainer(t.Context(), a)
+			if state == "created" || state == "unavailable" {
 				require.ErrorIs(t, err, domain.ErrStartOutcomeUnknown)
 			} else {
 				require.NoError(t, err)
+				require.NoError(t, runner.StartContainer(t.Context(), a))
 			}
-			require.Equal(t, 1, starts)
+			require.Len(t, client.StartCalls(), 1)
 		})
 	}
 }
 
 func TestStartContainerReconcilesAfterCancellation(t *testing.T) {
 	t.Parallel()
-	a := testAttempt(t)
-	_, err := a.RecordContainer("container-id")
-	require.NoError(t, err)
-	_, err = a.RequestStart(time.Now(), time.Minute)
-	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	existing := ownedContainer(a)
-	runner := testRunner(t, func(req *http.Request) (*http.Response, error) {
-		if req.Method == http.MethodPost {
-			cancel()
-			existing.State.Running = true
-			return nil, context.Canceled
-		}
-		require.NoError(t, req.Context().Err())
-		return dockerResponse(t, http.StatusOK, existing), nil
-	})
-	require.NoError(t, runner.StartContainer(ctx, a))
-}
-
-func TestStartContainerDoesNotRestartExitedContainer(t *testing.T) {
-	t.Parallel()
-	a := testAttempt(t)
-	_, err := a.RecordContainer("container-id")
-	require.NoError(t, err)
-	_, err = a.RequestStart(time.Now(), time.Minute)
-	require.NoError(t, err)
-	existing := ownedContainer(a)
-	existing.State.Status = container.StateExited
-	existing.State.StartedAt = time.Now().UTC().Format(time.RFC3339Nano)
-	runner := testRunner(t, func(req *http.Request) (*http.Response, error) {
-		require.Equal(t, http.MethodGet, req.Method)
-		return dockerResponse(t, http.StatusOK, existing), nil
-	})
-	require.NoError(t, runner.StartContainer(t.Context(), a))
-}
-
-func TestEnsureContainerReconcilesCanceledCreate(t *testing.T) {
-	t.Parallel()
-	a := testAttempt(t)
+	a := fixtures.NewAttempt(t, fixtures.WithContainer("container-id"), fixtures.WithStartRequested())
 	existing := ownedContainer(a)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	created := false
-	runner := testRunner(t, func(req *http.Request) (*http.Response, error) {
-		if req.Method == http.MethodPost {
-			created = true
+	client := &MockDocker{
+		InspectFunc: func(ctx context.Context, _ string) (docker.Container, error) {
+			require.NoError(t, ctx.Err())
+			return existing, nil
+		},
+		StartFunc: func(context.Context, string) error {
 			cancel()
-			return nil, context.Canceled
-		}
-		require.NoError(t, req.Context().Err())
-		if !created {
-			return dockerResponse(t, http.StatusNotFound, map[string]string{"message": "missing"}), nil
-		}
-		return dockerResponse(t, http.StatusOK, existing), nil
-	})
-	id, err := runner.EnsureContainer(ctx, a)
-	require.NoError(t, err)
-	require.Equal(t, existing.ID, id)
+			existing.Running = true
+			return context.Canceled
+		},
+	}
+	require.NoError(t, (&PinnRunner{docker: client, pinnImage: "test-image"}).StartContainer(ctx, a))
+	require.Len(t, client.StartCalls(), 1)
 }
 
 func TestStartContainerRequiresUnexpiredIntent(t *testing.T) {
 	t.Parallel()
-	a := testAttempt(t)
-	runner := testRunner(t, func(req *http.Request) (*http.Response, error) {
-		require.FailNow(t, "no Docker request expected", "%s", req.URL.Path)
-		return nil, context.Canceled
-	})
+	a := fixtures.NewAttempt(t)
+	client := &MockDocker{}
+	runner := &PinnRunner{docker: client}
 	require.ErrorIs(t, runner.StartContainer(t.Context(), a), errs.ErrConflict)
 	_, err := a.RecordContainer("container-id")
 	require.NoError(t, err)
 	_, err = a.RequestStart(time.Now().Add(-time.Hour), time.Minute)
 	require.NoError(t, err)
 	require.ErrorIs(t, runner.StartContainer(t.Context(), a), context.DeadlineExceeded)
+	require.Empty(t, client.InspectCalls())
+	require.Empty(t, client.StartCalls())
 }
