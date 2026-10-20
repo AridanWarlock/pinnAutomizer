@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-14 12:17'
+updated_date: '2026-10-20 08:22'
 labels: []
 dependencies: []
 priority: high
@@ -44,4 +44,6 @@ Review checkpoint: TASK-3.1/3.2/3.3 завершены отдельными ко
 По согласованному review выполнено механическое переименование Kafka-обёрток обоих уровней: Consumer/Producer, ConsumerConfig/ProducerConfig, NewConsumer/NewProducer и WithProducer. Места подключения во всех четырёх сервисах обновлены. Env prefixes KAFKA_READER_/KAFKA_WRITER_ сохранены для совместимости развёртывания; библиотечные kafka-go.Reader/Writer остаются внутри segmentio-адаптера. Интерфейсы и сигнатуры методов зависимостей не изменены, существующие моки не требуют перегенерации.
 
 По запросу пользователя env также переименован: KAFKA_CONSUMER_/KAFKA_PRODUCER_ в Go config и docker-compose.yaml. .env.example документирует новые service keys. В игнорируемом локальном .env старые Kafka prefixes отсутствуют; секреты не выводились. Старые env names больше не поддерживаются; при review учитывать обновление внешней конфигурации запуска.
+
+По согласованию Docker-слой выделен в отдельный PR https://github.com/AridanWarlock/pinnAutomizer/pull/18 (~500 строк): shared API без типов SDK, unit/race и Docker CPU lifecycle прошли, make check прошёл. Подключение PinnRunner и замечания #17 подготовлены локально; публикация второго этапа — после review и merge #18.
 <!-- SECTION:NOTES:END -->
