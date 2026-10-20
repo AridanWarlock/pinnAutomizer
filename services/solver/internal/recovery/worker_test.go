@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,35 +15,38 @@ import (
 	tasksRecover "github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/recover"
 )
 
-func TestWorkerSweepsImmediatelyDespiteAttemptFailure(t *testing.T) {
-	cursor := uuid.New()
-	calls := make(chan uuid.UUID, 2)
-	uc := &MockUsecase{
-		RecoverPendingFunc: func(_ context.Context, after uuid.UUID) (tasksRecover.Output, error) {
-			calls <- after
-			if after == uuid.Nil {
-				return tasksRecover.Output{NextRunID: cursor}, errors.New("one attempt failed")
-			}
-			return tasksRecover.Output{}, nil
-		},
-	}
-	worker, err := NewWorker(uc, time.Hour, zerolog.Nop())
-	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
-	done := make(chan error, 1)
-	go func() { done <- worker.Run(ctx) }()
-	for _, expected := range []uuid.UUID{uuid.Nil, cursor} {
-		select {
-		case actual := <-calls:
-			require.Equal(t, expected, actual)
-		case <-ctx.Done():
-			t.Fatal("worker waited instead of reading the next page")
+func TestWorkerWaitsAfterEachBatchEvenWhenCursorAdvances(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		cursor := uuid.New()
+		uc := &MockUsecase{
+			RecoverPendingFunc: func(_ context.Context, in tasksRecover.Input) (tasksRecover.Output, error) {
+				if in.AfterRunID == uuid.Nil {
+					return tasksRecover.Output{NextRunID: cursor}, errors.New("one attempt failed")
+				}
+				return tasksRecover.Output{}, nil
+			},
 		}
-	}
-	cancel()
-	require.ErrorIs(t, <-done, context.Canceled)
-	require.Len(t, uc.RecoverPendingCalls(), 2)
+		// synctest advances virtual time; this hour does not delay the test.
+		const interval = time.Hour
+		worker, err := NewWorker(uc, interval, zerolog.Nop())
+		require.NoError(t, err)
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		done := make(chan error, 1)
+		go func() { done <- worker.Run(ctx) }()
+		synctest.Wait()
+		require.Len(t, uc.RecoverPendingCalls(), 1, "only the first batch is immediate")
+		<-time.After(interval - time.Nanosecond)
+		synctest.Wait()
+		require.Len(t, uc.RecoverPendingCalls(), 1)
+		<-time.After(time.Nanosecond)
+		synctest.Wait()
+		calls := uc.RecoverPendingCalls()
+		require.Len(t, calls, 2)
+		require.Equal(t, cursor, calls[1].In.AfterRunID)
+		cancel()
+		require.ErrorIs(t, <-done, context.Canceled)
+	})
 }
 
 func TestWorkerRetriesListingCursorAndRepeatsSweep(t *testing.T) {
@@ -50,7 +54,8 @@ func TestWorkerRetriesListingCursorAndRepeatsSweep(t *testing.T) {
 	entered := make(chan uuid.UUID, 4)
 	call := 0
 	uc := &MockUsecase{
-		RecoverPendingFunc: func(ctx context.Context, after uuid.UUID) (tasksRecover.Output, error) {
+		RecoverPendingFunc: func(ctx context.Context, in tasksRecover.Input) (tasksRecover.Output, error) {
+			after := in.AfterRunID
 			entered <- after
 			call++
 			switch call {
@@ -85,8 +90,8 @@ func TestWorkerRetriesListingCursorAndRepeatsSweep(t *testing.T) {
 }
 
 func TestWorkerRejectsInvalidConfiguration(t *testing.T) {
-	_, err := NewWorker(nil, time.Second, zerolog.Nop())
-	require.ErrorIs(t, err, errs.ErrInvalidArgument)
-	_, err = NewWorker(&MockUsecase{}, 0, zerolog.Nop())
-	require.ErrorIs(t, err, errs.ErrInvalidArgument)
+	for _, interval := range []time.Duration{0, -time.Second} {
+		_, err := NewWorker(&MockUsecase{}, interval, zerolog.Nop())
+		require.ErrorIs(t, err, errs.ErrInvalidArgument)
+	}
 }

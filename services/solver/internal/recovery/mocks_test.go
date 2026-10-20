@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/recover"
-	"github.com/google/uuid"
 )
 
 // Ensure that MockUsecase does implement Usecase.
@@ -22,7 +21,7 @@ var _ Usecase = &MockUsecase{}
 //
 //		// make and configure a mocked Usecase
 //		mockedUsecase := &MockUsecase{
-//			RecoverPendingFunc: func(ctx context.Context, afterRunID uuid.UUID) (tasksRecover.Output, error) {
+//			RecoverPendingFunc: func(ctx context.Context, in tasksRecover.Input) (tasksRecover.Output, error) {
 //				panic("mock out the RecoverPending method")
 //			},
 //		}
@@ -33,7 +32,7 @@ var _ Usecase = &MockUsecase{}
 //	}
 type MockUsecase struct {
 	// RecoverPendingFunc mocks the RecoverPending method.
-	RecoverPendingFunc func(ctx context.Context, afterRunID uuid.UUID) (tasksRecover.Output, error)
+	RecoverPendingFunc func(ctx context.Context, in tasksRecover.Input) (tasksRecover.Output, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -41,29 +40,29 @@ type MockUsecase struct {
 		RecoverPending []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// AfterRunID is the afterRunID argument value.
-			AfterRunID uuid.UUID
+			// In is the in argument value.
+			In tasksRecover.Input
 		}
 	}
 	lockRecoverPending sync.RWMutex
 }
 
 // RecoverPending calls RecoverPendingFunc.
-func (mock *MockUsecase) RecoverPending(ctx context.Context, afterRunID uuid.UUID) (tasksRecover.Output, error) {
+func (mock *MockUsecase) RecoverPending(ctx context.Context, in tasksRecover.Input) (tasksRecover.Output, error) {
 	if mock.RecoverPendingFunc == nil {
 		panic("MockUsecase.RecoverPendingFunc: method is nil but Usecase.RecoverPending was just called")
 	}
 	callInfo := struct {
-		Ctx        context.Context
-		AfterRunID uuid.UUID
+		Ctx context.Context
+		In  tasksRecover.Input
 	}{
-		Ctx:        ctx,
-		AfterRunID: afterRunID,
+		Ctx: ctx,
+		In:  in,
 	}
 	mock.lockRecoverPending.Lock()
 	mock.calls.RecoverPending = append(mock.calls.RecoverPending, callInfo)
 	mock.lockRecoverPending.Unlock()
-	return mock.RecoverPendingFunc(ctx, afterRunID)
+	return mock.RecoverPendingFunc(ctx, in)
 }
 
 // RecoverPendingCalls gets all the calls that were made to RecoverPending.
@@ -71,12 +70,12 @@ func (mock *MockUsecase) RecoverPending(ctx context.Context, afterRunID uuid.UUI
 //
 //	len(mockedUsecase.RecoverPendingCalls())
 func (mock *MockUsecase) RecoverPendingCalls() []struct {
-	Ctx        context.Context
-	AfterRunID uuid.UUID
+	Ctx context.Context
+	In  tasksRecover.Input
 } {
 	var calls []struct {
-		Ctx        context.Context
-		AfterRunID uuid.UUID
+		Ctx context.Context
+		In  tasksRecover.Input
 	}
 	mock.lockRecoverPending.RLock()
 	calls = mock.calls.RecoverPending

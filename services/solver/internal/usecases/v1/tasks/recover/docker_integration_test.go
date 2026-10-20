@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
@@ -112,7 +111,7 @@ func TestRecoveryReopensIntentWithoutRestartingDockerIntegration(t *testing.T) {
 			defer runner.Close()
 			uc, err := New(repo, tasksStart.New(repo, runner, time.Minute), tasksObserve.New(repo, runner), limit.MustNew(2), 5*time.Second)
 			require.NoError(t, err)
-			out, err := uc.RecoverPending(ctx, uuid.Nil)
+			out, err := uc.RecoverPending(ctx, Input{})
 			require.Equal(t, a.RunID, out.NextRunID)
 			if executed {
 				require.NoError(t, err)

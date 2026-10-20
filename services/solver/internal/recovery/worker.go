@@ -33,7 +33,7 @@ func NewWorker(usecase Usecase, interval time.Duration, log zerolog.Logger) (*Wo
 	}, nil
 }
 
-// Run sweeps immediately, then waits between sweeps or after a listing failure.
+// Run processes its first batch immediately, then waits after every batch.
 // The owner must cancel and await Run before closing dependencies.
 func (w *Worker) Run(ctx context.Context) error {
 	timer := time.NewTimer(w.interval)
@@ -51,11 +51,7 @@ func (w *Worker) Run(ctx context.Context) error {
 		if err != nil {
 			w.log.Error().Err(err).Msg("recover solver attempts; retry on next sweep")
 		}
-		advanced := out.NextRunID != cursor
 		cursor = out.NextRunID
-		if advanced && cursor != uuid.Nil {
-			continue
-		}
 		timer.Reset(w.interval)
 		select {
 		case <-ctx.Done():

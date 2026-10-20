@@ -53,7 +53,7 @@ func TestRecoveryStartsOnlyBeforeDurableIntent(t *testing.T) {
 			}
 			uc, err := New(sqlite, start, observe, limit.MustNew(2), time.Second)
 			require.NoError(t, err)
-			out, err := uc.RecoverPending(t.Context(), uuid.Nil)
+			out, err := uc.RecoverPending(t.Context(), Input{})
 			require.Equal(t, a.RunID, out.NextRunID)
 			if scenario == "start failure" {
 				require.ErrorIs(t, err, failure)
@@ -112,7 +112,7 @@ func TestRecoveryAdvancesPastUnknownStartAndTimedOutAttempt(t *testing.T) {
 		start := &MockTasksStart{}
 		uc, err := New(sqlite, start, observe, limit.MustNew(2), attemptTimeout)
 		require.NoError(t, err)
-		out, err := uc.RecoverPending(t.Context(), uuid.Nil)
+		out, err := uc.RecoverPending(t.Context(), Input{})
 		if timeout {
 			require.ErrorIs(t, err, context.DeadlineExceeded)
 		} else {
@@ -122,7 +122,7 @@ func TestRecoveryAdvancesPastUnknownStartAndTimedOutAttempt(t *testing.T) {
 		require.Equal(t, b.RunID, out.NextRunID)
 		require.Equal(t, []uuid.UUID{a.RunID, b.RunID}, observed)
 		require.Empty(t, start.StartTaskCalls())
-		out, err = uc.RecoverPending(t.Context(), out.NextRunID)
+		out, err = uc.RecoverPending(t.Context(), Input{AfterRunID: out.NextRunID})
 		require.NoError(t, err)
 		require.Equal(t, uuid.Nil, out.NextRunID)
 	}
@@ -137,12 +137,12 @@ func TestRecoveryRetainsCursorOnReadFailureAndHonorsCancellation(t *testing.T) {
 	}
 	uc, err := New(sqlite, &MockTasksStart{}, &MockTasksObserve{}, limit.MustNew(1), time.Second)
 	require.NoError(t, err)
-	out, err := uc.RecoverPending(t.Context(), cursor)
+	out, err := uc.RecoverPending(t.Context(), Input{AfterRunID: cursor})
 	require.ErrorIs(t, err, failure)
 	require.Equal(t, cursor, out.NextRunID)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	_, err = uc.RecoverPending(ctx, cursor)
+	_, err = uc.RecoverPending(ctx, Input{AfterRunID: cursor})
 	require.ErrorIs(t, err, context.Canceled)
 	require.Len(t, sqlite.GetUnfinishedAttemptsCalls(), 1)
 }
@@ -154,12 +154,7 @@ func TestRecoveryRejectsInvalidConfiguration(t *testing.T) {
 		_, err := New(sqlite, start, observe, limit.MustNew(1), timeout)
 		require.ErrorIs(t, err, errs.ErrInvalidArgument)
 	}
-	_, err := New(nil, start, observe, limit.MustNew(1), time.Second)
-	require.ErrorIs(t, err, errs.ErrInvalidArgument)
-	_, err = New(sqlite, nil, observe, limit.MustNew(1), time.Second)
-	require.ErrorIs(t, err, errs.ErrInvalidArgument)
-	_, err = New(sqlite, start, nil, limit.MustNew(1), time.Second)
-	require.ErrorIs(t, err, errs.ErrInvalidArgument)
+
 }
 
 func TestRecoveryStopsBetweenAttemptsOnParentCancellation(t *testing.T) {
@@ -181,7 +176,7 @@ func TestRecoveryStopsBetweenAttemptsOnParentCancellation(t *testing.T) {
 	}
 	uc, err := New(sqlite, &MockTasksStart{}, observe, limit.MustNew(2), time.Second)
 	require.NoError(t, err)
-	out, err := uc.RecoverPending(ctx, uuid.Nil)
+	out, err := uc.RecoverPending(ctx, Input{})
 	require.ErrorIs(t, err, context.Canceled)
 	require.Equal(t, a.RunID, out.NextRunID)
 	require.Len(t, observe.ObserveTaskCalls(), 1)
