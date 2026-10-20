@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-20 12:24'
+updated_date: '2026-10-20 12:32'
 labels: []
 dependencies: []
 priority: high
@@ -54,4 +54,6 @@ Review checkpoint: TASK-3.1/3.2/3.3 завершены отдельными ко
 Наблюдение и завершение — PR https://github.com/AridanWarlock/pinnAutomizer/pull/19 (~850 строк). make check, адресные race, SQLite rollback/reopen/concurrency и Docker CPU прошли. Runtime не подключён; следующий этап после review — recovery, затем deadline/cleanup.
 
 Recovery — PR https://github.com/AridanWarlock/pinnAutomizer/pull/20 (~1,1 тыс. строк). make check, адресные race, SQLite pagination/reopen и Docker CPU intent/exited прошли. Worker не подключён в runtime; следующий этап — deadline/Stop/cleanup, затем wiring/rollout.
+
+PR #21: https://github.com/AridanWarlock/pinnAutomizer/pull/21 — deadline и подтверждённый Docker Stop. make check, адресный race и Docker CPU integration (Stop → отказ outbox → повтор) прошли. Следом: устойчивый cleanup; runtime ещё не подключён.
 <!-- SECTION:NOTES:END -->
