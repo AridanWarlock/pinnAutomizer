@@ -96,12 +96,15 @@ func TestInspectMapsSnapshotAndState(t *testing.T) {
 		Name:       "/attempt",
 		Config:     &container.Config{Image: "image", Labels: map[string]string{"run_id": "run"}},
 		HostConfig: &container.HostConfig{},
-		State:      &container.State{Status: container.StateExited, StartedAt: "2026-10-20T10:00:00Z"},
+		State:      &container.State{Status: container.StateExited, StartedAt: "2026-10-20T10:00:00Z", ExitCode: 7, Error: "execution failed"},
 	}
 	c := newClient(t, func(*http.Request) (*http.Response, error) { return response(t, 200, raw), nil })
 	snapshot, err := c.Inspect(t.Context(), "id")
 	require.NoError(t, err)
 	require.True(t, snapshot.HasStarted())
+	require.True(t, snapshot.IsExited())
+	require.Equal(t, 7, snapshot.ExitCode)
+	require.Equal(t, "execution failed", snapshot.Error)
 	require.False(t, snapshot.IsCreated())
 	require.Equal(t, "run", snapshot.Labels["run_id"])
 	require.Equal(t, "image", snapshot.Image)

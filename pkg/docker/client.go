@@ -57,6 +57,8 @@ func (c *Client) Inspect(ctx context.Context, id string) (Container, error) {
 		State:         string(raw.State.Status),
 		Running:       raw.State.Running,
 		StartedAt:     started,
+		ExitCode:      raw.State.ExitCode,
+		Error:         raw.State.Error,
 	}, nil
 }
 

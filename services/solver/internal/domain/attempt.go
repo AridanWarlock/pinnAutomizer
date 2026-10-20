@@ -200,3 +200,11 @@ func (a Attempt) NeedsContainer() bool {
 func (a Attempt) CanSendStart() bool {
 	return a.State == AttemptStartRequested
 }
+
+func (a Attempt) CanObserve() bool {
+	return a.State == AttemptStartRequested || a.State == AttemptRunning
+}
+
+func (a Attempt) IsFinished() bool {
+	return a.State == AttemptFinished
+}

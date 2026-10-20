@@ -37,6 +37,8 @@ type Container struct {
 	State         string
 	Running       bool
 	StartedAt     time.Time
+	ExitCode      int
+	Error         string
 }
 
 func (c Container) IsCreated() bool {
@@ -50,4 +52,8 @@ func (c Container) HasStarted() bool {
 type Exit struct {
 	Code  int
 	Error string
+}
+
+func (c Container) IsExited() bool {
+	return c.State == "exited" && !c.Running
 }
