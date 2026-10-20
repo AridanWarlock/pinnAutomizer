@@ -106,8 +106,10 @@ func dockerError(err error) error {
 		return fmt.Errorf("%w: %w", errs.ErrNotFound, err)
 	case errdefs.IsConflict(err):
 		return fmt.Errorf("%w: %w", errs.ErrConflict, err)
-	default:
+	case errs.IsContextErr(err):
 		return err
+	default:
+		return fmt.Errorf("unexpected docker error: %w", err)
 	}
 }
 
