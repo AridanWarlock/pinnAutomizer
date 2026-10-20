@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-20 10:49'
+updated_date: '2026-10-20 10:54'
 labels: []
 dependencies: []
 priority: high
@@ -50,4 +50,6 @@ Review checkpoint: TASK-3.1/3.2/3.3 завершены отдельными ко
 Этап безопасного запуска: PR https://github.com/AridanWarlock/pinnAutomizer/pull/17. После принятия #18 PinnRunner переводится на shared Docker API; runtime, recovery и cleanup остаются отдельными этапами.
 
 После merge #18 PR #17 переведён на shared Docker API: интерфейс Docker и generated mock, fixture Attempt, методы стадий и приватное имя контейнера; инверсия AutoRemove исправлена. make check, адресные race и Docker CPU Create/replay/exited прошли. Runtime нового сценария по-прежнему не подключён.
+
+Наблюдение и завершение — PR https://github.com/AridanWarlock/pinnAutomizer/pull/19 (~850 строк). make check, адресные race, SQLite rollback/reopen/concurrency и Docker CPU прошли. Runtime не подключён; следующий этап после review — recovery, затем deadline/cleanup.
 <!-- SECTION:NOTES:END -->
