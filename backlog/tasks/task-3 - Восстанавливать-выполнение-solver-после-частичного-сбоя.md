@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-20 10:54'
+updated_date: '2026-10-20 11:24'
 labels: []
 dependencies: []
 priority: high
@@ -29,7 +29,7 @@ At-most-once чтение и отсутствие устойчивой попы�
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Текущий PR: Inspect уже запущенной попытки через PinnRunner; завершённый контейнер преобразуется в валидный итог Attempt; tasks/observe сохраняет итог и tasks.after.run одной SQLite-транзакцией с устойчивым event ID. Проверки: pending, повтор, конкуренция, сбой outbox/rollback и reopen, ошибка Docker/отмена; Docker CPU без PINN. Дальше отдельные PR: recovery, deadline/cleanup, подключение runtime и at-least-once.
+Текущий PR: keyset-выборка незавершённых попыток из SQLite; recovery вызывает существующие start/observe, не повторяя Start после intent. Курсор продвигается и при ошибке одной попытки, каждый вызов ограничен timeout. Worker обходит журнал сразу при Run и затем периодически, без подключения в runtime. Проверки: poison row/страницы, отмена/timeout, reopen и реальные сценарии start_requested/exited без повторного Start. Далее: deadline/Stop/cleanup, затем wiring/rollout.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -52,4 +52,6 @@ Review checkpoint: TASK-3.1/3.2/3.3 завершены отдельными ко
 После merge #18 PR #17 переведён на shared Docker API: интерфейс Docker и generated mock, fixture Attempt, методы стадий и приватное имя контейнера; инверсия AutoRemove исправлена. make check, адресные race и Docker CPU Create/replay/exited прошли. Runtime нового сценария по-прежнему не подключён.
 
 Наблюдение и завершение — PR https://github.com/AridanWarlock/pinnAutomizer/pull/19 (~850 строк). make check, адресные race, SQLite rollback/reopen/concurrency и Docker CPU прошли. Runtime не подключён; следующий этап после review — recovery, затем deadline/cleanup.
+
+Recovery — PR https://github.com/AridanWarlock/pinnAutomizer/pull/20 (~1,1 тыс. строк). make check, адресные race, SQLite pagination/reopen и Docker CPU intent/exited прошли. Worker не подключён в runtime; следующий этап — deadline/Stop/cleanup, затем wiring/rollout.
 <!-- SECTION:NOTES:END -->

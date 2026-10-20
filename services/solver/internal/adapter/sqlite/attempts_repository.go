@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	shared "github.com/AridanWarlock/pinnAutomizer/pkg/sqlite"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
@@ -114,4 +115,25 @@ func (r *Repository) saveTransition(ctx context.Context, a domain.Attempt, previ
 		return errs.ErrConflict
 	}
 	return nil
+}
+
+// GetUnfinishedAttempts uses a run-ID cursor so failed/running rows cannot starve later rows.
+func (r *Repository) GetUnfinishedAttempts(ctx context.Context, afterRunID uuid.UUID, batch limit.Limit) ([]domain.Attempt, error) {
+	query := r.sb.Select(attemptColumns...).
+		From(attemptsTable).
+		Where(sq.NotEq{attemptsState: domain.AttemptFinished}).
+		OrderBy(attemptsRunID).
+		Limit(batch.Uint64())
+	if afterRunID != uuid.Nil {
+		query = query.Where(sq.Gt{attemptsRunID: afterRunID})
+	}
+	var rows []attemptRow
+	if err := r.sqlite.Selectx(ctx, &rows, query); err != nil {
+		return nil, err
+	}
+	attempts := make([]domain.Attempt, 0, len(rows))
+	for _, row := range rows {
+		attempts = append(attempts, row.toDomain())
+	}
+	return attempts, nil
 }
