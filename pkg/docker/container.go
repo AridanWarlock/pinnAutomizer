@@ -37,6 +37,7 @@ type Container struct {
 	State         string
 	Running       bool
 	StartedAt     time.Time
+	FinishedAt    time.Time
 	ExitCode      int
 	Error         string
 }

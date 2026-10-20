@@ -7,4 +7,5 @@ var (
 	ErrInvalidMLTaskMode   = errors.New("invalid mltask mode")
 	ErrPinnBusy            = errors.New("pinn busy")
 	ErrStartOutcomeUnknown = errors.New("container start outcome unknown")
+	ErrStopOutcomeUnknown  = errors.New("container stop outcome unknown")
 )

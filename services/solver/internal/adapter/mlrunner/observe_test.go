@@ -20,6 +20,7 @@ func TestObserveAttemptReadsResultWithoutChangingOriginal(t *testing.T) {
 		c := ownedContainer(a)
 		c.State = "exited"
 		c.StartedAt = time.Now()
+		c.FinishedAt = time.Now()
 		c.ExitCode = code
 		client := &MockDocker{
 			InspectFunc: func(context.Context, string) (docker.Container, error) { return c, nil },

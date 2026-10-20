@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-20 11:24'
+updated_date: '2026-10-20 12:24'
 labels: []
 dependencies: []
 priority: high
@@ -29,7 +29,7 @@ At-most-once чтение и отсутствие устойчивой попы�
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Текущий PR: keyset-выборка незавершённых попыток из SQLite; recovery вызывает существующие start/observe, не повторяя Start после intent. Курсор продвигается и при ошибке одной попытки, каждый вызов ограничен timeout. Worker обходит журнал сразу при Run и затем периодически, без подключения в runtime. Проверки: poison row/страницы, отмена/timeout, reopen и реальные сценарии start_requested/exited без повторного Start. Далее: deadline/Stop/cleanup, затем wiring/rollout.
+Текущий PR: DeadlineExceeded у Attempt, FinishedAt и Stop в shared Docker API; PinnRunner при просроченном running отправляет Stop с независимым ограниченным контекстом и подтверждает exited через Inspect до формирования итога. Exited до deadline сохраняет успех; неопределённый Start/Stop не даёт ложного завершения. Тесты unit/race и Docker CPU. Отдельно после review: устойчивый маркер и повтор cleanup, затем wiring/rollout.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

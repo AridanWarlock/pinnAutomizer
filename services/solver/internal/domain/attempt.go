@@ -208,3 +208,18 @@ func (a Attempt) CanObserve() bool {
 func (a Attempt) IsFinished() bool {
 	return a.State == AttemptFinished
 }
+
+func (a Attempt) DeadlineExceeded(at time.Time) bool {
+	return a.CanObserve() && !at.Before(*a.Deadline)
+}
+
+func (a *Attempt) FinishTimedOut(code int, now time.Time) (core.Changed, error) {
+	if a.IsFinished() {
+		return false, nil
+	}
+	if !a.DeadlineExceeded(now) {
+		return false, errs.ErrConflict
+	}
+	failure := "execution deadline exceeded"
+	return a.Finish(&code, &failure, now)
+}

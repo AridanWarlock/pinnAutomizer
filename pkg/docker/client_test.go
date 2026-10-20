@@ -96,13 +96,14 @@ func TestInspectMapsSnapshotAndState(t *testing.T) {
 		Name:       "/attempt",
 		Config:     &container.Config{Image: "image", Labels: map[string]string{"run_id": "run"}},
 		HostConfig: &container.HostConfig{},
-		State:      &container.State{Status: container.StateExited, StartedAt: "2026-10-20T10:00:00Z", ExitCode: 7, Error: "execution failed"},
+		State:      &container.State{Status: container.StateExited, StartedAt: "2026-10-20T10:00:00Z", FinishedAt: "2026-10-20T10:01:00Z", ExitCode: 7, Error: "execution failed"},
 	}
 	c := newClient(t, func(*http.Request) (*http.Response, error) { return response(t, 200, raw), nil })
 	snapshot, err := c.Inspect(t.Context(), "id")
 	require.NoError(t, err)
 	require.True(t, snapshot.HasStarted())
 	require.True(t, snapshot.IsExited())
+	require.Equal(t, time.Date(2026, 10, 20, 10, 1, 0, 0, time.UTC), snapshot.FinishedAt)
 	require.Equal(t, 7, snapshot.ExitCode)
 	require.Equal(t, "execution failed", snapshot.Error)
 	require.False(t, snapshot.IsCreated())
@@ -115,6 +116,9 @@ func TestInspectMapsSnapshotAndState(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, snapshot.IsCreated())
 	require.False(t, snapshot.HasStarted())
+	raw.State.FinishedAt = "invalid"
+	_, err = c.Inspect(t.Context(), "id")
+	require.ErrorContains(t, err, "parse container finish time")
 	raw.Config = nil
 	_, err = c.Inspect(t.Context(), "id")
 	require.ErrorContains(t, err, "incomplete")
@@ -177,4 +181,15 @@ func TestDockerErrorWrapsUnknownFailure(t *testing.T) {
 	err := dockerError(original)
 	require.ErrorIs(t, err, original)
 	require.EqualError(t, err, "unexpected docker error: connection lost")
+}
+
+func TestStopMapsBoundedGraceAndPreservesErrors(t *testing.T) {
+	t.Parallel()
+	c := newClient(t, func(req *http.Request) (*http.Response, error) {
+		require.Equal(t, "/v1.52/containers/id/stop", req.URL.Path)
+		require.Equal(t, "2", req.URL.Query().Get("t"))
+		return response(t, http.StatusNotFound, map[string]string{"message": "missing"}), nil
+	})
+	require.ErrorIs(t, c.Stop(t.Context(), "id", 1500*time.Millisecond), errs.ErrNotFound)
+	require.ErrorIs(t, c.Stop(t.Context(), "id", -time.Second), errs.ErrInvalidArgument)
 }

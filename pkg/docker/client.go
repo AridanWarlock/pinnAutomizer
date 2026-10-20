@@ -47,6 +47,10 @@ func (c *Client) Inspect(ctx context.Context, id string) (Container, error) {
 	if err != nil {
 		return Container{}, fmt.Errorf("parse container start time: %w", err)
 	}
+	finished, err := time.Parse(time.RFC3339Nano, raw.State.FinishedAt)
+	if err != nil {
+		return Container{}, fmt.Errorf("parse container finish time: %w", err)
+	}
 	return Container{
 		ID:            raw.ID,
 		Name:          raw.Name,
@@ -57,6 +61,7 @@ func (c *Client) Inspect(ctx context.Context, id string) (Container, error) {
 		State:         string(raw.State.Status),
 		Running:       raw.State.Running,
 		StartedAt:     started,
+		FinishedAt:    finished,
 		ExitCode:      raw.State.ExitCode,
 		Error:         raw.State.Error,
 	}, nil
@@ -159,4 +164,17 @@ func createOptions(cfg Config) client.ContainerCreateOptions {
 			CapDrop:        cfg.CapDrop,
 		},
 	}
+}
+
+// Stop bounds the engine's graceful wait; context bounds the API request itself.
+func (c *Client) Stop(ctx context.Context, id string, grace time.Duration) error {
+	if grace < 0 {
+		return fmt.Errorf("%w: negative stop grace", errs.ErrInvalidArgument)
+	}
+	seconds := int(grace / time.Second)
+	if grace%time.Second != 0 {
+		seconds++
+	}
+	_, err := c.cli.ContainerStop(ctx, id, client.ContainerStopOptions{Timeout: &seconds})
+	return dockerError(err)
 }
