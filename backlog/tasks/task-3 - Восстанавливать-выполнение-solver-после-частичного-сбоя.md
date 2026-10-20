@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-20 08:22'
+updated_date: '2026-10-20 10:27'
 labels: []
 dependencies: []
 priority: high
@@ -46,4 +46,8 @@ Review checkpoint: TASK-3.1/3.2/3.3 завершены отдельными ко
 По запросу пользователя env также переименован: KAFKA_CONSUMER_/KAFKA_PRODUCER_ в Go config и docker-compose.yaml. .env.example документирует новые service keys. В игнорируемом локальном .env старые Kafka prefixes отсутствуют; секреты не выводились. Старые env names больше не поддерживаются; при review учитывать обновление внешней конфигурации запуска.
 
 По согласованию Docker-слой выделен в отдельный PR https://github.com/AridanWarlock/pinnAutomizer/pull/18 (~500 строк): shared API без типов SDK, unit/race и Docker CPU lifecycle прошли, make check прошёл. Подключение PinnRunner и замечания #17 подготовлены локально; публикация второго этапа — после review и merge #18.
+
+Этап безопасного запуска: PR https://github.com/AridanWarlock/pinnAutomizer/pull/17. После принятия #18 PinnRunner переводится на shared Docker API; runtime, recovery и cleanup остаются отдельными этапами.
+
+После merge #18 PR #17 переведён на shared Docker API: интерфейс Docker и generated mock, fixture Attempt, методы стадий и приватное имя контейнера; инверсия AutoRemove исправлена. make check, адресные race и Docker CPU Create/replay/exited прошли. Runtime нового сценария по-прежнему не подключён.
 <!-- SECTION:NOTES:END -->

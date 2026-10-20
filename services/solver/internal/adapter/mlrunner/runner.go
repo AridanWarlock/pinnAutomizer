@@ -7,21 +7,30 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/api/types/mount"
-	"github.com/moby/moby/client"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/docker"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
-type PinnRunner struct {
-	cli *client.Client
+type Docker interface {
+	Create(ctx context.Context, cfg docker.Config) (string, error)
+	Inspect(ctx context.Context, id string) (docker.Container, error)
+	Start(ctx context.Context, id string) error
+	Wait(ctx context.Context, id string) (docker.Exit, error)
+	Logs(ctx context.Context, id string) (io.ReadCloser, error)
+	Close() error
+}
 
-	pinnImage          string
-	hostTasksDataDir   string
-	hostTasksOutputDir string
+type PinnRunner struct {
+	docker Docker
+
+	containerNamePrefix string
+	pinnImage           string
+	hostTasksDataDir    string
+	hostTasksOutputDir  string
 
 	timeout time.Duration
 
@@ -29,17 +38,18 @@ type PinnRunner struct {
 }
 
 func NewPinnRunner(cfg Config, log zerolog.Logger) (*PinnRunner, error) {
-	cli, err := client.New(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := docker.New()
 	if err != nil {
 		return nil, fmt.Errorf("create docker client: %w", err)
 	}
 
 	return &PinnRunner{
-		cli: cli,
+		docker: cli,
 
-		pinnImage:          cfg.Image,
-		hostTasksDataDir:   cfg.HostTasksDataDir,
-		hostTasksOutputDir: cfg.HostTasksOutputDir,
+		containerNamePrefix: cfg.ContainerNamePrefix,
+		pinnImage:           cfg.Image,
+		hostTasksDataDir:    cfg.HostTasksDataDir,
+		hostTasksOutputDir:  cfg.HostTasksOutputDir,
 
 		timeout: cfg.Timeout,
 
@@ -67,50 +77,37 @@ func (r *PinnRunner) Run(ctx context.Context, task domain.MlTask) (int, error) {
 }
 
 func (r *PinnRunner) run(ctx context.Context, task domain.MlTask, command []string) (int, error) {
-	createOpts := r.setupContainer(task, command)
-	resp, err := r.cli.ContainerCreate(ctx, createOpts)
+	createOpts := r.setupContainer(task.TaskID, task.Mode, command)
+	id, err := r.docker.Create(ctx, createOpts)
 	if err != nil {
 		return 0, fmt.Errorf("create container: %w", err)
 	}
 
 	go func() {
 		time.Sleep(1 * time.Second) // Даем контейнеру время запуститься
-		logs, _ := r.cli.ContainerLogs(ctx, resp.ID, client.ContainerLogsOptions{
-			ShowStdout: true,
-			ShowStderr: true,
-			Follow:     true,
-		})
+		logs, _ := r.docker.Logs(ctx, id)
 		if logs != nil {
 			defer logs.Close()
 			io.Copy(r.log, logs)
 		}
 	}()
 
-	_, err = r.cli.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{})
+	err = r.docker.Start(ctx, id)
 	if err != nil {
 		return 0, fmt.Errorf("failed to start container: %w", err)
 	}
 
-	wait := r.cli.ContainerWait(
-		ctx,
-		resp.ID,
-		client.ContainerWaitOptions{Condition: container.WaitConditionNotRunning},
-	)
-
-	select {
-	case err := <-wait.Error:
+	res, err := r.docker.Wait(ctx, id)
+	if err != nil {
 		return -1, fmt.Errorf("run container: %w", err)
-	case res := <-wait.Result:
-		code := int(res.StatusCode)
-		if code != 0 {
-			return code, fmt.Errorf("run container: %v", res.Error)
-		}
-
-		return 0, nil
 	}
+	if res.Code != 0 {
+		return res.Code, fmt.Errorf("run container: %s", res.Error)
+	}
+	return 0, nil
 }
 
-func (r *PinnRunner) setupContainer(task domain.MlTask, command []string) client.ContainerCreateOptions {
+func (r *PinnRunner) setupContainer(taskID uuid.UUID, mode string, command []string) docker.Config {
 	env := []string{
 		// Python
 		"PYTHONUNBUFFERED=1",
@@ -138,131 +135,66 @@ func (r *PinnRunner) setupContainer(task domain.MlTask, command []string) client
 		"CONDA_PKGS_DIRS=/tmp/conda_pkgs",
 	}
 
-	containerConfig := &container.Config{
-		Image: r.pinnImage,
-		Cmd:   command,
-		Tty:   false,
-
-		Env: env,
-	}
-
-	hostDataPath := filepath.Join(r.hostTasksDataDir, task.TaskID.String())
-	hostOutputPath := filepath.Join(r.hostTasksOutputDir, task.TaskID.String())
-
-	mounts := []mount.Mount{
-		{
-			Type:     mount.TypeBind,
-			Source:   hostDataPath,
-			Target:   "/task_data",
-			ReadOnly: true,
-			BindOptions: &mount.BindOptions{
-				Propagation: mount.PropagationRPrivate,
+	return docker.Config{
+		Name:    fmt.Sprintf("pinn-solver-%s-%d", taskID, time.Now().Unix()),
+		Image:   r.pinnImage,
+		Command: command,
+		Env:     env,
+		Mounts: []docker.Mount{
+			{
+				Source:   filepath.Join(r.hostTasksDataDir, taskID.String()),
+				Target:   "/task_data",
+				ReadOnly: true,
+			},
+			{
+				Source: filepath.Join(r.hostTasksOutputDir, taskID.String()),
+				Target: "/task_output",
+			},
+			{
+				Target:     "/tmp",
+				TmpfsBytes: 1024 * 1024 * 1024,
+				TmpfsMode:  0777,
+			},
+			{
+				Target:     "/var/tmp",
+				TmpfsBytes: 512 * 1024 * 1024,
+				TmpfsMode:  0777,
+			},
+			{
+				Target:     "/usr/tmp",
+				TmpfsBytes: 512 * 1024 * 1024,
+				TmpfsMode:  0777,
+			},
+			{
+				Target:     "/root/.cache",
+				TmpfsBytes: 1024 * 1024 * 1024,
+				TmpfsMode:  0777,
+			},
+			{
+				Target:     "/root/.config",
+				TmpfsBytes: 100 * 1024 * 1024,
+				TmpfsMode:  0777,
+			},
+			{
+				Target:     "/root/.torch",
+				TmpfsBytes: 512 * 1024 * 1024,
+				TmpfsMode:  0777,
+			},
+			{
+				Target:     "/dev/shm",
+				TmpfsBytes: 1024 * 1024 * 1024,
+				TmpfsMode:  0777,
 			},
 		},
-		{
-			Type:     mount.TypeBind,
-			Source:   hostOutputPath,
-			Target:   "/task_output",
-			ReadOnly: false,
-			BindOptions: &mount.BindOptions{
-				Propagation: mount.PropagationRPrivate,
-			},
-		},
-		{
-			Type:   mount.TypeTmpfs,
-			Target: "/tmp",
-			TmpfsOptions: &mount.TmpfsOptions{
-				SizeBytes: 1024 * 1024 * 1024, // 1 GB
-				Mode:      0777,
-			},
-		},
-		{
-			Type:   mount.TypeTmpfs,
-			Target: "/var/tmp",
-			TmpfsOptions: &mount.TmpfsOptions{
-				SizeBytes: 512 * 1024 * 1024, // 512 MB
-				Mode:      0777,
-			},
-		},
-		{
-			Type:   mount.TypeTmpfs,
-			Target: "/usr/tmp",
-			TmpfsOptions: &mount.TmpfsOptions{
-				SizeBytes: 512 * 1024 * 1024,
-				Mode:      0777,
-			},
-		},
-		{
-			Type:   mount.TypeTmpfs,
-			Target: "/root/.cache",
-			TmpfsOptions: &mount.TmpfsOptions{
-				SizeBytes: 1024 * 1024 * 1024, // 1 GB
-				Mode:      0777,
-			},
-		},
-		{
-			Type:   mount.TypeTmpfs,
-			Target: "/root/.config",
-			TmpfsOptions: &mount.TmpfsOptions{
-				SizeBytes: 100 * 1024 * 1024, // 100 MB
-				Mode:      0777,
-			},
-		},
-		{
-			Type:   mount.TypeTmpfs,
-			Target: "/root/.torch",
-			TmpfsOptions: &mount.TmpfsOptions{
-				SizeBytes: 512 * 1024 * 1024,
-				Mode:      0777,
-			},
-		},
-		{
-			Type:   mount.TypeTmpfs,
-			Target: "/dev/shm",
-			TmpfsOptions: &mount.TmpfsOptions{
-				SizeBytes: 1024 * 1024 * 1024, // 1 GB для shared memory
-				Mode:      0777,
-			},
-		},
-	}
-
-	var deviceRequests []container.DeviceRequest
-	switch task.Mode {
-	case domain.MlTaskModeTrain, domain.MlTaskModeRetrain:
-		deviceRequests = append(deviceRequests, container.DeviceRequest{
-			Driver: "nvidia",
-			Count:  1,
-			Capabilities: [][]string{
-				{"gpu"},
-				{"compute", "utility"},
-			},
-		})
-	case domain.MlTaskModePredict:
-	}
-
-	hostConfig := &container.HostConfig{
-		NetworkMode: "none",
-		Mounts:      mounts,
-		Resources: container.Resources{
-			DeviceRequests: deviceRequests,
-		},
+		GPU:            mode == domain.MlTaskModeTrain || mode == domain.MlTaskModeRetrain,
+		NetworkMode:    "none",
 		AutoRemove:     true,
 		ReadonlyRootfs: true,
-		SecurityOpt: []string{
-			"no-new-privileges:true",
-		},
-		CapDrop: []string{"ALL"},
+		SecurityOpt:    []string{"no-new-privileges:true"},
+		CapDrop:        []string{"ALL"},
 	}
-
-	createOptions := client.ContainerCreateOptions{
-		Config:     containerConfig,
-		HostConfig: hostConfig,
-		Name:       fmt.Sprintf("pinn-solver-%s-%d", task.TaskID, time.Now().Unix()),
-	}
-
-	return createOptions
 }
 
 func (r *PinnRunner) Close() error {
-	return r.cli.Close()
+	return r.docker.Close()
 }

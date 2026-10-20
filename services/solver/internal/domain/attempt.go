@@ -192,3 +192,11 @@ func (e Event) Validate() error {
 	}
 	return nil
 }
+
+func (a Attempt) NeedsContainer() bool {
+	return a.State == AttemptAccepted
+}
+
+func (a Attempt) CanSendStart() bool {
+	return a.State == AttemptStartRequested
+}

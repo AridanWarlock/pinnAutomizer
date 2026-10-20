@@ -8,8 +8,6 @@ require (
 	github.com/AridanWarlock/pinnAutomizer/pkg v0.0.0-00010101000000-000000000000
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/google/uuid v1.6.0
-	github.com/moby/moby/api v1.52.0
-	github.com/moby/moby/client v0.1.0
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.11.1
@@ -19,6 +17,8 @@ require (
 	github.com/georgysavva/scany/v2 v2.1.4 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
+	github.com/moby/moby/api v1.52.0 // indirect
+	github.com/moby/moby/client v0.1.0 // indirect
 	modernc.org/sqlite v1.60.1 // indirect
 )
 
