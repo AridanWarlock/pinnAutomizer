@@ -36,8 +36,8 @@ type usecase struct {
 }
 
 func New(sqlite SQLite, start TasksStart, observe TasksObserve, batch limit.Limit, attemptTimeout time.Duration) (Usecase, error) {
-	if sqlite == nil || start == nil || observe == nil || attemptTimeout <= 0 {
-		return nil, fmt.Errorf("%w: recovery dependencies and positive attempt timeout required", errs.ErrInvalidArgument)
+	if attemptTimeout <= 0 {
+		return nil, fmt.Errorf("%w: positive attempt timeout required", errs.ErrInvalidArgument)
 	}
 	return &usecase{
 		sqlite:         sqlite,
@@ -48,12 +48,12 @@ func New(sqlite SQLite, start TasksStart, observe TasksObserve, batch limit.Limi
 	}, nil
 }
 
-func (u *usecase) RecoverPending(ctx context.Context, afterRunID uuid.UUID) (Output, error) {
-	out := Output{NextRunID: afterRunID}
+func (u *usecase) RecoverPending(ctx context.Context, in Input) (Output, error) {
+	out := Output{NextRunID: in.AfterRunID}
 	if err := ctx.Err(); err != nil {
 		return out, err
 	}
-	attempts, err := u.sqlite.GetUnfinishedAttempts(ctx, afterRunID, u.batch)
+	attempts, err := u.sqlite.GetUnfinishedAttempts(ctx, in.AfterRunID, u.batch)
 	if err != nil {
 		return out, fmt.Errorf("list unfinished attempts: %w", err)
 	}

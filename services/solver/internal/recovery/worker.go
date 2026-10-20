@@ -13,7 +13,7 @@ import (
 )
 
 type Usecase interface {
-	RecoverPending(ctx context.Context, afterRunID uuid.UUID) (tasksRecover.Output, error)
+	RecoverPending(ctx context.Context, in tasksRecover.Input) (tasksRecover.Output, error)
 }
 
 type Worker struct {
@@ -23,8 +23,8 @@ type Worker struct {
 }
 
 func NewWorker(usecase Usecase, interval time.Duration, log zerolog.Logger) (*Worker, error) {
-	if usecase == nil || interval <= 0 {
-		return nil, fmt.Errorf("%w: recovery usecase and positive interval required", errs.ErrInvalidArgument)
+	if interval <= 0 {
+		return nil, fmt.Errorf("%w: positive interval required", errs.ErrInvalidArgument)
 	}
 	return &Worker{
 		usecase:  usecase,
@@ -43,7 +43,8 @@ func (w *Worker) Run(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		out, err := w.usecase.RecoverPending(ctx, cursor)
+		in := tasksRecover.Input{AfterRunID: cursor}
+		out, err := w.usecase.RecoverPending(ctx, in)
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
