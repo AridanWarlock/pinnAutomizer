@@ -56,12 +56,13 @@ func TestObserveAttemptDoesNotInventCompletion(t *testing.T) {
 				},
 			}
 			observed, err := (&PinnRunner{docker: client, pinnImage: "test-image"}).ObserveAttempt(t.Context(), a)
-			if state == "running" {
+			switch state {
+			case "running":
 				require.NoError(t, err)
 				require.Equal(t, a, observed)
-			} else if state == "canceled" {
+			case "canceled":
 				require.ErrorIs(t, err, context.Canceled)
-			} else {
+			default:
 				require.ErrorIs(t, err, domain.ErrStartOutcomeUnknown)
 			}
 			require.False(t, observed.IsFinished())
