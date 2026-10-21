@@ -24,8 +24,17 @@ const (
 )
 
 var attemptColumns = []string{
-	attemptsRunID, attemptsTaskID, attemptsMode, attemptsState, attemptsContainerID,
-	attemptsCreatedAt, attemptsDeadline, attemptsCompletedAt, attemptsExitCode, attemptsError, attemptsCleanedAt,
+	attemptsRunID,
+	attemptsTaskID,
+	attemptsMode,
+	attemptsState,
+	attemptsContainerID,
+	attemptsCreatedAt,
+	attemptsDeadline,
+	attemptsCompletedAt,
+	attemptsExitCode,
+	attemptsError,
+	attemptsCleanedAt,
 }
 
 type attemptRow struct {
@@ -44,8 +53,17 @@ type attemptRow struct {
 
 func (r attemptRow) Values() []any {
 	return []any{
-		r.RunID, r.TaskID, r.Mode, r.State, r.ContainerID,
-		r.CreatedAt, r.Deadline, r.CompletedAt, r.ExitCode, r.Error, r.CleanedAt,
+		r.RunID,
+		r.TaskID,
+		r.Mode,
+		r.State,
+		r.ContainerID,
+		r.CreatedAt,
+		r.Deadline,
+		r.CompletedAt,
+		r.ExitCode,
+		r.Error,
+		r.CleanedAt,
 	}
 }
 

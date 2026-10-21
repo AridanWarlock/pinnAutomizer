@@ -20,9 +20,11 @@ func (r *PinnRunner) CleanupAttempt(ctx context.Context, a domain.Attempt) error
 	if !a.NeedsCleanup() {
 		return nil
 	}
-	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
+	// Preserve request values, but allow cleanup to finish after caller cancellation.
+	// The independent timeout bounds shutdown delay; the journal marker can be retried.
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
 	defer cancel()
-	c, err := r.inspectAttempt(cleanup, a.ContainerID, a)
+	c, err := r.inspectAttempt(cleanupCtx, a.ContainerID, a)
 	if errors.Is(err, errs.ErrNotFound) {
 		return nil
 	}
@@ -32,7 +34,7 @@ func (r *PinnRunner) CleanupAttempt(ctx context.Context, a domain.Attempt) error
 	if !c.IsFinished() {
 		return fmt.Errorf("%w: cannot clean container in state %q", errs.ErrConflict, c.State)
 	}
-	err = r.docker.RemoveStopped(cleanup, a.ContainerID)
+	err = r.docker.RemoveStopped(cleanupCtx, a.ContainerID)
 	if errors.Is(err, errs.ErrNotFound) {
 		return nil
 	}

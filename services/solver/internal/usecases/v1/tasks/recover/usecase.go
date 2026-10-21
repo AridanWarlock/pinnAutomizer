@@ -83,15 +83,15 @@ func (u *usecase) RecoverPending(ctx context.Context, in Input) (Output, error) 
 func (u *usecase) recoverAttempt(ctx context.Context, a domain.Attempt) error {
 	ctx, cancel := context.WithTimeout(ctx, u.attemptTimeout)
 	defer cancel()
-	if a.IsFinished() {
-		_, err := u.tasksCleanup.CleanupTask(ctx, tasksCleanup.Input{RunID: a.RunID})
-		return err
-	}
 	if !a.StartAlreadyHandled() {
 		if _, err := u.tasksStart.StartTask(ctx, tasksStart.Input{RunID: a.RunID}); err != nil {
 			return err
 		}
 	}
-	_, err := u.tasksObserve.ObserveTask(ctx, tasksObserve.Input{RunID: a.RunID})
+	if !a.IsFinished() {
+		_, err := u.tasksObserve.ObserveTask(ctx, tasksObserve.Input{RunID: a.RunID})
+		return err
+	}
+	_, err := u.tasksCleanup.CleanupTask(ctx, tasksCleanup.Input{RunID: a.RunID})
 	return err
 }
