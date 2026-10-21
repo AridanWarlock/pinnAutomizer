@@ -19,6 +19,7 @@ func newAttemptRow(a domain.Attempt) attemptRow {
 		CreatedAt:   shared.Timestamp(a.CreatedAt),
 		Deadline:    shared.NullableTimestamp(a.Deadline),
 		CompletedAt: shared.NullableTimestamp(a.CompletedAt),
+		CleanedAt:   shared.NullableTimestamp(a.CleanedAt),
 		ExitCode:    a.ExitCode,
 		Error:       a.Error,
 	}
@@ -34,6 +35,7 @@ func (r attemptRow) toDomain() domain.Attempt {
 		CreatedAt:   r.CreatedAt.Time,
 		Deadline:    shared.Time(r.Deadline),
 		CompletedAt: shared.Time(r.CompletedAt),
+		CleanedAt:   shared.Time(r.CleanedAt),
 		ExitCode:    r.ExitCode,
 		Error:       r.Error,
 	})

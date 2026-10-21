@@ -18,6 +18,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/adapter/sqlite"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain/fixtures"
+	tasksCleanup "github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/cleanup"
 	tasksObserve "github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/observe"
 	tasksStart "github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/start"
 )
@@ -109,7 +110,7 @@ func TestRecoveryReopensIntentWithoutRestartingDockerIntegration(t *testing.T) {
 			}, zerolog.Nop())
 			require.NoError(t, err)
 			defer runner.Close()
-			uc, err := New(repo, tasksStart.New(repo, runner, time.Minute), tasksObserve.New(repo, runner), limit.MustNew(2), 5*time.Second)
+			uc, err := New(repo, tasksStart.New(repo, runner, time.Minute), tasksObserve.New(repo, runner), tasksCleanup.New(repo, runner), limit.MustNew(2), 5*time.Second)
 			require.NoError(t, err)
 			out, err := uc.RecoverPending(ctx, Input{})
 			require.Equal(t, a.RunID, out.NextRunID)

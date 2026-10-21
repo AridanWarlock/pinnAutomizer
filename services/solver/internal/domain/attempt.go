@@ -33,6 +33,7 @@ type Attempt struct {
 	CreatedAt   time.Time `validate:"required"`
 	Deadline    *time.Time
 	CompletedAt *time.Time
+	CleanedAt   *time.Time
 	ExitCode    *int
 	Error       *string
 }
@@ -81,7 +82,13 @@ func (a Attempt) Validate() error {
 		invalid = true
 	}
 	if a.State != AttemptFinished {
-		invalid = invalid || a.CompletedAt != nil || a.ExitCode != nil || a.Error != nil
+		invalid = invalid || a.CompletedAt != nil || a.CleanedAt != nil || a.ExitCode != nil || a.Error != nil
+	}
+	if a.CleanedAt != nil {
+		invalid = invalid || a.CleanedAt.IsZero() || a.ContainerID == "" || a.CompletedAt == nil
+		if a.CompletedAt != nil {
+			invalid = invalid || a.CleanedAt.Before(*a.CompletedAt)
+		}
 	}
 	if invalid {
 		return fmt.Errorf("%w: inconsistent attempt state", errs.ErrInvalidArgument)
@@ -222,4 +229,21 @@ func (a *Attempt) FinishTimedOut(code int, now time.Time) (core.Changed, error) 
 	}
 	failure := "execution deadline exceeded"
 	return a.Finish(&code, &failure, now)
+}
+
+func (a Attempt) NeedsCleanup() bool {
+	return a.IsFinished() && a.ContainerID != "" && a.CleanedAt == nil
+}
+
+func (a *Attempt) MarkCleaned(now time.Time) (core.Changed, error) {
+	if !a.IsFinished() || a.ContainerID == "" {
+		return false, errs.ErrConflict
+	}
+	if a.CleanedAt != nil {
+		return false, nil
+	}
+	next := *a
+	cleaned := now.UTC()
+	next.CleanedAt = &cleaned
+	return a.apply(next)
 }

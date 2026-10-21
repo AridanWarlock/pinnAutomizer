@@ -10,6 +10,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/cleanup"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/observe"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/start"
 	"github.com/google/uuid"
@@ -97,8 +98,8 @@ var _ SQLite = &MockSQLite{}
 //
 //		// make and configure a mocked SQLite
 //		mockedSQLite := &MockSQLite{
-//			GetUnfinishedAttemptsFunc: func(ctx context.Context, afterRunID uuid.UUID, batch limit.Limit) ([]domain.Attempt, error) {
-//				panic("mock out the GetUnfinishedAttempts method")
+//			GetRecoverableAttemptsFunc: func(ctx context.Context, afterRunID uuid.UUID, batch limit.Limit) ([]domain.Attempt, error) {
+//				panic("mock out the GetRecoverableAttempts method")
 //			},
 //		}
 //
@@ -107,13 +108,13 @@ var _ SQLite = &MockSQLite{}
 //
 //	}
 type MockSQLite struct {
-	// GetUnfinishedAttemptsFunc mocks the GetUnfinishedAttempts method.
-	GetUnfinishedAttemptsFunc func(ctx context.Context, afterRunID uuid.UUID, batch limit.Limit) ([]domain.Attempt, error)
+	// GetRecoverableAttemptsFunc mocks the GetRecoverableAttempts method.
+	GetRecoverableAttemptsFunc func(ctx context.Context, afterRunID uuid.UUID, batch limit.Limit) ([]domain.Attempt, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// GetUnfinishedAttempts holds details about calls to the GetUnfinishedAttempts method.
-		GetUnfinishedAttempts []struct {
+		// GetRecoverableAttempts holds details about calls to the GetRecoverableAttempts method.
+		GetRecoverableAttempts []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// AfterRunID is the afterRunID argument value.
@@ -122,13 +123,13 @@ type MockSQLite struct {
 			Batch limit.Limit
 		}
 	}
-	lockGetUnfinishedAttempts sync.RWMutex
+	lockGetRecoverableAttempts sync.RWMutex
 }
 
-// GetUnfinishedAttempts calls GetUnfinishedAttemptsFunc.
-func (mock *MockSQLite) GetUnfinishedAttempts(ctx context.Context, afterRunID uuid.UUID, batch limit.Limit) ([]domain.Attempt, error) {
-	if mock.GetUnfinishedAttemptsFunc == nil {
-		panic("MockSQLite.GetUnfinishedAttemptsFunc: method is nil but SQLite.GetUnfinishedAttempts was just called")
+// GetRecoverableAttempts calls GetRecoverableAttemptsFunc.
+func (mock *MockSQLite) GetRecoverableAttempts(ctx context.Context, afterRunID uuid.UUID, batch limit.Limit) ([]domain.Attempt, error) {
+	if mock.GetRecoverableAttemptsFunc == nil {
+		panic("MockSQLite.GetRecoverableAttemptsFunc: method is nil but SQLite.GetRecoverableAttempts was just called")
 	}
 	callInfo := struct {
 		Ctx        context.Context
@@ -139,17 +140,17 @@ func (mock *MockSQLite) GetUnfinishedAttempts(ctx context.Context, afterRunID uu
 		AfterRunID: afterRunID,
 		Batch:      batch,
 	}
-	mock.lockGetUnfinishedAttempts.Lock()
-	mock.calls.GetUnfinishedAttempts = append(mock.calls.GetUnfinishedAttempts, callInfo)
-	mock.lockGetUnfinishedAttempts.Unlock()
-	return mock.GetUnfinishedAttemptsFunc(ctx, afterRunID, batch)
+	mock.lockGetRecoverableAttempts.Lock()
+	mock.calls.GetRecoverableAttempts = append(mock.calls.GetRecoverableAttempts, callInfo)
+	mock.lockGetRecoverableAttempts.Unlock()
+	return mock.GetRecoverableAttemptsFunc(ctx, afterRunID, batch)
 }
 
-// GetUnfinishedAttemptsCalls gets all the calls that were made to GetUnfinishedAttempts.
+// GetRecoverableAttemptsCalls gets all the calls that were made to GetRecoverableAttempts.
 // Check the length with:
 //
-//	len(mockedSQLite.GetUnfinishedAttemptsCalls())
-func (mock *MockSQLite) GetUnfinishedAttemptsCalls() []struct {
+//	len(mockedSQLite.GetRecoverableAttemptsCalls())
+func (mock *MockSQLite) GetRecoverableAttemptsCalls() []struct {
 	Ctx        context.Context
 	AfterRunID uuid.UUID
 	Batch      limit.Limit
@@ -159,9 +160,9 @@ func (mock *MockSQLite) GetUnfinishedAttemptsCalls() []struct {
 		AfterRunID uuid.UUID
 		Batch      limit.Limit
 	}
-	mock.lockGetUnfinishedAttempts.RLock()
-	calls = mock.calls.GetUnfinishedAttempts
-	mock.lockGetUnfinishedAttempts.RUnlock()
+	mock.lockGetRecoverableAttempts.RLock()
+	calls = mock.calls.GetRecoverableAttempts
+	mock.lockGetRecoverableAttempts.RUnlock()
 	return calls
 }
 
@@ -306,5 +307,77 @@ func (mock *MockTasksObserve) ObserveTaskCalls() []struct {
 	mock.lockObserveTask.RLock()
 	calls = mock.calls.ObserveTask
 	mock.lockObserveTask.RUnlock()
+	return calls
+}
+
+// Ensure that MockTasksCleanup does implement TasksCleanup.
+// If this is not the case, regenerate this file with mockery.
+var _ TasksCleanup = &MockTasksCleanup{}
+
+// MockTasksCleanup is a mock implementation of TasksCleanup.
+//
+//	func TestSomethingThatUsesTasksCleanup(t *testing.T) {
+//
+//		// make and configure a mocked TasksCleanup
+//		mockedTasksCleanup := &MockTasksCleanup{
+//			CleanupTaskFunc: func(ctx context.Context, in tasksCleanup.Input) (tasksCleanup.Output, error) {
+//				panic("mock out the CleanupTask method")
+//			},
+//		}
+//
+//		// use mockedTasksCleanup in code that requires TasksCleanup
+//		// and then make assertions.
+//
+//	}
+type MockTasksCleanup struct {
+	// CleanupTaskFunc mocks the CleanupTask method.
+	CleanupTaskFunc func(ctx context.Context, in tasksCleanup.Input) (tasksCleanup.Output, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// CleanupTask holds details about calls to the CleanupTask method.
+		CleanupTask []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// In is the in argument value.
+			In tasksCleanup.Input
+		}
+	}
+	lockCleanupTask sync.RWMutex
+}
+
+// CleanupTask calls CleanupTaskFunc.
+func (mock *MockTasksCleanup) CleanupTask(ctx context.Context, in tasksCleanup.Input) (tasksCleanup.Output, error) {
+	if mock.CleanupTaskFunc == nil {
+		panic("MockTasksCleanup.CleanupTaskFunc: method is nil but TasksCleanup.CleanupTask was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		In  tasksCleanup.Input
+	}{
+		Ctx: ctx,
+		In:  in,
+	}
+	mock.lockCleanupTask.Lock()
+	mock.calls.CleanupTask = append(mock.calls.CleanupTask, callInfo)
+	mock.lockCleanupTask.Unlock()
+	return mock.CleanupTaskFunc(ctx, in)
+}
+
+// CleanupTaskCalls gets all the calls that were made to CleanupTask.
+// Check the length with:
+//
+//	len(mockedTasksCleanup.CleanupTaskCalls())
+func (mock *MockTasksCleanup) CleanupTaskCalls() []struct {
+	Ctx context.Context
+	In  tasksCleanup.Input
+} {
+	var calls []struct {
+		Ctx context.Context
+		In  tasksCleanup.Input
+	}
+	mock.lockCleanupTask.RLock()
+	calls = mock.calls.CleanupTask
+	mock.lockCleanupTask.RUnlock()
 	return calls
 }

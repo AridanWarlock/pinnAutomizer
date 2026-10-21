@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-20 12:32'
+updated_date: '2026-10-21 17:38'
 labels: []
 dependencies: []
 priority: high
@@ -29,7 +29,7 @@ At-most-once чтение и отсутствие устойчивой попы�
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Текущий PR: DeadlineExceeded у Attempt, FinishedAt и Stop в shared Docker API; PinnRunner при просроченном running отправляет Stop с независимым ограниченным контекстом и подтверждает exited через Inspect до формирования итога. Exited до deadline сохраняет успех; неопределённый Start/Stop не даёт ложного завершения. Тесты unit/race и Docker CPU. Отдельно после review: устойчивый маркер и повтор cleanup, затем wiring/rollout.
+Текущий PR: durable cleaned_at после удаления завершённого контейнера; отдельный cleanup usecase и безопасный RemoveStopped в shared Docker. Recovery выбирает незавершённые и завершённые неочищенные попытки. Повтор после удаления/сбоя записи не запускает контейнер и не меняет результат/outbox. Up-only миграция, unit/SQLite/Docker/race проверки. Runtime wiring — следующим PR после review.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -56,4 +56,6 @@ Review checkpoint: TASK-3.1/3.2/3.3 завершены отдельными ко
 Recovery — PR https://github.com/AridanWarlock/pinnAutomizer/pull/20 (~1,1 тыс. строк). make check, адресные race, SQLite pagination/reopen и Docker CPU intent/exited прошли. Worker не подключён в runtime; следующий этап — deadline/Stop/cleanup, затем wiring/rollout.
 
 PR #21: https://github.com/AridanWarlock/pinnAutomizer/pull/21 — deadline и подтверждённый Docker Stop. make check, адресный race и Docker CPU integration (Stop → отказ outbox → повтор) прошли. Следом: устойчивый cleanup; runtime ещё не подключён.
+
+PR #22: https://github.com/AridanWarlock/pinnAutomizer/pull/22 — durable cleaned_at, cleanup usecase, RemoveStopped без Force, recovery завершённых неочищенных попыток. make check и адресные race/SQLite/Docker CPU прошли, включая удаление → отказ записи → reopen → повтор и upgrade старой схемы. Runtime wiring остаётся следующим этапом.
 <!-- SECTION:NOTES:END -->
