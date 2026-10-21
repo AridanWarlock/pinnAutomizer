@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
 
 type State string
@@ -44,20 +45,24 @@ type Mount struct {
 	TmpfsMode  uint32
 }
 
+type Exit struct {
+	Code  int
+	Error string
+}
+
 // ContainerInput is an untrusted snapshot used to restore a Container.
 type ContainerInput struct {
-	ID            string
+	ID            string `validate:"required"`
 	Name          string
 	Image         string
 	Labels        map[string]string
 	AutoRemove    bool
 	RestartPolicy string
-	State         State
-	Running       bool
-	StartedAt     time.Time
-	FinishedAt    time.Time
-	ExitCode      int
-	Error         string
+	State         State     `validate:"required,oneof=created running paused restarting removing exited dead"`
+	Running       bool      `validate:"required_if=State running,excluded_if=State exited"`
+	StartedAt     time.Time `validate:"required_if=State running"`
+	FinishedAt    time.Time `validate:"required_if=State exited"`
+	Exit          *Exit     `validate:"required_if=State exited"`
 }
 
 // Container represents a validated Docker container snapshot.
@@ -70,23 +75,19 @@ func NewContainer(in ContainerInput) (Container, error) {
 		return Container{}, err
 	}
 	c.Labels = maps.Clone(in.Labels)
+	if in.Exit != nil {
+		exit := *in.Exit
+		c.Exit = &exit
+	}
 	return c, nil
 }
 
 func (c Container) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("%w: container ID is empty", errs.ErrInvalidArgument)
+	if err := validate.V.Struct(c); err != nil {
+		return fmt.Errorf("%w: %w", errs.ErrInvalidArgument, err)
 	}
-	switch c.State {
-	case StateCreated, StateRunning, StatePaused, StateRestarting, StateRemoving, StateExited, StateDead:
-	default:
-		return fmt.Errorf("%w: unknown container state %q", errs.ErrInvalidArgument, c.State)
-	}
-	if c.State == StateRunning && (!c.Running || c.StartedAt.IsZero()) {
-		return fmt.Errorf("%w: running container has no active execution", errs.ErrInvalidArgument)
-	}
-	if c.State == StateExited && (c.Running || c.StartedAt.IsZero() || c.FinishedAt.IsZero() || c.FinishedAt.Before(c.StartedAt)) {
-		return fmt.Errorf("%w: exited container has no completed execution", errs.ErrInvalidArgument)
+	if c.State == StateExited && (c.StartedAt.IsZero() || c.FinishedAt.Before(c.StartedAt)) {
+		return fmt.Errorf("%w: container finish precedes its execution", errs.ErrInvalidArgument)
 	}
 	return nil
 }
@@ -108,11 +109,14 @@ func (c Container) IsFinished() bool {
 	return c.State == StateExited
 }
 
-type Exit struct {
-	Code  int
-	Error string
-}
-
 func (c Container) IsExited() bool {
 	return c.State == StateExited
+}
+
+func (c Container) HasError() bool {
+	return c.Exit != nil && c.Exit.HasError()
+}
+
+func (e Exit) HasError() bool {
+	return e.Code != 0 || e.Error != ""
 }

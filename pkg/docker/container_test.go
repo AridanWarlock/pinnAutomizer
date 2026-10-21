@@ -33,20 +33,24 @@ func TestNewContainerRejectsInconsistentExecution(t *testing.T) {
 			input: ContainerInput{ID: "id", State: StateRunning, StartedAt: now},
 		},
 		{
+			name:  "exit without result",
+			input: ContainerInput{ID: "id", State: StateExited, StartedAt: now, FinishedAt: now},
+		},
+		{
 			name:  "exit without start",
-			input: ContainerInput{ID: "id", State: StateExited, FinishedAt: now},
+			input: ContainerInput{ID: "id", State: StateExited, Exit: &Exit{}, FinishedAt: now},
 		},
 		{
 			name:  "exit without finish",
-			input: ContainerInput{ID: "id", State: StateExited, StartedAt: now},
+			input: ContainerInput{ID: "id", State: StateExited, Exit: &Exit{}, StartedAt: now},
 		},
 		{
 			name:  "exit still running",
-			input: ContainerInput{ID: "id", State: StateExited, Running: true, StartedAt: now, FinishedAt: now},
+			input: ContainerInput{ID: "id", State: StateExited, Exit: &Exit{}, Running: true, StartedAt: now, FinishedAt: now},
 		},
 		{
 			name:  "finish precedes start",
-			input: ContainerInput{ID: "id", State: StateExited, StartedAt: now, FinishedAt: now.Add(-time.Second)},
+			input: ContainerInput{ID: "id", State: StateExited, Exit: &Exit{}, StartedAt: now, FinishedAt: now.Add(-time.Second)},
 		},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -73,6 +77,7 @@ func TestContainerStatesDescribeConfirmedExecution(t *testing.T) {
 			case StateExited:
 				in.StartedAt = now
 				in.FinishedAt = now
+				in.Exit = &Exit{}
 			}
 			c, err := NewContainer(in)
 			require.NoError(t, err)
@@ -82,6 +87,35 @@ func TestContainerStatesDescribeConfirmedExecution(t *testing.T) {
 			require.Equal(t, state == StateExited, c.IsFinished())
 			in.Labels["owner"] = "other"
 			require.Equal(t, "solver", c.Labels["owner"], "constructor must own its labels")
+		})
+	}
+}
+
+func TestContainerExitReportsFailureAndOwnsResult(t *testing.T) {
+	t.Parallel()
+	for _, scenario := range []struct {
+		name    string
+		exit    Exit
+		failure bool
+	}{
+		{name: "success"},
+		{name: "nonzero code", exit: Exit{Code: 7}, failure: true},
+		{name: "engine error", exit: Exit{Error: "runtime failure"}, failure: true},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			now := time.Now()
+			in := ContainerInput{
+				ID:         "id",
+				State:      StateExited,
+				StartedAt:  now,
+				FinishedAt: now,
+				Exit:       &scenario.exit,
+			}
+			c, err := NewContainer(in)
+			require.NoError(t, err)
+			require.Equal(t, scenario.failure, c.HasError())
+			in.Exit.Code = 99
+			require.NotEqual(t, in.Exit.Code, c.Exit.Code, "constructor must own its exit result")
 		})
 	}
 }

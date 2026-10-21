@@ -15,7 +15,7 @@ import (
 )
 
 func TestExpiredRunningAttemptRequiresConfirmedStop(t *testing.T) {
-	for _, scenario := range []string{"ack", "lost ack", "caller canceled", "still running", "inspect unavailable"} {
+	for _, scenario := range []string{"ack", "lost ack", "caller canceled", "still running", "inspect unavailable", "stop and inspect failed"} {
 		t.Run(scenario, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				a := fixtures.NewAttempt(t, fixtures.WithContainer("container-id"), fixtures.WithStartRequested())
@@ -35,7 +35,7 @@ func TestExpiredRunningAttemptRequiresConfirmedStop(t *testing.T) {
 						}
 					} else {
 						require.NoError(t, ctx.Err(), "confirmation uses an independent context")
-						if scenario == "inspect unavailable" {
+						if scenario == "inspect unavailable" || scenario == "stop and inspect failed" {
 							return docker.Container{}, errors.New("unavailable")
 						}
 					}
@@ -47,18 +47,19 @@ func TestExpiredRunningAttemptRequiresConfirmedStop(t *testing.T) {
 					require.True(t, bounded)
 					require.Equal(t, a.ContainerID, id)
 					require.Equal(t, stopGracePeriod, grace)
-					if scenario != "still running" && scenario != "inspect unavailable" {
+					if scenario != "still running" && scenario != "inspect unavailable" && scenario != "stop and inspect failed" {
 						c.Running = false
 						c.State = docker.StateExited
+						c.Exit = &docker.Exit{}
 						c.FinishedAt = time.Now()
 					}
-					if scenario == "lost ack" {
+					if scenario == "lost ack" || scenario == "stop and inspect failed" {
 						return errors.New("response lost")
 					}
 					return nil
 				}
 				result, err := (&PinnRunner{docker: client, pinnImage: "test-image"}).ObserveAttempt(ctx, a)
-				if scenario == "still running" || scenario == "inspect unavailable" {
+				if scenario == "still running" || (scenario == "inspect unavailable" || scenario == "stop and inspect failed") {
 					require.ErrorIs(t, err, domain.ErrStopOutcomeUnknown)
 					require.False(t, result.IsFinished())
 				} else {
@@ -67,6 +68,11 @@ func TestExpiredRunningAttemptRequiresConfirmedStop(t *testing.T) {
 					require.Equal(t, "execution deadline exceeded", *result.Error)
 				}
 				require.Len(t, client.StopCalls(), 1)
+				require.Len(t, client.InspectCalls(), 2, "reconcile Stop once, including a lost response")
+				if scenario == "stop and inspect failed" {
+					require.ErrorContains(t, err, "response lost")
+					require.ErrorContains(t, err, "unavailable")
+				}
 				require.Empty(t, client.StartCalls())
 				require.Equal(t, original, a)
 			})
@@ -80,6 +86,7 @@ func TestObservedExitUsesFinishTimeForDeadline(t *testing.T) {
 			a := fixtures.NewAttempt(t, fixtures.WithContainer("container-id"), fixtures.WithStartRequested())
 			c := ownedContainer(a)
 			c.State = docker.StateExited
+			c.Exit = &docker.Exit{}
 			c.StartedAt = time.Now()
 			c.FinishedAt = a.Deadline.Add(-time.Nanosecond)
 			if late {

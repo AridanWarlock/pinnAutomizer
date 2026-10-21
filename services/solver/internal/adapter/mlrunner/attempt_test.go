@@ -134,6 +134,7 @@ func TestStartContainerNeverRetriesStart(t *testing.T) {
 					existing.StartedAt = time.Now()
 					if state == "exited" {
 						existing.FinishedAt = time.Now()
+						existing.Exit = &docker.Exit{}
 					}
 				}
 				return errors.New("lost start response")

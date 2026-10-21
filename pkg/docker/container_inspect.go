@@ -21,6 +21,13 @@ func NewContainerFromInspect(raw container.InspectResponse) (Container, error) {
 	if err != nil {
 		return Container{}, fmt.Errorf("parse container finish time: %w", err)
 	}
+	var exit *Exit
+	if raw.State.Status == container.StateExited {
+		exit = &Exit{
+			Code:  raw.State.ExitCode,
+			Error: raw.State.Error,
+		}
+	}
 	return NewContainer(ContainerInput{
 		ID:            raw.ID,
 		Name:          raw.Name,
@@ -32,7 +39,6 @@ func NewContainerFromInspect(raw container.InspectResponse) (Container, error) {
 		Running:       raw.State.Running,
 		StartedAt:     started,
 		FinishedAt:    finished,
-		ExitCode:      raw.State.ExitCode,
-		Error:         raw.State.Error,
+		Exit:          exit,
 	})
 }
