@@ -13,6 +13,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain/fixtures"
+	tasksCleanup "github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/cleanup"
 	tasksObserve "github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/observe"
 	tasksStart "github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/start"
 )
@@ -32,7 +33,7 @@ func TestRecoveryStartsOnlyBeforeDurableIntent(t *testing.T) {
 			}
 			failure := errors.New("start unavailable")
 			sqlite := &MockSQLite{
-				GetUnfinishedAttemptsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.Attempt, error) {
+				GetRecoverableAttemptsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.Attempt, error) {
 					return []domain.Attempt{a}, nil
 				},
 			}
@@ -51,7 +52,7 @@ func TestRecoveryStartsOnlyBeforeDurableIntent(t *testing.T) {
 					return tasksObserve.Output{}, nil
 				},
 			}
-			uc, err := New(sqlite, start, observe, limit.MustNew(2), time.Second)
+			uc, err := New(sqlite, start, observe, &MockTasksCleanup{}, limit.MustNew(2), time.Second)
 			require.NoError(t, err)
 			out, err := uc.RecoverPending(t.Context(), Input{})
 			require.Equal(t, a.RunID, out.NextRunID)
@@ -75,7 +76,7 @@ func TestRecoveryAdvancesPastUnknownStartAndTimedOutAttempt(t *testing.T) {
 		a := fixtures.NewAttempt(t, fixtures.WithContainer("a"), fixtures.WithStartRequested())
 		b := fixtures.NewAttempt(t, fixtures.WithContainer("b"), fixtures.WithStartRequested())
 		sqlite := &MockSQLite{
-			GetUnfinishedAttemptsFunc: func(_ context.Context, after uuid.UUID, batch limit.Limit) ([]domain.Attempt, error) {
+			GetRecoverableAttemptsFunc: func(_ context.Context, after uuid.UUID, batch limit.Limit) ([]domain.Attempt, error) {
 				require.Equal(t, uint64(2), batch.Uint64())
 				if after == uuid.Nil {
 					return []domain.Attempt{a, b}, nil
@@ -110,7 +111,7 @@ func TestRecoveryAdvancesPastUnknownStartAndTimedOutAttempt(t *testing.T) {
 			attemptTimeout = time.Millisecond
 		}
 		start := &MockTasksStart{}
-		uc, err := New(sqlite, start, observe, limit.MustNew(2), attemptTimeout)
+		uc, err := New(sqlite, start, observe, &MockTasksCleanup{}, limit.MustNew(2), attemptTimeout)
 		require.NoError(t, err)
 		out, err := uc.RecoverPending(t.Context(), Input{})
 		if timeout {
@@ -133,9 +134,9 @@ func TestRecoveryRetainsCursorOnReadFailureAndHonorsCancellation(t *testing.T) {
 	cursor := uuid.New()
 	failure := errors.New("database unavailable")
 	sqlite := &MockSQLite{
-		GetUnfinishedAttemptsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.Attempt, error) { return nil, failure },
+		GetRecoverableAttemptsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.Attempt, error) { return nil, failure },
 	}
-	uc, err := New(sqlite, &MockTasksStart{}, &MockTasksObserve{}, limit.MustNew(1), time.Second)
+	uc, err := New(sqlite, &MockTasksStart{}, &MockTasksObserve{}, &MockTasksCleanup{}, limit.MustNew(1), time.Second)
 	require.NoError(t, err)
 	out, err := uc.RecoverPending(t.Context(), Input{AfterRunID: cursor})
 	require.ErrorIs(t, err, failure)
@@ -144,14 +145,14 @@ func TestRecoveryRetainsCursorOnReadFailureAndHonorsCancellation(t *testing.T) {
 	cancel()
 	_, err = uc.RecoverPending(ctx, Input{AfterRunID: cursor})
 	require.ErrorIs(t, err, context.Canceled)
-	require.Len(t, sqlite.GetUnfinishedAttemptsCalls(), 1)
+	require.Len(t, sqlite.GetRecoverableAttemptsCalls(), 1)
 }
 
 func TestRecoveryRejectsInvalidConfiguration(t *testing.T) {
 	t.Parallel()
 	sqlite, start, observe := &MockSQLite{}, &MockTasksStart{}, &MockTasksObserve{}
 	for _, timeout := range []time.Duration{0, -time.Second} {
-		_, err := New(sqlite, start, observe, limit.MustNew(1), timeout)
+		_, err := New(sqlite, start, observe, &MockTasksCleanup{}, limit.MustNew(1), timeout)
 		require.ErrorIs(t, err, errs.ErrInvalidArgument)
 	}
 
@@ -164,7 +165,7 @@ func TestRecoveryStopsBetweenAttemptsOnParentCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	sqlite := &MockSQLite{
-		GetUnfinishedAttemptsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.Attempt, error) {
+		GetRecoverableAttemptsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.Attempt, error) {
 			return []domain.Attempt{a, b}, nil
 		},
 	}
@@ -174,10 +175,48 @@ func TestRecoveryStopsBetweenAttemptsOnParentCancellation(t *testing.T) {
 			return tasksObserve.Output{}, ctx.Err()
 		},
 	}
-	uc, err := New(sqlite, &MockTasksStart{}, observe, limit.MustNew(2), time.Second)
+	uc, err := New(sqlite, &MockTasksStart{}, observe, &MockTasksCleanup{}, limit.MustNew(2), time.Second)
 	require.NoError(t, err)
 	out, err := uc.RecoverPending(ctx, Input{})
 	require.ErrorIs(t, err, context.Canceled)
 	require.Equal(t, a.RunID, out.NextRunID)
 	require.Len(t, observe.ObserveTaskCalls(), 1)
+}
+
+func TestRecoveryRoutesFinishedAttemptsOnlyToCleanupAndContinuesAfterFailure(t *testing.T) {
+	t.Parallel()
+	first := fixtures.NewAttempt(t, fixtures.WithContainer("first"))
+	second := fixtures.NewAttempt(t, fixtures.WithContainer("second"))
+	code := 0
+	for _, a := range []*domain.Attempt{&first, &second} {
+		_, err := a.Finish(&code, nil, time.Now())
+		require.NoError(t, err)
+	}
+	sqlite := &MockSQLite{
+		GetRecoverableAttemptsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.Attempt, error) {
+			return []domain.Attempt{first, second}, nil
+		},
+	}
+	failure := errors.New("remove unavailable")
+	cleanup := &MockTasksCleanup{
+		CleanupTaskFunc: func(ctx context.Context, in tasksCleanup.Input) (tasksCleanup.Output, error) {
+			_, bounded := ctx.Deadline()
+			require.True(t, bounded)
+			if in.RunID == first.RunID {
+				return tasksCleanup.Output{}, failure
+			}
+			require.Equal(t, second.RunID, in.RunID)
+			return tasksCleanup.Output{}, nil
+		},
+	}
+	start := &MockTasksStart{}
+	observe := &MockTasksObserve{}
+	uc, err := New(sqlite, start, observe, cleanup, limit.MustNew(2), time.Second)
+	require.NoError(t, err)
+	out, err := uc.RecoverPending(t.Context(), Input{})
+	require.ErrorIs(t, err, failure)
+	require.Equal(t, second.RunID, out.NextRunID, "cleanup failure must not starve the next attempt")
+	require.Len(t, cleanup.CleanupTaskCalls(), 2)
+	require.Empty(t, start.StartTaskCalls())
+	require.Empty(t, observe.ObserveTaskCalls())
 }

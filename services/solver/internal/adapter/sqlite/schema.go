@@ -18,13 +18,14 @@ const (
 	attemptsCreatedAt   = "created_at"
 	attemptsDeadline    = "deadline"
 	attemptsCompletedAt = "completed_at"
+	attemptsCleanedAt   = "cleaned_at"
 	attemptsExitCode    = "exit_code"
 	attemptsError       = "error"
 )
 
 var attemptColumns = []string{
 	attemptsRunID, attemptsTaskID, attemptsMode, attemptsState, attemptsContainerID,
-	attemptsCreatedAt, attemptsDeadline, attemptsCompletedAt, attemptsExitCode, attemptsError,
+	attemptsCreatedAt, attemptsDeadline, attemptsCompletedAt, attemptsExitCode, attemptsError, attemptsCleanedAt,
 }
 
 type attemptRow struct {
@@ -36,6 +37,7 @@ type attemptRow struct {
 	CreatedAt   shared.SQLTime      `db:"created_at"`
 	Deadline    *shared.SQLTime     `db:"deadline"`
 	CompletedAt *shared.SQLTime     `db:"completed_at"`
+	CleanedAt   *shared.SQLTime     `db:"cleaned_at"`
 	ExitCode    *int                `db:"exit_code"`
 	Error       *string             `db:"error"`
 }
@@ -43,7 +45,7 @@ type attemptRow struct {
 func (r attemptRow) Values() []any {
 	return []any{
 		r.RunID, r.TaskID, r.Mode, r.State, r.ContainerID,
-		r.CreatedAt, r.Deadline, r.CompletedAt, r.ExitCode, r.Error,
+		r.CreatedAt, r.Deadline, r.CompletedAt, r.ExitCode, r.Error, r.CleanedAt,
 	}
 }
 

@@ -105,6 +105,7 @@ func (r *Repository) saveTransition(ctx context.Context, a domain.Attempt, previ
 			attemptsCompletedAt: row.CompletedAt,
 			attemptsExitCode:    row.ExitCode,
 			attemptsError:       row.Error,
+			attemptsCleanedAt:   row.CleanedAt,
 		}).
 		Where(sq.Eq{attemptsRunID: row.RunID, attemptsState: previous})
 	tag, err := r.sqlite.Execx(ctx, query)
@@ -117,11 +118,17 @@ func (r *Repository) saveTransition(ctx context.Context, a domain.Attempt, previ
 	return nil
 }
 
-// GetUnfinishedAttempts uses a run-ID cursor so failed/running rows cannot starve later rows.
-func (r *Repository) GetUnfinishedAttempts(ctx context.Context, afterRunID uuid.UUID, batch limit.Limit) ([]domain.Attempt, error) {
+// GetRecoverableAttempts includes finished containers whose cleanup is not yet recorded.
+func (r *Repository) GetRecoverableAttempts(ctx context.Context, afterRunID uuid.UUID, batch limit.Limit) ([]domain.Attempt, error) {
 	query := r.sb.Select(attemptColumns...).
 		From(attemptsTable).
-		Where(sq.NotEq{attemptsState: domain.AttemptFinished}).
+		Where(sq.Or{
+			sq.NotEq{attemptsState: domain.AttemptFinished},
+			sq.And{
+				sq.Eq{attemptsState: domain.AttemptFinished, attemptsCleanedAt: nil},
+				sq.NotEq{attemptsContainerID: ""},
+			},
+		}).
 		OrderBy(attemptsRunID).
 		Limit(batch.Uint64())
 	if afterRunID != uuid.Nil {
@@ -136,4 +143,10 @@ func (r *Repository) GetUnfinishedAttempts(ctx context.Context, afterRunID uuid.
 		attempts = append(attempts, row.toDomain())
 	}
 	return attempts, nil
+}
+
+func (r *Repository) MarkCleaned(ctx context.Context, id uuid.UUID, now time.Time) (core.Changed, error) {
+	return r.transition(ctx, id, func(a *domain.Attempt) (core.Changed, error) {
+		return a.MarkCleaned(now)
+	})
 }

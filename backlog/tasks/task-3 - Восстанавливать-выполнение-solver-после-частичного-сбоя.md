@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-20 12:32'
+updated_date: '2026-10-21 17:32'
 labels: []
 dependencies: []
 priority: high
@@ -29,7 +29,7 @@ At-most-once чтение и отсутствие устойчивой попы�
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Текущий PR: DeadlineExceeded у Attempt, FinishedAt и Stop в shared Docker API; PinnRunner при просроченном running отправляет Stop с независимым ограниченным контекстом и подтверждает exited через Inspect до формирования итога. Exited до deadline сохраняет успех; неопределённый Start/Stop не даёт ложного завершения. Тесты unit/race и Docker CPU. Отдельно после review: устойчивый маркер и повтор cleanup, затем wiring/rollout.
+Текущий PR: durable cleaned_at после удаления завершённого контейнера; отдельный cleanup usecase и безопасный RemoveStopped в shared Docker. Recovery выбирает незавершённые и завершённые неочищенные попытки. Повтор после удаления/сбоя записи не запускает контейнер и не меняет результат/outbox. Up-only миграция, unit/SQLite/Docker/race проверки. Runtime wiring — следующим PR после review.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

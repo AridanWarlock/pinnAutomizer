@@ -20,6 +20,7 @@ type Docker interface {
 	Inspect(ctx context.Context, id string) (docker.Container, error)
 	Start(ctx context.Context, id string) error
 	Stop(ctx context.Context, id string, grace time.Duration) error
+	RemoveStopped(ctx context.Context, id string) error
 	Wait(ctx context.Context, id string) (docker.Exit, error)
 	Logs(ctx context.Context, id string) (io.ReadCloser, error)
 	Close() error

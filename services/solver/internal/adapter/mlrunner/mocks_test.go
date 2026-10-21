@@ -35,6 +35,9 @@ var _ Docker = &MockDocker{}
 //			LogsFunc: func(ctx context.Context, id string) (io.ReadCloser, error) {
 //				panic("mock out the Logs method")
 //			},
+//			RemoveStoppedFunc: func(ctx context.Context, id string) error {
+//				panic("mock out the RemoveStopped method")
+//			},
 //			StartFunc: func(ctx context.Context, id string) error {
 //				panic("mock out the Start method")
 //			},
@@ -62,6 +65,9 @@ type MockDocker struct {
 
 	// LogsFunc mocks the Logs method.
 	LogsFunc func(ctx context.Context, id string) (io.ReadCloser, error)
+
+	// RemoveStoppedFunc mocks the RemoveStopped method.
+	RemoveStoppedFunc func(ctx context.Context, id string) error
 
 	// StartFunc mocks the Start method.
 	StartFunc func(ctx context.Context, id string) error
@@ -98,6 +104,13 @@ type MockDocker struct {
 			// ID is the id argument value.
 			ID string
 		}
+		// RemoveStopped holds details about calls to the RemoveStopped method.
+		RemoveStopped []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID string
+		}
 		// Start holds details about calls to the Start method.
 		Start []struct {
 			// Ctx is the ctx argument value.
@@ -122,13 +135,14 @@ type MockDocker struct {
 			ID string
 		}
 	}
-	lockClose   sync.RWMutex
-	lockCreate  sync.RWMutex
-	lockInspect sync.RWMutex
-	lockLogs    sync.RWMutex
-	lockStart   sync.RWMutex
-	lockStop    sync.RWMutex
-	lockWait    sync.RWMutex
+	lockClose         sync.RWMutex
+	lockCreate        sync.RWMutex
+	lockInspect       sync.RWMutex
+	lockLogs          sync.RWMutex
+	lockRemoveStopped sync.RWMutex
+	lockStart         sync.RWMutex
+	lockStop          sync.RWMutex
+	lockWait          sync.RWMutex
 }
 
 // Close calls CloseFunc.
@@ -263,6 +277,42 @@ func (mock *MockDocker) LogsCalls() []struct {
 	mock.lockLogs.RLock()
 	calls = mock.calls.Logs
 	mock.lockLogs.RUnlock()
+	return calls
+}
+
+// RemoveStopped calls RemoveStoppedFunc.
+func (mock *MockDocker) RemoveStopped(ctx context.Context, id string) error {
+	if mock.RemoveStoppedFunc == nil {
+		panic("MockDocker.RemoveStoppedFunc: method is nil but Docker.RemoveStopped was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  string
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockRemoveStopped.Lock()
+	mock.calls.RemoveStopped = append(mock.calls.RemoveStopped, callInfo)
+	mock.lockRemoveStopped.Unlock()
+	return mock.RemoveStoppedFunc(ctx, id)
+}
+
+// RemoveStoppedCalls gets all the calls that were made to RemoveStopped.
+// Check the length with:
+//
+//	len(mockedDocker.RemoveStoppedCalls())
+func (mock *MockDocker) RemoveStoppedCalls() []struct {
+	Ctx context.Context
+	ID  string
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  string
+	}
+	mock.lockRemoveStopped.RLock()
+	calls = mock.calls.RemoveStopped
+	mock.lockRemoveStopped.RUnlock()
 	return calls
 }
 

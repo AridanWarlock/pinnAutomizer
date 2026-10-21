@@ -194,3 +194,25 @@ func TestStopMapsBoundedGraceAndPreservesErrors(t *testing.T) {
 	require.ErrorIs(t, c.Stop(t.Context(), "id", 1500*time.Millisecond), errs.ErrNotFound)
 	require.ErrorIs(t, c.Stop(t.Context(), "id", -time.Second), errs.ErrInvalidArgument)
 }
+
+func TestRemoveStoppedDoesNotForceAndPreservesErrors(t *testing.T) {
+	t.Parallel()
+	for _, status := range []int{204, 404, 409} {
+		c := newClient(t, func(req *http.Request) (*http.Response, error) {
+			require.Equal(t, http.MethodDelete, req.Method)
+			require.Equal(t, "/v1.52/containers/id", req.URL.Path)
+			require.NotEqual(t, "1", req.URL.Query().Get("force"))
+			require.NotEqual(t, "true", req.URL.Query().Get("force"))
+			return response(t, status, map[string]string{"message": "remove result"}), nil
+		})
+		err := c.RemoveStopped(t.Context(), "id")
+		switch status {
+		case 204:
+			require.NoError(t, err)
+		case 404:
+			require.ErrorIs(t, err, errs.ErrNotFound)
+		case 409:
+			require.ErrorIs(t, err, errs.ErrConflict)
+		}
+	}
+}

@@ -153,3 +153,9 @@ func (c *Client) Stop(ctx context.Context, id string, grace time.Duration) error
 	_, err := c.cli.ContainerStop(ctx, id, client.ContainerStopOptions{Timeout: &seconds})
 	return dockerError(err)
 }
+
+// RemoveStopped refuses to remove a running container; it never forces termination.
+func (c *Client) RemoveStopped(ctx context.Context, id string) error {
+	_, err := c.cli.ContainerRemove(ctx, id, client.ContainerRemoveOptions{})
+	return dockerError(err)
+}

@@ -23,7 +23,7 @@ func TestUnfinishedPaginationDoesNotSkipAfterEarlierRowsFinish(t *testing.T) {
 		_, _, err := repo.RegisterAttempt(t.Context(), a)
 		require.NoError(t, err)
 	}
-	first, err := repo.GetUnfinishedAttempts(t.Context(), uuid.Nil, limit.MustNew(2))
+	first, err := repo.GetRecoverableAttempts(t.Context(), uuid.Nil, limit.MustNew(2))
 	require.NoError(t, err)
 	require.Equal(t, attempts[:2], first)
 	for _, a := range first {
@@ -33,13 +33,13 @@ func TestUnfinishedPaginationDoesNotSkipAfterEarlierRowsFinish(t *testing.T) {
 	}
 	require.NoError(t, repo.Close())
 	repo = open(t, cfg)
-	remaining, err := repo.GetUnfinishedAttempts(t.Context(), uuid.Nil, limit.MustNew(10))
+	remaining, err := repo.GetRecoverableAttempts(t.Context(), uuid.Nil, limit.MustNew(10))
 	require.NoError(t, err)
 	require.Equal(t, attempts[2:], remaining)
-	next, err := repo.GetUnfinishedAttempts(t.Context(), first[1].RunID, limit.MustNew(2))
+	next, err := repo.GetRecoverableAttempts(t.Context(), first[1].RunID, limit.MustNew(2))
 	require.NoError(t, err)
 	require.Equal(t, attempts[2:], next)
-	empty, err := repo.GetUnfinishedAttempts(t.Context(), next[1].RunID, limit.MustNew(2))
+	empty, err := repo.GetRecoverableAttempts(t.Context(), next[1].RunID, limit.MustNew(2))
 	require.NoError(t, err)
 	require.Empty(t, empty)
 }
