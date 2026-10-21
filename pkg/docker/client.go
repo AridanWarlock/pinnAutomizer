@@ -39,32 +39,7 @@ func (c *Client) Inspect(ctx context.Context, id string) (Container, error) {
 	if err != nil {
 		return Container{}, dockerError(err)
 	}
-	raw := resp.Container
-	if raw.ID == "" || raw.Config == nil || raw.HostConfig == nil || raw.State == nil {
-		return Container{}, errors.New("incomplete docker inspect response")
-	}
-	started, err := time.Parse(time.RFC3339Nano, raw.State.StartedAt)
-	if err != nil {
-		return Container{}, fmt.Errorf("parse container start time: %w", err)
-	}
-	finished, err := time.Parse(time.RFC3339Nano, raw.State.FinishedAt)
-	if err != nil {
-		return Container{}, fmt.Errorf("parse container finish time: %w", err)
-	}
-	return Container{
-		ID:            raw.ID,
-		Name:          raw.Name,
-		Image:         raw.Config.Image,
-		Labels:        raw.Config.Labels,
-		AutoRemove:    raw.HostConfig.AutoRemove,
-		RestartPolicy: string(raw.HostConfig.RestartPolicy.Name),
-		State:         string(raw.State.Status),
-		Running:       raw.State.Running,
-		StartedAt:     started,
-		FinishedAt:    finished,
-		ExitCode:      raw.State.ExitCode,
-		Error:         raw.State.Error,
-	}, nil
+	return NewContainerFromInspect(resp.Container)
 }
 
 func (c *Client) Start(ctx context.Context, id string) error {

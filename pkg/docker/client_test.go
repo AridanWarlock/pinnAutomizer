@@ -111,6 +111,7 @@ func TestInspectMapsSnapshotAndState(t *testing.T) {
 	require.Equal(t, "image", snapshot.Image)
 	require.Equal(t, "/attempt", snapshot.Name)
 	raw.State.Status = container.StateCreated
+	raw.State.FinishedAt = time.Time{}.UTC().Format(time.RFC3339Nano)
 	raw.State.StartedAt = time.Time{}.UTC().Format(time.RFC3339Nano)
 	snapshot, err = c.Inspect(t.Context(), "id")
 	require.NoError(t, err)

@@ -27,7 +27,7 @@ func (r *PinnRunner) ObserveAttempt(ctx context.Context, a domain.Attempt) (doma
 		return domain.Attempt{}, err
 	}
 	timedOut := false
-	if c.Running {
+	if c.IsRunning() {
 		if !a.DeadlineExceeded(time.Now()) {
 			return a, nil
 		}
@@ -37,7 +37,7 @@ func (r *PinnRunner) ObserveAttempt(ctx context.Context, a domain.Attempt) (doma
 		}
 		timedOut = true
 	}
-	if !c.IsExited() || !c.HasStarted() || c.FinishedAt.IsZero() {
+	if !c.IsFinished() {
 		return domain.Attempt{}, fmt.Errorf("%w: cannot determine execution result in container state %q", domain.ErrStartOutcomeUnknown, c.State)
 	}
 	if timedOut || a.DeadlineExceeded(c.FinishedAt) {
@@ -63,9 +63,12 @@ func (r *PinnRunner) stopExpired(a domain.Attempt) (docker.Container, error) {
 	defer cancel()
 	stopErr := r.docker.Stop(ctx, a.ContainerID, stopGracePeriod)
 	c, inspectErr := r.inspectAttempt(ctx, a.ContainerID, a)
-	if inspectErr != nil || !c.IsExited() || !c.HasStarted() || c.FinishedAt.IsZero() {
-		return docker.Container{}, fmt.Errorf("%w: %w", domain.ErrStopOutcomeUnknown,
-			errors.Join(stopErr, inspectErr, fmt.Errorf("exit not confirmed in state %q", c.State)))
+	if inspectErr != nil {
+		return docker.Container{}, fmt.Errorf("%w: confirm stopped container: %w", domain.ErrStopOutcomeUnknown, errors.Join(stopErr, inspectErr))
+	}
+	if !c.IsFinished() {
+		stateErr := fmt.Errorf("exit not confirmed in state %q", c.State)
+		return docker.Container{}, fmt.Errorf("%w: %w", domain.ErrStopOutcomeUnknown, errors.Join(stopErr, stateErr))
 	}
 	return c, nil
 }

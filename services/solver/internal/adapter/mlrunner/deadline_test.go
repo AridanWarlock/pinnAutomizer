@@ -21,7 +21,7 @@ func TestExpiredRunningAttemptRequiresConfirmedStop(t *testing.T) {
 				a := fixtures.NewAttempt(t, fixtures.WithContainer("container-id"), fixtures.WithStartRequested())
 				original := a
 				c := ownedContainer(a)
-				c.State = "running"
+				c.State = docker.StateRunning
 				c.Running = true
 				c.StartedAt = time.Now()
 				<-time.After(time.Minute + time.Second)
@@ -39,7 +39,7 @@ func TestExpiredRunningAttemptRequiresConfirmedStop(t *testing.T) {
 							return docker.Container{}, errors.New("unavailable")
 						}
 					}
-					return c, nil
+					return restoredContainer(t, c), nil
 				}
 				client.StopFunc = func(ctx context.Context, id string, grace time.Duration) error {
 					require.NoError(t, ctx.Err())
@@ -49,7 +49,7 @@ func TestExpiredRunningAttemptRequiresConfirmedStop(t *testing.T) {
 					require.Equal(t, stopGracePeriod, grace)
 					if scenario != "still running" && scenario != "inspect unavailable" {
 						c.Running = false
-						c.State = "exited"
+						c.State = docker.StateExited
 						c.FinishedAt = time.Now()
 					}
 					if scenario == "lost ack" {
@@ -79,7 +79,7 @@ func TestObservedExitUsesFinishTimeForDeadline(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			a := fixtures.NewAttempt(t, fixtures.WithContainer("container-id"), fixtures.WithStartRequested())
 			c := ownedContainer(a)
-			c.State = "exited"
+			c.State = docker.StateExited
 			c.StartedAt = time.Now()
 			c.FinishedAt = a.Deadline.Add(-time.Nanosecond)
 			if late {
@@ -87,7 +87,7 @@ func TestObservedExitUsesFinishTimeForDeadline(t *testing.T) {
 			}
 			<-time.After(2 * time.Minute)
 			client := &MockDocker{
-				InspectFunc: func(context.Context, string) (docker.Container, error) { return c, nil },
+				InspectFunc: func(context.Context, string) (docker.Container, error) { return restoredContainer(t, c), nil },
 			}
 			result, err := (&PinnRunner{docker: client, pinnImage: "test-image"}).ObserveAttempt(t.Context(), a)
 			require.NoError(t, err)
@@ -108,7 +108,7 @@ func TestExpiredUncertainStartDoesNotInventStoppedResult(t *testing.T) {
 		c := ownedContainer(a)
 		<-time.After(2 * time.Minute)
 		client := &MockDocker{
-			InspectFunc: func(context.Context, string) (docker.Container, error) { return c, nil },
+			InspectFunc: func(context.Context, string) (docker.Container, error) { return restoredContainer(t, c), nil },
 		}
 		result, err := (&PinnRunner{docker: client, pinnImage: "test-image"}).ObserveAttempt(t.Context(), a)
 		require.ErrorIs(t, err, domain.ErrStartOutcomeUnknown)

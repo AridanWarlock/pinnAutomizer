@@ -60,7 +60,7 @@ func TestAttemptDockerCreateReplayAndExitedContainerIntegration(t *testing.T) {
 	require.Zero(t, exit.Code)
 	before, err := runner.inspectAttempt(ctx, id, a)
 	require.NoError(t, err)
-	require.Equal(t, "exited", before.State)
+	require.Equal(t, docker.StateExited, before.State)
 	require.NoError(t, runner.StartContainer(ctx, a))
 	observed, err := runner.ObserveAttempt(ctx, a)
 	require.NoError(t, err)
