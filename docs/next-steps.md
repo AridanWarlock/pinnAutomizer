@@ -85,8 +85,8 @@ PostgreSQL. PINN, GPU, power loss и восстановление Docker-выч�
    результат exited-контейнера и outbox; повторы/конкуренция/rollback/reopen проверяются
    отдельно. Подготовлены tasks/recover и worker начального/периодического обхода:
    keyset-страницы, продвижение мимо ошибок, timeout на попытку, без повторного Start
-   после intent. Runtime ещё не подключён. Следующий PR — deadline и ограниченная
-   остановка/очистка; после этого wiring/rollout.
+   после intent. Runtime ещё не подключён. Deadline и подтверждённый Stop подготовлены
+   в ObserveAttempt; дальше устойчивый cleanup, затем wiring/rollout.
 4. **TASK-3: включение runtime.** После предыдущих проверок подключить ledger,
    accept, recovery и outbox под lifecycle; затем переключить consumer на
    at-least-once. Отдельно описать старые сообщения без run ID и существующие

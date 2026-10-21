@@ -18,11 +18,12 @@ func TestObserveAttemptReadsResultWithoutChangingOriginal(t *testing.T) {
 		a := fixtures.NewAttempt(t, fixtures.WithContainer("container-id"), fixtures.WithStartRequested())
 		original := a
 		c := ownedContainer(a)
-		c.State = "exited"
+		c.State = docker.StateExited
 		c.StartedAt = time.Now()
-		c.ExitCode = code
+		c.FinishedAt = time.Now()
+		c.Exit = &docker.Exit{Code: code}
 		client := &MockDocker{
-			InspectFunc: func(context.Context, string) (docker.Container, error) { return c, nil },
+			InspectFunc: func(context.Context, string) (docker.Container, error) { return restoredContainer(t, c), nil },
 		}
 		observed, err := (&PinnRunner{docker: client, pinnImage: "test-image"}).ObserveAttempt(t.Context(), a)
 		require.NoError(t, err)
@@ -45,14 +46,17 @@ func TestObserveAttemptDoesNotInventCompletion(t *testing.T) {
 		t.Run(state, func(t *testing.T) {
 			a := fixtures.NewAttempt(t, fixtures.WithContainer("container-id"), fixtures.WithStartRequested())
 			c := ownedContainer(a)
-			c.State = state
+			c.State = docker.State(state)
 			c.Running = state == "running"
+			if c.Running {
+				c.StartedAt = time.Now()
+			}
 			client := &MockDocker{
 				InspectFunc: func(context.Context, string) (docker.Container, error) {
 					if state == "canceled" {
 						return docker.Container{}, context.Canceled
 					}
-					return c, nil
+					return restoredContainer(t, c), nil
 				},
 			}
 			observed, err := (&PinnRunner{docker: client, pinnImage: "test-image"}).ObserveAttempt(t.Context(), a)

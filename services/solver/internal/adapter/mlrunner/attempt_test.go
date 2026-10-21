@@ -14,12 +14,12 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain/fixtures"
 )
 
-func ownedContainer(a domain.Attempt) docker.Container {
-	return docker.Container{
+func ownedContainer(a domain.Attempt) docker.ContainerInput {
+	return docker.ContainerInput{
 		ID:    "container-id",
 		Name:  "/" + (&PinnRunner{}).containerName(a.RunID),
 		Image: "test-image",
-		State: "created",
+		State: docker.StateCreated,
 		Labels: map[string]string{
 			runLabel:  a.RunID.String(),
 			taskLabel: a.TaskID.String(),
@@ -50,7 +50,7 @@ func TestEnsureContainerReconcilesLostCreateResponse(t *testing.T) {
 					if !created {
 						return docker.Container{}, errs.ErrNotFound
 					}
-					return existing, nil
+					return restoredContainer(t, existing), nil
 				},
 				CreateFunc: func(_ context.Context, cfg docker.Config) (string, error) {
 					require.Equal(t, existing.Name[1:], cfg.Name)
@@ -92,20 +92,20 @@ func TestEnsureContainerRejectsForeignOrUnsafeContainer(t *testing.T) {
 	t.Parallel()
 	for _, scenario := range []struct {
 		name   string
-		change func(*docker.Container)
+		change func(*docker.ContainerInput)
 	}{
-		{"foreign run", func(c *docker.Container) { c.Labels[runLabel] = "other" }},
-		{"different mode", func(c *docker.Container) { c.Labels[modeLabel] = "train" }},
-		{"different image", func(c *docker.Container) { c.Image = "other" }},
-		{"automatic removal", func(c *docker.Container) { c.AutoRemove = true }},
-		{"automatic restart", func(c *docker.Container) { c.RestartPolicy = "always" }},
+		{"foreign run", func(c *docker.ContainerInput) { c.Labels[runLabel] = "other" }},
+		{"different mode", func(c *docker.ContainerInput) { c.Labels[modeLabel] = "train" }},
+		{"different image", func(c *docker.ContainerInput) { c.Image = "other" }},
+		{"automatic removal", func(c *docker.ContainerInput) { c.AutoRemove = true }},
+		{"automatic restart", func(c *docker.ContainerInput) { c.RestartPolicy = "always" }},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			a := fixtures.NewAttempt(t)
 			existing := ownedContainer(a)
 			scenario.change(&existing)
 			client := &MockDocker{
-				InspectFunc: func(context.Context, string) (docker.Container, error) { return existing, nil },
+				InspectFunc: func(context.Context, string) (docker.Container, error) { return restoredContainer(t, existing), nil },
 			}
 			_, err := (&PinnRunner{docker: client, pinnImage: "test-image"}).EnsureContainer(t.Context(), a)
 			require.ErrorIs(t, err, errs.ErrConflict)
@@ -125,12 +125,17 @@ func TestStartContainerNeverRetriesStart(t *testing.T) {
 				if len(client.StartCalls()) > 0 && state == "unavailable" {
 					return docker.Container{}, errors.New("inspect unavailable")
 				}
-				return existing, nil
+				return restoredContainer(t, existing), nil
 			}
 			client.StartFunc = func(context.Context, string) error {
-				existing.State = state
+				existing.State = docker.State(state)
+				existing.Running = state == "running"
 				if state == "running" || state == "exited" {
 					existing.StartedAt = time.Now()
+					if state == "exited" {
+						existing.FinishedAt = time.Now()
+						existing.Exit = &docker.Exit{}
+					}
 				}
 				return errors.New("lost start response")
 			}
@@ -156,11 +161,13 @@ func TestStartContainerReconcilesAfterCancellation(t *testing.T) {
 	client := &MockDocker{
 		InspectFunc: func(ctx context.Context, _ string) (docker.Container, error) {
 			require.NoError(t, ctx.Err())
-			return existing, nil
+			return restoredContainer(t, existing), nil
 		},
 		StartFunc: func(context.Context, string) error {
 			cancel()
 			existing.Running = true
+			existing.State = docker.StateRunning
+			existing.StartedAt = time.Now()
 			return context.Canceled
 		},
 	}
@@ -181,4 +188,11 @@ func TestStartContainerRequiresUnexpiredIntent(t *testing.T) {
 	require.ErrorIs(t, runner.StartContainer(t.Context(), a), context.DeadlineExceeded)
 	require.Empty(t, client.InspectCalls())
 	require.Empty(t, client.StartCalls())
+}
+
+func restoredContainer(t *testing.T, in docker.ContainerInput) docker.Container {
+	t.Helper()
+	c, err := docker.NewContainer(in)
+	require.NoError(t, err)
+	return c
 }

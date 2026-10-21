@@ -12,6 +12,7 @@ import (
 type attemptInput struct {
 	containerID    string
 	startRequested bool
+	now            time.Time
 }
 
 type AttemptOption func(*attemptInput)
@@ -28,13 +29,18 @@ func WithStartRequested() AttemptOption {
 	}
 }
 
+// WithTime sets the fixture's creation and requested-start time.
+func WithTime(now time.Time) AttemptOption {
+	return func(in *attemptInput) { in.now = now }
+}
+
 func NewAttempt(t testing.TB, opts ...AttemptOption) domain.Attempt {
 	t.Helper()
-	var in attemptInput
+	in := attemptInput{now: time.Now()}
 	for _, opt := range opts {
 		opt(&in)
 	}
-	a, err := domain.NewAttempt(uuid.New(), uuid.New(), domain.MlTaskModePredict, time.Now())
+	a, err := domain.NewAttempt(uuid.New(), uuid.New(), domain.MlTaskModePredict, in.now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +50,7 @@ func NewAttempt(t testing.TB, opts ...AttemptOption) domain.Attempt {
 		}
 	}
 	if in.startRequested {
-		if _, err := a.RequestStart(time.Now(), time.Minute); err != nil {
+		if _, err := a.RequestStart(in.now, time.Minute); err != nil {
 			t.Fatal(err)
 		}
 	}

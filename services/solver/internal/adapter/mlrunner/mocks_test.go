@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/docker"
 )
@@ -37,6 +38,9 @@ var _ Docker = &MockDocker{}
 //			StartFunc: func(ctx context.Context, id string) error {
 //				panic("mock out the Start method")
 //			},
+//			StopFunc: func(ctx context.Context, id string, grace time.Duration) error {
+//				panic("mock out the Stop method")
+//			},
 //			WaitFunc: func(ctx context.Context, id string) (docker.Exit, error) {
 //				panic("mock out the Wait method")
 //			},
@@ -61,6 +65,9 @@ type MockDocker struct {
 
 	// StartFunc mocks the Start method.
 	StartFunc func(ctx context.Context, id string) error
+
+	// StopFunc mocks the Stop method.
+	StopFunc func(ctx context.Context, id string, grace time.Duration) error
 
 	// WaitFunc mocks the Wait method.
 	WaitFunc func(ctx context.Context, id string) (docker.Exit, error)
@@ -98,6 +105,15 @@ type MockDocker struct {
 			// ID is the id argument value.
 			ID string
 		}
+		// Stop holds details about calls to the Stop method.
+		Stop []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID string
+			// Grace is the grace argument value.
+			Grace time.Duration
+		}
 		// Wait holds details about calls to the Wait method.
 		Wait []struct {
 			// Ctx is the ctx argument value.
@@ -111,6 +127,7 @@ type MockDocker struct {
 	lockInspect sync.RWMutex
 	lockLogs    sync.RWMutex
 	lockStart   sync.RWMutex
+	lockStop    sync.RWMutex
 	lockWait    sync.RWMutex
 }
 
@@ -282,6 +299,46 @@ func (mock *MockDocker) StartCalls() []struct {
 	mock.lockStart.RLock()
 	calls = mock.calls.Start
 	mock.lockStart.RUnlock()
+	return calls
+}
+
+// Stop calls StopFunc.
+func (mock *MockDocker) Stop(ctx context.Context, id string, grace time.Duration) error {
+	if mock.StopFunc == nil {
+		panic("MockDocker.StopFunc: method is nil but Docker.Stop was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		ID    string
+		Grace time.Duration
+	}{
+		Ctx:   ctx,
+		ID:    id,
+		Grace: grace,
+	}
+	mock.lockStop.Lock()
+	mock.calls.Stop = append(mock.calls.Stop, callInfo)
+	mock.lockStop.Unlock()
+	return mock.StopFunc(ctx, id, grace)
+}
+
+// StopCalls gets all the calls that were made to Stop.
+// Check the length with:
+//
+//	len(mockedDocker.StopCalls())
+func (mock *MockDocker) StopCalls() []struct {
+	Ctx   context.Context
+	ID    string
+	Grace time.Duration
+} {
+	var calls []struct {
+		Ctx   context.Context
+		ID    string
+		Grace time.Duration
+	}
+	mock.lockStop.RLock()
+	calls = mock.calls.Stop
+	mock.lockStop.RUnlock()
 	return calls
 }
 
