@@ -69,12 +69,6 @@ func (r *Repository) RecordContainer(ctx context.Context, id uuid.UUID, containe
 	})
 }
 
-func (r *Repository) RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration) (changed core.Changed, err error) {
-	return r.transition(ctx, id, func(a *domain.Attempt) (core.Changed, error) {
-		return a.RequestStart(now, timeout)
-	})
-}
-
 func (r *Repository) transition(ctx context.Context, id uuid.UUID, change func(*domain.Attempt) (core.Changed, error)) (core.Changed, error) {
 	var changed core.Changed
 	err := r.sqlite.InTransaction(ctx, func(ctx context.Context) error {

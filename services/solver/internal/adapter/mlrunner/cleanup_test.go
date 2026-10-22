@@ -37,7 +37,7 @@ func TestCleanupOnlyRemovesOwnedFinishedContainers(t *testing.T) {
 			failure := errors.New("docker unavailable")
 			client := &MockDocker{
 				InspectFunc: func(ctx context.Context, id string) (docker.Container, error) {
-					require.NoError(t, ctx.Err(), "cleanup must survive caller cancellation")
+					require.NoError(t, ctx.Err())
 					_, bounded := ctx.Deadline()
 					require.True(t, bounded)
 					require.Equal(t, a.ContainerID, id)
@@ -61,8 +61,7 @@ func TestCleanupOnlyRemovesOwnedFinishedContainers(t *testing.T) {
 					return nil
 				},
 			}
-			ctx, cancel := context.WithCancel(t.Context())
-			cancel()
+			ctx := t.Context()
 			err = (&PinnRunner{docker: client, pinnImage: "test-image"}).CleanupAttempt(ctx, a)
 			switch scenario {
 			case "foreign", "running":
@@ -87,4 +86,23 @@ func TestCleanupRefusesUnfinishedAttempt(t *testing.T) {
 	require.ErrorIs(t, err, errs.ErrConflict)
 	require.Empty(t, client.InspectCalls())
 	require.Empty(t, client.RemoveStoppedCalls())
+}
+
+func TestCleanupHonorsCallerCancellation(t *testing.T) {
+	t.Parallel()
+	a := fixtures.NewAttempt(t, fixtures.WithContainer("container-id"))
+	code := 0
+	_, err := a.Finish(&code, nil, time.Now())
+	require.NoError(t, err)
+	client := &MockDocker{
+		InspectFunc: func(ctx context.Context, _ string) (docker.Container, error) {
+			require.ErrorIs(t, ctx.Err(), context.Canceled)
+			return docker.Container{}, ctx.Err()
+		},
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	err = (&PinnRunner{docker: client}).CleanupAttempt(ctx, a)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Empty(t, client.RemoveStoppedCalls(), "canceled cleanup is deferred to a later recovery sweep")
 }

@@ -15,6 +15,19 @@ import (
 
 // FinishAttempt stores the result and its outbox event in one transaction.
 func (r *Repository) FinishAttempt(ctx context.Context, id uuid.UUID, code *int, failure *string, now time.Time, event domain.Event) (core.Changed, error) {
+	return r.transitionWithEvent(ctx, id, event, func(a *domain.Attempt) (core.Changed, error) {
+		return a.Finish(code, failure, now)
+	})
+}
+
+// RequestStart persists the start event and intent together before Docker Start.
+func (r *Repository) RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event) (core.Changed, error) {
+	return r.transitionWithEvent(ctx, id, event, func(a *domain.Attempt) (core.Changed, error) {
+		return a.RequestStart(now, timeout)
+	})
+}
+
+func (r *Repository) transitionWithEvent(ctx context.Context, id uuid.UUID, event domain.Event, change func(*domain.Attempt) (core.Changed, error)) (core.Changed, error) {
 	if event.RunID != id {
 		return false, errs.ErrInvalidArgument
 	}
@@ -26,7 +39,7 @@ func (r *Repository) FinishAttempt(ctx context.Context, id uuid.UUID, code *int,
 			return err
 		}
 		previous := a.State
-		changed, err = a.Finish(code, failure, now)
+		changed, err = change(&a)
 		if err != nil || !changed {
 			return err
 		}

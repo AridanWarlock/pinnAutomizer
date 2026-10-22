@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-21 17:38'
+updated_date: '2026-10-21 21:46'
 labels: []
 dependencies: []
 priority: high
@@ -29,7 +29,7 @@ At-most-once чтение и отсутствие устойчивой попы�
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Текущий PR: durable cleaned_at после удаления завершённого контейнера; отдельный cleanup usecase и безопасный RemoveStopped в shared Docker. Recovery выбирает незавершённые и завершённые неочищенные попытки. Повтор после удаления/сбоя записи не запускает контейнер и не меняет результат/outbox. Up-only миграция, unit/SQLite/Docker/race проверки. Runtime wiring — следующим PR после review.
+Перед runtime wiring сохранить контракт tasks.on.run: создание стабильного start event в tasks/start и атомарная запись вместе с RequestStart в SQLite. Проверить rollback, повтор после доставки, конкуренцию и ошибку Docker Start. Затем отдельный PR runtime/accept/recovery/outbox; старые сообщения не поддерживаем, отменяемый cleanup ctx сохраняем.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

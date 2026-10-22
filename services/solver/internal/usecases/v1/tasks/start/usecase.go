@@ -14,7 +14,7 @@ import (
 type SQLite interface {
 	GetAttempt(ctx context.Context, id uuid.UUID) (domain.Attempt, error)
 	RecordContainer(ctx context.Context, id uuid.UUID, containerID string) (core.Changed, error)
-	RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration) (core.Changed, error)
+	RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event) (core.Changed, error)
 }
 
 type PinnRunner interface {
@@ -56,7 +56,11 @@ func (u *usecase) StartTask(ctx context.Context, in Input) (Output, error) {
 			return Output{}, fmt.Errorf("record container: %w", err)
 		}
 	}
-	changed, err := u.sqlite.RequestStart(ctx, a.RunID, time.Now(), u.timeout)
+	event, err := newStartEvent(a)
+	if err != nil {
+		return Output{}, err
+	}
+	changed, err := u.sqlite.RequestStart(ctx, a.RunID, time.Now(), u.timeout, event)
 	if err != nil {
 		return Output{}, fmt.Errorf("request start: %w", err)
 	}

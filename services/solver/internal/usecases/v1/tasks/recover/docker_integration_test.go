@@ -89,7 +89,7 @@ func TestRecoveryReopensIntentWithoutRestartingDockerIntegration(t *testing.T) {
 			require.NoError(t, err)
 			_, err = repo.RecordContainer(ctx, a.RunID, id)
 			require.NoError(t, err)
-			_, err = repo.RequestStart(ctx, a.RunID, time.Now(), time.Minute)
+			_, err = repo.RequestStart(ctx, a.RunID, time.Now(), time.Minute, fixtures.NewEvent(t, a))
 			require.NoError(t, err)
 			if executed {
 				require.NoError(t, cli.Start(ctx, id))
@@ -125,9 +125,11 @@ func TestRecoveryReopensIntentWithoutRestartingDockerIntegration(t *testing.T) {
 			events, err := repo.GetPendingEvents(ctx, limit.MustNew(10))
 			require.NoError(t, err)
 			if executed {
-				require.Len(t, events, 1)
+				require.Len(t, events, 2)
+				require.Equal(t, "tasks.after.run", events[1].Message.Topic)
 			} else {
-				require.Empty(t, events)
+				require.Len(t, events, 1, "uncertain Start keeps its intent event but must not produce completion")
+				require.Equal(t, "fixture.start", events[0].Message.Topic)
 			}
 			after, err := cli.Inspect(ctx, id)
 			require.NoError(t, err)
