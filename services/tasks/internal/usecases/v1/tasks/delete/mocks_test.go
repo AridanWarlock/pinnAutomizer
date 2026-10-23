@@ -84,72 +84,6 @@ func (mock *MockUsecase) DeleteTaskCalls() []struct {
 	return calls
 }
 
-// Ensure that MockFileService does implement FileService.
-// If this is not the case, regenerate this file with mockery.
-var _ FileService = &MockFileService{}
-
-// MockFileService is a mock implementation of FileService.
-//
-//	func TestSomethingThatUsesFileService(t *testing.T) {
-//
-//		// make and configure a mocked FileService
-//		mockedFileService := &MockFileService{
-//			RemoveAllFunc: func(dir string) error {
-//				panic("mock out the RemoveAll method")
-//			},
-//		}
-//
-//		// use mockedFileService in code that requires FileService
-//		// and then make assertions.
-//
-//	}
-type MockFileService struct {
-	// RemoveAllFunc mocks the RemoveAll method.
-	RemoveAllFunc func(dir string) error
-
-	// calls tracks calls to the methods.
-	calls struct {
-		// RemoveAll holds details about calls to the RemoveAll method.
-		RemoveAll []struct {
-			// Dir is the dir argument value.
-			Dir string
-		}
-	}
-	lockRemoveAll sync.RWMutex
-}
-
-// RemoveAll calls RemoveAllFunc.
-func (mock *MockFileService) RemoveAll(dir string) error {
-	if mock.RemoveAllFunc == nil {
-		panic("MockFileService.RemoveAllFunc: method is nil but FileService.RemoveAll was just called")
-	}
-	callInfo := struct {
-		Dir string
-	}{
-		Dir: dir,
-	}
-	mock.lockRemoveAll.Lock()
-	mock.calls.RemoveAll = append(mock.calls.RemoveAll, callInfo)
-	mock.lockRemoveAll.Unlock()
-	return mock.RemoveAllFunc(dir)
-}
-
-// RemoveAllCalls gets all the calls that were made to RemoveAll.
-// Check the length with:
-//
-//	len(mockedFileService.RemoveAllCalls())
-func (mock *MockFileService) RemoveAllCalls() []struct {
-	Dir string
-} {
-	var calls []struct {
-		Dir string
-	}
-	mock.lockRemoveAll.RLock()
-	calls = mock.calls.RemoveAll
-	mock.lockRemoveAll.RUnlock()
-	return calls
-}
-
 // Ensure that MockPostgres does implement Postgres.
 // If this is not the case, regenerate this file with mockery.
 var _ Postgres = &MockPostgres{}
@@ -169,6 +103,9 @@ var _ Postgres = &MockPostgres{}
 //			InTransactionFunc: func(ctx context.Context, inTx func(context.Context) error) error {
 //				panic("mock out the InTransaction method")
 //			},
+//			QueueFileCleanupFunc: func(ctx context.Context, job domain.FileCleanup) error {
+//				panic("mock out the QueueFileCleanup method")
+//			},
 //		}
 //
 //		// use mockedPostgres in code that requires Postgres
@@ -184,6 +121,9 @@ type MockPostgres struct {
 
 	// InTransactionFunc mocks the InTransaction method.
 	InTransactionFunc func(ctx context.Context, inTx func(context.Context) error) error
+
+	// QueueFileCleanupFunc mocks the QueueFileCleanup method.
+	QueueFileCleanupFunc func(ctx context.Context, job domain.FileCleanup) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -212,10 +152,18 @@ type MockPostgres struct {
 			// InTx is the inTx argument value.
 			InTx func(context.Context) error
 		}
+		// QueueFileCleanup holds details about calls to the QueueFileCleanup method.
+		QueueFileCleanup []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Job is the job argument value.
+			Job domain.FileCleanup
+		}
 	}
 	lockDeleteTaskByIDAndUserID       sync.RWMutex
 	lockGetTaskByIDAndUserIDForUpdate sync.RWMutex
 	lockInTransaction                 sync.RWMutex
+	lockQueueFileCleanup              sync.RWMutex
 }
 
 // DeleteTaskByIDAndUserID calls DeleteTaskByIDAndUserIDFunc.
@@ -331,5 +279,41 @@ func (mock *MockPostgres) InTransactionCalls() []struct {
 	mock.lockInTransaction.RLock()
 	calls = mock.calls.InTransaction
 	mock.lockInTransaction.RUnlock()
+	return calls
+}
+
+// QueueFileCleanup calls QueueFileCleanupFunc.
+func (mock *MockPostgres) QueueFileCleanup(ctx context.Context, job domain.FileCleanup) error {
+	if mock.QueueFileCleanupFunc == nil {
+		panic("MockPostgres.QueueFileCleanupFunc: method is nil but Postgres.QueueFileCleanup was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Job domain.FileCleanup
+	}{
+		Ctx: ctx,
+		Job: job,
+	}
+	mock.lockQueueFileCleanup.Lock()
+	mock.calls.QueueFileCleanup = append(mock.calls.QueueFileCleanup, callInfo)
+	mock.lockQueueFileCleanup.Unlock()
+	return mock.QueueFileCleanupFunc(ctx, job)
+}
+
+// QueueFileCleanupCalls gets all the calls that were made to QueueFileCleanup.
+// Check the length with:
+//
+//	len(mockedPostgres.QueueFileCleanupCalls())
+func (mock *MockPostgres) QueueFileCleanupCalls() []struct {
+	Ctx context.Context
+	Job domain.FileCleanup
+} {
+	var calls []struct {
+		Ctx context.Context
+		Job domain.FileCleanup
+	}
+	mock.lockQueueFileCleanup.RLock()
+	calls = mock.calls.QueueFileCleanup
+	mock.lockQueueFileCleanup.RUnlock()
 	return calls
 }

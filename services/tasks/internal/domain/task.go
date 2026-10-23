@@ -38,6 +38,9 @@ type Task struct {
 	CreatedAt time.Time `validate:"required" json:"created_at"`
 }
 
+// TaskSnapshot is untrusted persistence/fixture input.
+type TaskSnapshot Task
+
 func NewTask(
 	name string,
 	userID uuid.UUID,
@@ -67,6 +70,14 @@ func NewTask(
 		return Task{}, err
 	}
 	return t, nil
+}
+
+func RestoreTask(snapshot TaskSnapshot) (Task, error) {
+	task := Task(snapshot)
+	if err := task.Validate(); err != nil {
+		return Task{}, err
+	}
+	return task, nil
 }
 
 func (t Task) IsStarted() bool {

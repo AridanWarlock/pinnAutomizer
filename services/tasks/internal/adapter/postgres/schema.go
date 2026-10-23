@@ -66,3 +66,17 @@ var TaskRunRequestsColumns = []string{
 	TaskRunRequestsEventID,
 	TaskRunRequestsCreatedAt,
 }
+
+const FileCleanupTable = "file_cleanup"
+
+const (
+	FileCleanupTaskID     = "task_id"
+	FileCleanupDataPath   = "data_path"
+	FileCleanupOutputPath = "output_path"
+)
+
+var fileCleanupColumns = []string{
+	FileCleanupTaskID,
+	FileCleanupDataPath,
+	FileCleanupOutputPath,
+}

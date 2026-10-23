@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/lifecycle"
@@ -18,8 +19,10 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/zipper"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/config"
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/filecleanup"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/outbox"
 	tasksAfterRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/afterRun"
+	tasksCleanup "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/cleanup"
 	tasksCreate "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/create"
 	tasksDelete "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/delete"
 	tasksGet "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/get"
@@ -108,7 +111,7 @@ func AppRun(
 	tasksRunUsecase := tasksRun.New(postgresAdapter)
 	tasksAfterRunUsecase := tasksAfterRun.New(postgresAdapter, fileService)
 	tasksOnRunUsecase := tasksOnRun.New(postgresAdapter)
-	tasksDeleteUsecase := tasksDelete.New(postgresAdapter, fileService)
+	tasksDeleteUsecase := tasksDelete.New(postgresAdapter)
 
 	// http handlers
 	// tasks
@@ -165,7 +168,9 @@ func AppRun(
 		return fmt.Errorf("tasks.after.run reader init: %w", err)
 	}
 
+	cleanupWorker := filecleanup.NewWorker(tasksCleanup.New(postgresAdapter, fileService, limit.MustNew(32)), log)
 	return lifecycle.Run(ctx,
+		lifecycle.Worker("task file cleanup", cleanupWorker.Run),
 		lifecycle.Worker("http server", server.Run),
 		lifecycle.Worker("tasks.on.run", func(ctx context.Context) error {
 			return tasksOnRunConsumeAdapter.Run(ctx, tasksOnRunConsumer.HandleMessage)

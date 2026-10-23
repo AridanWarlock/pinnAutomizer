@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/worker"
 	tasksRecover "github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/recover"
 )
 
@@ -20,9 +21,15 @@ type Worker struct {
 	usecase  Usecase
 	interval time.Duration
 	log      zerolog.Logger
+
+	cursor uuid.UUID
 }
 
-func NewWorker(usecase Usecase, interval time.Duration, log zerolog.Logger) (*Worker, error) {
+func NewWorker(
+	usecase Usecase,
+	interval time.Duration,
+	log zerolog.Logger,
+) (*Worker, error) {
 	if interval <= 0 {
 		return nil, fmt.Errorf("%w: positive interval required", errs.ErrInvalidArgument)
 	}
@@ -33,30 +40,23 @@ func NewWorker(usecase Usecase, interval time.Duration, log zerolog.Logger) (*Wo
 	}, nil
 }
 
+func (w *Worker) process(ctx context.Context) error {
+	in := tasksRecover.Input{
+		AfterRunID: w.cursor,
+	}
+	out, err := w.usecase.RecoverPending(ctx, in)
+
+	w.cursor = out.NextRunID
+	return err
+}
+
 // Run processes its first batch immediately, then waits after every batch.
 // The owner must cancel and await Run before closing dependencies.
 func (w *Worker) Run(ctx context.Context) error {
-	timer := time.NewTimer(w.interval)
-	defer timer.Stop()
-	cursor := uuid.Nil
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		in := tasksRecover.Input{AfterRunID: cursor}
-		out, err := w.usecase.RecoverPending(ctx, in)
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		if err != nil {
-			w.log.Error().Err(err).Msg("recover solver attempts; retry on next sweep")
-		}
-		cursor = out.NextRunID
-		timer.Reset(w.interval)
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-timer.C:
-		}
+	loop, err := worker.New(w.interval, w.log, w.process)
+	if err != nil {
+		return err
 	}
+
+	return loop.Run(ctx)
 }

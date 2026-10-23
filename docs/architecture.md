@@ -245,3 +245,10 @@ Finished освобождает слот до cleanup. Неопределённ�
 из SQLITE_MIGRATIONS_DIR. Compose задаёт /journal/journal.db и /app/migrations.
 Нужны queue/retry/DLQ топики shared consumer и топики двух событий. Старых
 сообщений/данных нет; совместимость и перенос не реализуются.
+
+
+Файлы удалённой задачи очищаются через file_cleanup: задание и удаление task
+атомарны в PostgreSQL, файловый worker подключён в lifecycle tasks. HTTP подтверждает
+логическое удаление и постановку очистки. Механизм и ограничения описаны в
+[task-file-cleanup.md](task-file-cleanup.md); задачи создания/загрузки файлов остаются
+отдельным этапом.
