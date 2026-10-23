@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-23 07:48'
+updated_date: '2026-10-23 10:26'
 labels: []
 dependencies: []
 priority: high
@@ -60,4 +60,6 @@ PR #21: https://github.com/AridanWarlock/pinnAutomizer/pull/21 — deadline и �
 PR #22: https://github.com/AridanWarlock/pinnAutomizer/pull/22 — durable cleaned_at, cleanup usecase, RemoveStopped без Force, recovery завершённых неочищенных попыток. make check и адресные race/SQLite/Docker CPU прошли, включая удаление → отказ записи → reopen → повтор и upgrade старой схемы. Runtime wiring остаётся следующим этапом.
 
 PR #23: https://github.com/AridanWarlock/pinnAutomizer/pull/23 — перед runtime сохранён tasks.on.run: event + intent/deadline атомарны. make check, адресные race/SQLite/Docker CPU прошли (rollback/concurrency/reopen/replay после доставки). Cleanup-тест согласован с отменяемым ctx из #22. Следом runtime wiring; старых сообщений/данных нет, совместимость не требуется.
+
+PR #24: https://github.com/AridanWarlock/pinnAutomizer/pull/24 — runtime accept/recovery/outbox, обе очереди at-least-once, атомарный active limit (default 1). make check, адресные race/SQLite/Docker, Linux build и Compose config прошли. На свежем Kafka 4.1.2 проверен полный CPU-путь: повтор через обе очереди, оба события, cleanup, shutdown/reopen. PINN/GPU и PostgreSQL не запускались. Unknown Start удерживает слот; retry/DLQ policy shared Kafka сохранена. TASK-3 остаётся на review.
 <!-- SECTION:NOTES:END -->
