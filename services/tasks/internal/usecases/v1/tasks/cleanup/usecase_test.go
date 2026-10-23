@@ -28,6 +28,7 @@ func TestCleanupRetriesPartialFailureAndDoesNotStarveNextJob(t *testing.T) {
 	var removed []string
 	var deleted []uuid.UUID
 	postgres := &MockPostgres{
+		HasFileCleanupFunc: func(context.Context, uuid.UUID) (bool, error) { return true, nil },
 		GetFileCleanupsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanup, error) {
 			return []domain.FileCleanup{first, second}, nil
 		},
@@ -37,6 +38,7 @@ func TestCleanupRetriesPartialFailureAndDoesNotStarveNextJob(t *testing.T) {
 		},
 	}
 	files := &MockFileService{
+		WithTaskFilesFunc: func(ctx context.Context, _ string, process func(context.Context) error) error { return process(ctx) },
 		RemoveAllFunc: func(path string) error {
 			removed = append(removed, path)
 			if path == first.DataPath {
@@ -76,9 +78,12 @@ func TestCleanupRetainsCursorOnListingFailureAndDoesNotAcknowledgeOnCancellation
 	cursor := uuid.New()
 	failure := errors.New("database unavailable")
 	postgres := &MockPostgres{
+		HasFileCleanupFunc:  func(context.Context, uuid.UUID) (bool, error) { return true, nil },
 		GetFileCleanupsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanup, error) { return nil, failure },
 	}
-	files := &MockFileService{}
+	files := &MockFileService{
+		WithTaskFilesFunc: func(ctx context.Context, _ string, process func(context.Context) error) error { return process(ctx) },
+	}
 	out, err := New(postgres, files, limit.MustNew(1)).CleanupPending(t.Context(), Input{AfterTaskID: cursor})
 	require.ErrorIs(t, err, failure)
 	require.Equal(t, cursor, out.NextTaskID)

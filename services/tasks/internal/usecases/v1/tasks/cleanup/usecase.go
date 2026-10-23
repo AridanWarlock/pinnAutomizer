@@ -18,9 +18,15 @@ type Postgres interface {
 		batch limit.Limit,
 	) ([]domain.FileCleanup, error)
 	DeleteFileCleanup(ctx context.Context, taskID uuid.UUID) error
+	HasFileCleanup(ctx context.Context, taskID uuid.UUID) (bool, error)
 }
 
 type FileService interface {
+	WithTaskFiles(
+		ctx context.Context,
+		dataPath string,
+		process func(context.Context) error,
+	) error
 	RemoveAll(dir string) error
 }
 
@@ -59,7 +65,16 @@ func (u *usecase) CleanupPending(ctx context.Context, in Input) (Output, error) 
 		if err := ctx.Err(); err != nil {
 			return out, errors.Join(failures, err)
 		}
-		if err := u.cleanup(ctx, job); err != nil {
+		if err := u.fileService.WithTaskFiles(ctx, job.DataPath, func(ctx context.Context) error {
+			pending, err := u.postgres.HasFileCleanup(ctx, job.TaskID)
+			if err != nil {
+				return err
+			}
+			if !pending {
+				return nil
+			}
+			return u.cleanup(ctx, job)
+		}); err != nil {
 			failures = errors.Join(failures, fmt.Errorf("cleanup task %s: %w", job.TaskID, err))
 		}
 		out.NextTaskID = job.TaskID

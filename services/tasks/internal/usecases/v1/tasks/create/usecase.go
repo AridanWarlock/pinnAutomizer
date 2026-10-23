@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/google/uuid"
+
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/postgres/poolx"
@@ -13,11 +15,17 @@ import (
 
 type Postgres interface {
 	CreateTask(ctx context.Context, task domain.Task) (domain.Task, error)
-	PublishEvent(ctx context.Context, event domain.Event) (domain.Event, error)
+	QueueFileCleanup(ctx context.Context, job domain.FileCleanup) error
+	DeleteFileCleanup(ctx context.Context, taskID uuid.UUID) error
 	poolx.TxManager
 }
 
 type TaskFileStore interface {
+	WithTaskFiles(
+		ctx context.Context,
+		dataPath string,
+		process func(context.Context) error,
+	) error
 	MkdirAll(name string, perm os.FileMode) error
 	Store(dir string, files []domain.TaskFile) error
 }
@@ -54,41 +62,60 @@ func (u *usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 		return Output{}, fmt.Errorf("create task model: %w", err)
 	}
 
-	err = u.postgres.InTransaction(ctx, func(ctx context.Context) error {
-		task, err = u.createAndPublishTask(ctx, task, in)
-		return err
-	})
-
+	job, err := domain.NewFileCleanup(task.ID, task.DataPath, task.OutputPath)
 	if err != nil {
-		return Output{}, fmt.Errorf("create task transaction: %w", err)
+		return Output{}, fmt.Errorf("plan creation cleanup: %w", err)
+	}
+	err = u.fileStore.WithTaskFiles(ctx, task.DataPath, func(ctx context.Context) error {
+		if err := u.postgres.QueueFileCleanup(ctx, job); err != nil {
+			return fmt.Errorf("reserve creation cleanup: %w", err)
+		}
+		if err := u.storeTaskFiles(ctx, task, in); err != nil {
+			return err
+		}
+		// If commit is ambiguous, keep the durable outcome in PostgreSQL; do not
+		// compensate by deleting files here, since the task may have committed.
+		return u.postgres.InTransaction(ctx, func(ctx context.Context) error {
+			created, err := u.postgres.CreateTask(ctx, task)
+			if err != nil {
+				return fmt.Errorf("create task in postgres: %w", err)
+			}
+			if err := u.postgres.DeleteFileCleanup(ctx, task.ID); err != nil {
+				return fmt.Errorf("confirm creation: %w", err)
+			}
+			task = created
+			return nil
+		})
+	})
+	if err != nil {
+		return Output{}, fmt.Errorf("create task: %w", err)
 	}
 
 	return Output{Task: task}, nil
 }
 
-func (u *usecase) createAndPublishTask(
+func (u *usecase) storeTaskFiles(
 	ctx context.Context,
 	task domain.Task,
 	in Input,
-) (domain.Task, error) {
-	task, err := u.postgres.CreateTask(ctx, task)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("create task in postgres: %w", err)
+) error {
+	if err := ctx.Err(); err != nil {
+		return err
 	}
-
-	err = u.fileStore.MkdirAll(task.DataPath, 0755)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("create task data dir: %w", err)
+	if err := u.fileStore.MkdirAll(task.DataPath, 0755); err != nil {
+		return fmt.Errorf("create task data dir: %w", err)
 	}
-	err = u.fileStore.MkdirAll(task.OutputPath, 0755)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("create task out dir: %w", err)
+	if err := ctx.Err(); err != nil {
+		return err
 	}
-
-	err = u.fileStore.Store(task.DataPath, in.Files)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("store files: %w", err)
+	if err := u.fileStore.MkdirAll(task.OutputPath, 0755); err != nil {
+		return fmt.Errorf("create task out dir: %w", err)
 	}
-
-	return task, nil
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := u.fileStore.Store(task.DataPath, in.Files); err != nil {
+		return fmt.Errorf("store files: %w", err)
+	}
+	return ctx.Err()
 }

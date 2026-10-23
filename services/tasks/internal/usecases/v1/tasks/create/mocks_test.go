@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
+	"github.com/google/uuid"
 )
 
 // Ensure that MockUsecase does implement Usecase.
@@ -97,11 +98,14 @@ var _ Postgres = &MockPostgres{}
 //			CreateTaskFunc: func(ctx context.Context, task domain.Task) (domain.Task, error) {
 //				panic("mock out the CreateTask method")
 //			},
+//			DeleteFileCleanupFunc: func(ctx context.Context, taskID uuid.UUID) error {
+//				panic("mock out the DeleteFileCleanup method")
+//			},
 //			InTransactionFunc: func(ctx context.Context, inTx func(context.Context) error) error {
 //				panic("mock out the InTransaction method")
 //			},
-//			PublishEventFunc: func(ctx context.Context, event domain.Event) (domain.Event, error) {
-//				panic("mock out the PublishEvent method")
+//			QueueFileCleanupFunc: func(ctx context.Context, job domain.FileCleanup) error {
+//				panic("mock out the QueueFileCleanup method")
 //			},
 //		}
 //
@@ -113,11 +117,14 @@ type MockPostgres struct {
 	// CreateTaskFunc mocks the CreateTask method.
 	CreateTaskFunc func(ctx context.Context, task domain.Task) (domain.Task, error)
 
+	// DeleteFileCleanupFunc mocks the DeleteFileCleanup method.
+	DeleteFileCleanupFunc func(ctx context.Context, taskID uuid.UUID) error
+
 	// InTransactionFunc mocks the InTransaction method.
 	InTransactionFunc func(ctx context.Context, inTx func(context.Context) error) error
 
-	// PublishEventFunc mocks the PublishEvent method.
-	PublishEventFunc func(ctx context.Context, event domain.Event) (domain.Event, error)
+	// QueueFileCleanupFunc mocks the QueueFileCleanup method.
+	QueueFileCleanupFunc func(ctx context.Context, job domain.FileCleanup) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -128,6 +135,13 @@ type MockPostgres struct {
 			// Task is the task argument value.
 			Task domain.Task
 		}
+		// DeleteFileCleanup holds details about calls to the DeleteFileCleanup method.
+		DeleteFileCleanup []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// TaskID is the taskID argument value.
+			TaskID uuid.UUID
+		}
 		// InTransaction holds details about calls to the InTransaction method.
 		InTransaction []struct {
 			// Ctx is the ctx argument value.
@@ -135,17 +149,18 @@ type MockPostgres struct {
 			// InTx is the inTx argument value.
 			InTx func(context.Context) error
 		}
-		// PublishEvent holds details about calls to the PublishEvent method.
-		PublishEvent []struct {
+		// QueueFileCleanup holds details about calls to the QueueFileCleanup method.
+		QueueFileCleanup []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Event is the event argument value.
-			Event domain.Event
+			// Job is the job argument value.
+			Job domain.FileCleanup
 		}
 	}
-	lockCreateTask    sync.RWMutex
-	lockInTransaction sync.RWMutex
-	lockPublishEvent  sync.RWMutex
+	lockCreateTask        sync.RWMutex
+	lockDeleteFileCleanup sync.RWMutex
+	lockInTransaction     sync.RWMutex
+	lockQueueFileCleanup  sync.RWMutex
 }
 
 // CreateTask calls CreateTaskFunc.
@@ -181,6 +196,42 @@ func (mock *MockPostgres) CreateTaskCalls() []struct {
 	mock.lockCreateTask.RLock()
 	calls = mock.calls.CreateTask
 	mock.lockCreateTask.RUnlock()
+	return calls
+}
+
+// DeleteFileCleanup calls DeleteFileCleanupFunc.
+func (mock *MockPostgres) DeleteFileCleanup(ctx context.Context, taskID uuid.UUID) error {
+	if mock.DeleteFileCleanupFunc == nil {
+		panic("MockPostgres.DeleteFileCleanupFunc: method is nil but Postgres.DeleteFileCleanup was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		TaskID uuid.UUID
+	}{
+		Ctx:    ctx,
+		TaskID: taskID,
+	}
+	mock.lockDeleteFileCleanup.Lock()
+	mock.calls.DeleteFileCleanup = append(mock.calls.DeleteFileCleanup, callInfo)
+	mock.lockDeleteFileCleanup.Unlock()
+	return mock.DeleteFileCleanupFunc(ctx, taskID)
+}
+
+// DeleteFileCleanupCalls gets all the calls that were made to DeleteFileCleanup.
+// Check the length with:
+//
+//	len(mockedPostgres.DeleteFileCleanupCalls())
+func (mock *MockPostgres) DeleteFileCleanupCalls() []struct {
+	Ctx    context.Context
+	TaskID uuid.UUID
+} {
+	var calls []struct {
+		Ctx    context.Context
+		TaskID uuid.UUID
+	}
+	mock.lockDeleteFileCleanup.RLock()
+	calls = mock.calls.DeleteFileCleanup
+	mock.lockDeleteFileCleanup.RUnlock()
 	return calls
 }
 
@@ -220,39 +271,39 @@ func (mock *MockPostgres) InTransactionCalls() []struct {
 	return calls
 }
 
-// PublishEvent calls PublishEventFunc.
-func (mock *MockPostgres) PublishEvent(ctx context.Context, event domain.Event) (domain.Event, error) {
-	if mock.PublishEventFunc == nil {
-		panic("MockPostgres.PublishEventFunc: method is nil but Postgres.PublishEvent was just called")
+// QueueFileCleanup calls QueueFileCleanupFunc.
+func (mock *MockPostgres) QueueFileCleanup(ctx context.Context, job domain.FileCleanup) error {
+	if mock.QueueFileCleanupFunc == nil {
+		panic("MockPostgres.QueueFileCleanupFunc: method is nil but Postgres.QueueFileCleanup was just called")
 	}
 	callInfo := struct {
-		Ctx   context.Context
-		Event domain.Event
+		Ctx context.Context
+		Job domain.FileCleanup
 	}{
-		Ctx:   ctx,
-		Event: event,
+		Ctx: ctx,
+		Job: job,
 	}
-	mock.lockPublishEvent.Lock()
-	mock.calls.PublishEvent = append(mock.calls.PublishEvent, callInfo)
-	mock.lockPublishEvent.Unlock()
-	return mock.PublishEventFunc(ctx, event)
+	mock.lockQueueFileCleanup.Lock()
+	mock.calls.QueueFileCleanup = append(mock.calls.QueueFileCleanup, callInfo)
+	mock.lockQueueFileCleanup.Unlock()
+	return mock.QueueFileCleanupFunc(ctx, job)
 }
 
-// PublishEventCalls gets all the calls that were made to PublishEvent.
+// QueueFileCleanupCalls gets all the calls that were made to QueueFileCleanup.
 // Check the length with:
 //
-//	len(mockedPostgres.PublishEventCalls())
-func (mock *MockPostgres) PublishEventCalls() []struct {
-	Ctx   context.Context
-	Event domain.Event
+//	len(mockedPostgres.QueueFileCleanupCalls())
+func (mock *MockPostgres) QueueFileCleanupCalls() []struct {
+	Ctx context.Context
+	Job domain.FileCleanup
 } {
 	var calls []struct {
-		Ctx   context.Context
-		Event domain.Event
+		Ctx context.Context
+		Job domain.FileCleanup
 	}
-	mock.lockPublishEvent.RLock()
-	calls = mock.calls.PublishEvent
-	mock.lockPublishEvent.RUnlock()
+	mock.lockQueueFileCleanup.RLock()
+	calls = mock.calls.QueueFileCleanup
+	mock.lockQueueFileCleanup.RUnlock()
 	return calls
 }
 
@@ -272,6 +323,9 @@ var _ TaskFileStore = &MockTaskFileStore{}
 //			StoreFunc: func(dir string, files []domain.TaskFile) error {
 //				panic("mock out the Store method")
 //			},
+//			WithTaskFilesFunc: func(ctx context.Context, dataPath string, process func(context.Context) error) error {
+//				panic("mock out the WithTaskFiles method")
+//			},
 //		}
 //
 //		// use mockedTaskFileStore in code that requires TaskFileStore
@@ -284,6 +338,9 @@ type MockTaskFileStore struct {
 
 	// StoreFunc mocks the Store method.
 	StoreFunc func(dir string, files []domain.TaskFile) error
+
+	// WithTaskFilesFunc mocks the WithTaskFiles method.
+	WithTaskFilesFunc func(ctx context.Context, dataPath string, process func(context.Context) error) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -301,9 +358,19 @@ type MockTaskFileStore struct {
 			// Files is the files argument value.
 			Files []domain.TaskFile
 		}
+		// WithTaskFiles holds details about calls to the WithTaskFiles method.
+		WithTaskFiles []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// DataPath is the dataPath argument value.
+			DataPath string
+			// Process is the process argument value.
+			Process func(context.Context) error
+		}
 	}
-	lockMkdirAll sync.RWMutex
-	lockStore    sync.RWMutex
+	lockMkdirAll      sync.RWMutex
+	lockStore         sync.RWMutex
+	lockWithTaskFiles sync.RWMutex
 }
 
 // MkdirAll calls MkdirAllFunc.
@@ -375,5 +442,45 @@ func (mock *MockTaskFileStore) StoreCalls() []struct {
 	mock.lockStore.RLock()
 	calls = mock.calls.Store
 	mock.lockStore.RUnlock()
+	return calls
+}
+
+// WithTaskFiles calls WithTaskFilesFunc.
+func (mock *MockTaskFileStore) WithTaskFiles(ctx context.Context, dataPath string, process func(context.Context) error) error {
+	if mock.WithTaskFilesFunc == nil {
+		panic("MockTaskFileStore.WithTaskFilesFunc: method is nil but TaskFileStore.WithTaskFiles was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		DataPath string
+		Process  func(context.Context) error
+	}{
+		Ctx:      ctx,
+		DataPath: dataPath,
+		Process:  process,
+	}
+	mock.lockWithTaskFiles.Lock()
+	mock.calls.WithTaskFiles = append(mock.calls.WithTaskFiles, callInfo)
+	mock.lockWithTaskFiles.Unlock()
+	return mock.WithTaskFilesFunc(ctx, dataPath, process)
+}
+
+// WithTaskFilesCalls gets all the calls that were made to WithTaskFiles.
+// Check the length with:
+//
+//	len(mockedTaskFileStore.WithTaskFilesCalls())
+func (mock *MockTaskFileStore) WithTaskFilesCalls() []struct {
+	Ctx      context.Context
+	DataPath string
+	Process  func(context.Context) error
+} {
+	var calls []struct {
+		Ctx      context.Context
+		DataPath string
+		Process  func(context.Context) error
+	}
+	mock.lockWithTaskFiles.RLock()
+	calls = mock.calls.WithTaskFiles
+	mock.lockWithTaskFiles.RUnlock()
 	return calls
 }

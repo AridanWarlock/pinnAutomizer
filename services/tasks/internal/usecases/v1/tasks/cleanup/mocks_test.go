@@ -101,6 +101,9 @@ var _ Postgres = &MockPostgres{}
 //			GetFileCleanupsFunc: func(ctx context.Context, afterTaskID uuid.UUID, batch limit.Limit) ([]domain.FileCleanup, error) {
 //				panic("mock out the GetFileCleanups method")
 //			},
+//			HasFileCleanupFunc: func(ctx context.Context, taskID uuid.UUID) (bool, error) {
+//				panic("mock out the HasFileCleanup method")
+//			},
 //		}
 //
 //		// use mockedPostgres in code that requires Postgres
@@ -113,6 +116,9 @@ type MockPostgres struct {
 
 	// GetFileCleanupsFunc mocks the GetFileCleanups method.
 	GetFileCleanupsFunc func(ctx context.Context, afterTaskID uuid.UUID, batch limit.Limit) ([]domain.FileCleanup, error)
+
+	// HasFileCleanupFunc mocks the HasFileCleanup method.
+	HasFileCleanupFunc func(ctx context.Context, taskID uuid.UUID) (bool, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -132,9 +138,17 @@ type MockPostgres struct {
 			// Batch is the batch argument value.
 			Batch limit.Limit
 		}
+		// HasFileCleanup holds details about calls to the HasFileCleanup method.
+		HasFileCleanup []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// TaskID is the taskID argument value.
+			TaskID uuid.UUID
+		}
 	}
 	lockDeleteFileCleanup sync.RWMutex
 	lockGetFileCleanups   sync.RWMutex
+	lockHasFileCleanup    sync.RWMutex
 }
 
 // DeleteFileCleanup calls DeleteFileCleanupFunc.
@@ -213,6 +227,42 @@ func (mock *MockPostgres) GetFileCleanupsCalls() []struct {
 	return calls
 }
 
+// HasFileCleanup calls HasFileCleanupFunc.
+func (mock *MockPostgres) HasFileCleanup(ctx context.Context, taskID uuid.UUID) (bool, error) {
+	if mock.HasFileCleanupFunc == nil {
+		panic("MockPostgres.HasFileCleanupFunc: method is nil but Postgres.HasFileCleanup was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		TaskID uuid.UUID
+	}{
+		Ctx:    ctx,
+		TaskID: taskID,
+	}
+	mock.lockHasFileCleanup.Lock()
+	mock.calls.HasFileCleanup = append(mock.calls.HasFileCleanup, callInfo)
+	mock.lockHasFileCleanup.Unlock()
+	return mock.HasFileCleanupFunc(ctx, taskID)
+}
+
+// HasFileCleanupCalls gets all the calls that were made to HasFileCleanup.
+// Check the length with:
+//
+//	len(mockedPostgres.HasFileCleanupCalls())
+func (mock *MockPostgres) HasFileCleanupCalls() []struct {
+	Ctx    context.Context
+	TaskID uuid.UUID
+} {
+	var calls []struct {
+		Ctx    context.Context
+		TaskID uuid.UUID
+	}
+	mock.lockHasFileCleanup.RLock()
+	calls = mock.calls.HasFileCleanup
+	mock.lockHasFileCleanup.RUnlock()
+	return calls
+}
+
 // Ensure that MockFileService does implement FileService.
 // If this is not the case, regenerate this file with mockery.
 var _ FileService = &MockFileService{}
@@ -226,6 +276,9 @@ var _ FileService = &MockFileService{}
 //			RemoveAllFunc: func(dir string) error {
 //				panic("mock out the RemoveAll method")
 //			},
+//			WithTaskFilesFunc: func(ctx context.Context, dataPath string, process func(context.Context) error) error {
+//				panic("mock out the WithTaskFiles method")
+//			},
 //		}
 //
 //		// use mockedFileService in code that requires FileService
@@ -236,6 +289,9 @@ type MockFileService struct {
 	// RemoveAllFunc mocks the RemoveAll method.
 	RemoveAllFunc func(dir string) error
 
+	// WithTaskFilesFunc mocks the WithTaskFiles method.
+	WithTaskFilesFunc func(ctx context.Context, dataPath string, process func(context.Context) error) error
+
 	// calls tracks calls to the methods.
 	calls struct {
 		// RemoveAll holds details about calls to the RemoveAll method.
@@ -243,8 +299,18 @@ type MockFileService struct {
 			// Dir is the dir argument value.
 			Dir string
 		}
+		// WithTaskFiles holds details about calls to the WithTaskFiles method.
+		WithTaskFiles []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// DataPath is the dataPath argument value.
+			DataPath string
+			// Process is the process argument value.
+			Process func(context.Context) error
+		}
 	}
-	lockRemoveAll sync.RWMutex
+	lockRemoveAll     sync.RWMutex
+	lockWithTaskFiles sync.RWMutex
 }
 
 // RemoveAll calls RemoveAllFunc.
@@ -276,5 +342,45 @@ func (mock *MockFileService) RemoveAllCalls() []struct {
 	mock.lockRemoveAll.RLock()
 	calls = mock.calls.RemoveAll
 	mock.lockRemoveAll.RUnlock()
+	return calls
+}
+
+// WithTaskFiles calls WithTaskFilesFunc.
+func (mock *MockFileService) WithTaskFiles(ctx context.Context, dataPath string, process func(context.Context) error) error {
+	if mock.WithTaskFilesFunc == nil {
+		panic("MockFileService.WithTaskFilesFunc: method is nil but FileService.WithTaskFiles was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		DataPath string
+		Process  func(context.Context) error
+	}{
+		Ctx:      ctx,
+		DataPath: dataPath,
+		Process:  process,
+	}
+	mock.lockWithTaskFiles.Lock()
+	mock.calls.WithTaskFiles = append(mock.calls.WithTaskFiles, callInfo)
+	mock.lockWithTaskFiles.Unlock()
+	return mock.WithTaskFilesFunc(ctx, dataPath, process)
+}
+
+// WithTaskFilesCalls gets all the calls that were made to WithTaskFiles.
+// Check the length with:
+//
+//	len(mockedFileService.WithTaskFilesCalls())
+func (mock *MockFileService) WithTaskFilesCalls() []struct {
+	Ctx      context.Context
+	DataPath string
+	Process  func(context.Context) error
+} {
+	var calls []struct {
+		Ctx      context.Context
+		DataPath string
+		Process  func(context.Context) error
+	}
+	mock.lockWithTaskFiles.RLock()
+	calls = mock.calls.WithTaskFiles
+	mock.lockWithTaskFiles.RUnlock()
 	return calls
 }

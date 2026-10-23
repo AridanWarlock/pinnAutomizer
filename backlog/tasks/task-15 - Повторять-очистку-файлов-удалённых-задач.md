@@ -1,11 +1,11 @@
 ---
 id: TASK-15
 title: Повторять очистку файлов удалённых задач
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-23 12:17'
-updated_date: '2026-10-23 12:47'
+updated_date: '2026-10-23 14:31'
 labels: []
 dependencies: []
 priority: high
@@ -20,10 +20,10 @@ ordinal: 20000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Удаление задачи и сохранение путей очистки атомарны в PostgreSQL
-- [ ] #2 Файловый I/O выполняется после commit и повторяется после частичного сбоя или рестарта
-- [ ] #3 Ошибочное задание не блокирует следующие; отмена и повтор безопасны
-- [ ] #4 Unit и PostgreSQL интеграции проверяют rollback и повтор, HTTP-семантика описана
+- [x] #1 Удаление задачи и сохранение путей очистки атомарны в PostgreSQL
+- [x] #2 Файловый I/O выполняется после commit и повторяется после частичного сбоя или рестарта
+- [x] #3 Ошибочное задание не блокирует следующие; отмена и повтор безопасны
+- [x] #4 Unit и PostgreSQL интеграции проверяют rollback и повтор, HTTP-семантика описана
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -39,3 +39,9 @@ Up-only таблица file_cleanup; валидная domain сущность; d
 
 Готово к review: https://github.com/AridanWarlock/pinnAutomizer/pull/26 (base codex/task-progress). Проверки успешны, одноразовый PostgreSQL остановлен.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+PR #26 принят пользователем. Удаление и задание очистки атомарны; rollback, повтор, частичный сбой и reopen проверены PostgreSQL integration с -race. HTTP-семантика описана в docs/task-file-cleanup.md.
+<!-- SECTION:FINAL_SUMMARY:END -->

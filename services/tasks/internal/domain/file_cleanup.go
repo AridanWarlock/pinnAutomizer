@@ -10,7 +10,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
 
-// FileCleanup preserves task paths after the task row has been deleted.
+// FileCleanup preserves paths for an incomplete creation or deleted task.
 // Construct it through NewFileCleanup; callers must not mutate its fields.
 type FileCleanup struct {
 	TaskID     uuid.UUID `validate:"required,uuid"`

@@ -1,19 +1,24 @@
 package filestore
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/fileservice"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 )
 
 type FileStore struct {
+	*fileservice.FileService
 }
 
 func NewFileStore() *FileStore {
-	return &FileStore{}
+	return &FileStore{
+		FileService: fileservice.NewFileService(),
+	}
 }
 
 func (s *FileStore) MkdirAll(name string, perm os.FileMode) error {
@@ -35,7 +40,7 @@ func (s *FileStore) Store(dir string, files []domain.TaskFile) error {
 	return nil
 }
 
-func (s *FileStore) storeFile(dir string, file domain.TaskFile) error {
+func (s *FileStore) storeFile(dir string, file domain.TaskFile) (err error) {
 	dstPath := filepath.Join(dir, file.Name)
 
 	dst, err := os.Create(dstPath)
@@ -43,7 +48,7 @@ func (s *FileStore) storeFile(dir string, file domain.TaskFile) error {
 		return fmt.Errorf("failed to create file %s: %w", dstPath, err)
 	}
 	defer func() {
-		_ = dst.Close()
+		err = errors.Join(err, dst.Close())
 	}()
 
 	if _, err := io.Copy(dst, file.File); err != nil {

@@ -2,11 +2,13 @@ package postgres
 
 import (
 	"context"
+	"errors"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 )
 
@@ -46,4 +48,19 @@ func (r *Repository) DeleteFileCleanup(ctx context.Context, taskID uuid.UUID) er
 		Where(sq.Eq{FileCleanupTaskID: taskID})
 	_, err := r.pool.Execx(ctx, query)
 	return err
+}
+
+func (r *Repository) HasFileCleanup(ctx context.Context, taskID uuid.UUID) (bool, error) {
+	// Locking read waits for an in-flight creation commit and rechecks deletion.
+	// A plain MVCC read could see its old cleanup row and remove committed files.
+	query := r.sb.Select("true").
+		From(FileCleanupTable).
+		Where(sq.Eq{FileCleanupTaskID: taskID}).
+		Suffix("FOR UPDATE")
+	var pending bool
+	err := r.pool.Getx(ctx, &pending, query)
+	if errors.Is(err, errs.ErrNotFound) {
+		return false, nil
+	}
+	return pending, err
 }
