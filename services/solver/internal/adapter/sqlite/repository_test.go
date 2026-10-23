@@ -23,6 +23,7 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	shared "github.com/AridanWarlock/pinnAutomizer/pkg/sqlite"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
+	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain/fixtures"
 )
 
 func sqliteClient(repo *Repository) *shared.SQLite {
@@ -151,17 +152,17 @@ func TestStartIntentIsNotRepeated(t *testing.T) {
 	a := attempt(t)
 	_, _, err := r.RegisterAttempt(ctx, a)
 	require.NoError(t, err)
-	_, err = r.RequestStart(ctx, a.RunID, time.Now(), time.Hour)
+	_, err = r.RequestStart(ctx, a.RunID, time.Now(), time.Hour, fixtures.NewEvent(t, a))
 	require.ErrorIs(t, err, errs.ErrConflict)
 	changed, err := r.RecordContainer(ctx, a.RunID, "container")
 	require.NoError(t, err)
 	require.True(t, bool(changed))
-	changed, err = r.RequestStart(ctx, a.RunID, time.Now(), time.Hour)
+	changed, err = r.RequestStart(ctx, a.RunID, time.Now(), time.Hour, fixtures.NewEvent(t, a))
 	require.NoError(t, err)
 	require.True(t, bool(changed))
 	first, err := r.GetAttempt(ctx, a.RunID)
 	require.NoError(t, err)
-	changed, err = r.RequestStart(ctx, a.RunID, time.Now(), 2*time.Hour)
+	changed, err = r.RequestStart(ctx, a.RunID, time.Now(), 2*time.Hour, fixtures.NewEvent(t, a))
 	require.NoError(t, err)
 	require.False(t, bool(changed))
 	second, err := r.GetAttempt(ctx, a.RunID)

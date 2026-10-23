@@ -42,8 +42,10 @@ func TestStartTaskPersistsIntentBeforeDockerStart(t *testing.T) {
 					require.Equal(t, a.RunID, id)
 					return a.RecordContainer(containerID)
 				},
-				RequestStartFunc: func(_ context.Context, id uuid.UUID, now time.Time, timeout time.Duration) (core.Changed, error) {
+				RequestStartFunc: func(_ context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event) (core.Changed, error) {
 					steps = append(steps, "intent")
+					require.Equal(t, "tasks.on.run", event.Message.Topic)
+					require.Equal(t, a.RunID, event.RunID)
 					if err := fail("intent"); err != nil {
 						return false, err
 					}
@@ -95,8 +97,10 @@ func TestStartTaskSkipsDockerWhenAnotherCallerClaimsStart(t *testing.T) {
 	_, err := a.RecordContainer("container")
 	require.NoError(t, err)
 	sqlite := &MockSQLite{
-		GetAttemptFunc:   func(context.Context, uuid.UUID) (domain.Attempt, error) { return a, nil },
-		RequestStartFunc: func(context.Context, uuid.UUID, time.Time, time.Duration) (core.Changed, error) { return false, nil },
+		GetAttemptFunc: func(context.Context, uuid.UUID) (domain.Attempt, error) { return a, nil },
+		RequestStartFunc: func(context.Context, uuid.UUID, time.Time, time.Duration, domain.Event) (core.Changed, error) {
+			return false, nil
+		},
 	}
 	runner := &MockPinnRunner{}
 	out, err := New(sqlite, runner, time.Minute).StartTask(t.Context(), Input{RunID: a.RunID})

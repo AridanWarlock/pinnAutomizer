@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-21 17:38'
+updated_date: '2026-10-22 05:28'
 labels: []
 dependencies: []
 priority: high
@@ -29,7 +29,7 @@ At-most-once чтение и отсутствие устойчивой попы�
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Текущий PR: durable cleaned_at после удаления завершённого контейнера; отдельный cleanup usecase и безопасный RemoveStopped в shared Docker. Recovery выбирает незавершённые и завершённые неочищенные попытки. Повтор после удаления/сбоя записи не запускает контейнер и не меняет результат/outbox. Up-only миграция, unit/SQLite/Docker/race проверки. Runtime wiring — следующим PR после review.
+Перед runtime wiring сохранить контракт tasks.on.run: создание стабильного start event в tasks/start и атомарная запись вместе с RequestStart в SQLite. Проверить rollback, повтор после доставки, конкуренцию и ошибку Docker Start. Затем отдельный PR runtime/accept/recovery/outbox; старые сообщения не поддерживаем, отменяемый cleanup ctx сохраняем.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -58,4 +58,6 @@ Recovery — PR https://github.com/AridanWarlock/pinnAutomizer/pull/20 (~1,1 т�
 PR #21: https://github.com/AridanWarlock/pinnAutomizer/pull/21 — deadline и подтверждённый Docker Stop. make check, адресный race и Docker CPU integration (Stop → отказ outbox → повтор) прошли. Следом: устойчивый cleanup; runtime ещё не подключён.
 
 PR #22: https://github.com/AridanWarlock/pinnAutomizer/pull/22 — durable cleaned_at, cleanup usecase, RemoveStopped без Force, recovery завершённых неочищенных попыток. make check и адресные race/SQLite/Docker CPU прошли, включая удаление → отказ записи → reopen → повтор и upgrade старой схемы. Runtime wiring остаётся следующим этапом.
+
+PR #23: https://github.com/AridanWarlock/pinnAutomizer/pull/23 — перед runtime сохранён tasks.on.run: event + intent/deadline атомарны. make check, адресные race/SQLite/Docker CPU прошли (rollback/concurrency/reopen/replay после доставки). Cleanup-тест согласован с отменяемым ctx из #22. Следом runtime wiring; старых сообщений/данных нет, совместимость не требуется.
 <!-- SECTION:NOTES:END -->

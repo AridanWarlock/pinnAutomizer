@@ -66,7 +66,7 @@ func TestDockerCleanupRetriesAfterJournalFailureAndReopenIntegration(t *testing.
 	require.NoError(t, err)
 	_, err = repo.RecordContainer(ctx, a.RunID, id)
 	require.NoError(t, err)
-	_, err = repo.RequestStart(ctx, a.RunID, time.Now(), time.Minute)
+	_, err = repo.RequestStart(ctx, a.RunID, time.Now(), time.Minute, fixtures.NewEvent(t, a))
 	require.NoError(t, err)
 	require.NoError(t, cli.Start(ctx, id))
 	_, err = cli.Wait(ctx, id)
