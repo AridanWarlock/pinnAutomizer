@@ -17,11 +17,13 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/fileservice"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	tasksAfterRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/afterRun"
+	tasksCleanup "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/cleanup"
 	tasksDelete "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/delete"
 	tasksOnRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/onRun"
 	tasksRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/run"
@@ -76,6 +78,11 @@ func newTaskIntegrationRepository(t *testing.T) (*Repository, *pgx.Conn) {
 	_, err = db.Exec(ctx, up)
 	require.NoError(t, err)
 
+	migration, err = os.ReadFile("../../../migrations/20261023120000_create_file_cleanup.sql")
+	require.NoError(t, err)
+	_, err = db.Exec(ctx, string(migration))
+	require.NoError(t, err)
+
 	repo, err := New(Config{User: cfg.User, Password: cfg.Password, Host: cfg.Host, Port: int(cfg.Port), DB: name, SslMode: "disable", Timeout: 10 * time.Second}, zerolog.Nop())
 	require.NoError(t, err)
 	t.Cleanup(repo.Close)
@@ -89,10 +96,13 @@ func integrationTask(t *testing.T, repo *Repository, status domain.TaskStatus) (
 	ctx = core.IdempotencyKey(uuid.NewString()).WithContext(ctx)
 	task, err := domain.NewTask("task", auth.UserID, domain.TaskModeTrain, nil)
 	require.NoError(t, err)
-	task.Status = status
+	snapshot := domain.TaskSnapshot(task)
+	snapshot.Status = status
 	dir := t.TempDir()
-	task.DataPath = filepath.Join(dir, "data")
-	task.OutputPath = filepath.Join(dir, "output")
+	snapshot.DataPath = filepath.Join(dir, "data", task.ID.String())
+	snapshot.OutputPath = filepath.Join(dir, "output", task.ID.String())
+	task, err = domain.RestoreTask(snapshot)
+	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(task.DataPath, 0700))
 	require.NoError(t, os.MkdirAll(task.OutputPath, 0700))
 	task, err = repo.CreateTask(ctx, task)
@@ -174,20 +184,19 @@ func TestTaskIntegrationConcurrentRunDelete(t *testing.T) {
 			defer release()
 			first := make(chan error, 1)
 			second := make(chan error, 1)
-			files := fileservice.NewFileService()
 			if runFirst {
 				go func() {
 					first <- tasksRun.New(held).RunTask(ctx, tasksRun.Input{TaskID: task.ID})
 				}()
 			} else {
 				go func() {
-					first <- tasksDelete.New(held, files).DeleteTask(ctx, tasksDelete.Input{TaskID: task.ID})
+					first <- tasksDelete.New(held).DeleteTask(ctx, tasksDelete.Input{TaskID: task.ID})
 				}()
 			}
 			awaitTaskLock(t, held)
 			if runFirst {
 				go func() {
-					second <- tasksDelete.New(repo, files).DeleteTask(ctx, tasksDelete.Input{TaskID: task.ID})
+					second <- tasksDelete.New(repo).DeleteTask(ctx, tasksDelete.Input{TaskID: task.ID})
 				}()
 			} else {
 				go func() {
@@ -208,6 +217,10 @@ func TestTaskIntegrationConcurrentRunDelete(t *testing.T) {
 				require.ErrorIs(t, <-second, errs.ErrNotFound)
 				_, err := repo.GetTaskByID(ctx, task.ID)
 				require.ErrorIs(t, err, errs.ErrNotFound)
+				assert.DirExists(t, task.DataPath)
+				assert.DirExists(t, task.OutputPath)
+				_, err = tasksCleanup.New(repo, fileservice.NewFileService(), limit.MustNew(32)).CleanupPending(ctx, tasksCleanup.Input{})
+				require.NoError(t, err)
 				assert.NoDirExists(t, task.DataPath)
 				assert.NoDirExists(t, task.OutputPath)
 			}
