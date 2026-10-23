@@ -1,7 +1,5 @@
 package postgres
 
-import "github.com/google/uuid"
-
 const EventsTable = "events"
 const (
 	EventsIdKey     = "id_key"
@@ -81,18 +79,4 @@ var fileCleanupColumns = []string{
 	FileCleanupTaskID,
 	FileCleanupDataPath,
 	FileCleanupOutputPath,
-}
-
-type fileCleanupRow struct {
-	TaskID     uuid.UUID `db:"task_id"`
-	DataPath   string    `db:"data_path"`
-	OutputPath string    `db:"output_path"`
-}
-
-func (r fileCleanupRow) Values() []any {
-	return []any{
-		r.TaskID,
-		r.DataPath,
-		r.OutputPath,
-	}
 }

@@ -21,9 +21,15 @@ type Worker struct {
 	usecase  Usecase
 	interval time.Duration
 	log      zerolog.Logger
+
+	cursor uuid.UUID
 }
 
-func NewWorker(usecase Usecase, interval time.Duration, log zerolog.Logger) (*Worker, error) {
+func NewWorker(
+	usecase Usecase,
+	interval time.Duration,
+	log zerolog.Logger,
+) (*Worker, error) {
 	if interval <= 0 {
 		return nil, fmt.Errorf("%w: positive interval required", errs.ErrInvalidArgument)
 	}
@@ -34,19 +40,23 @@ func NewWorker(usecase Usecase, interval time.Duration, log zerolog.Logger) (*Wo
 	}, nil
 }
 
+func (w *Worker) process(ctx context.Context) error {
+	in := tasksRecover.Input{
+		AfterRunID: w.cursor,
+	}
+	out, err := w.usecase.RecoverPending(ctx, in)
+
+	w.cursor = out.NextRunID
+	return err
+}
+
 // Run processes its first batch immediately, then waits after every batch.
 // The owner must cancel and await Run before closing dependencies.
 func (w *Worker) Run(ctx context.Context) error {
-	cursor := uuid.Nil
-	loop, err := worker.New(w.interval, w.log, func(ctx context.Context) error {
-		out, err := w.usecase.RecoverPending(ctx, tasksRecover.Input{
-			AfterRunID: cursor,
-		})
-		cursor = out.NextRunID
-		return err
-	})
+	loop, err := worker.New(w.interval, w.log, w.process)
 	if err != nil {
 		return err
 	}
+
 	return loop.Run(ctx)
 }

@@ -20,6 +20,8 @@ type Usecase interface {
 type Worker struct {
 	usecase Usecase
 	log     zerolog.Logger
+
+	cursor uuid.UUID
 }
 
 func NewWorker(usecase Usecase, log zerolog.Logger) *Worker {
@@ -29,17 +31,21 @@ func NewWorker(usecase Usecase, log zerolog.Logger) *Worker {
 	}
 }
 
+func (w *Worker) process(ctx context.Context) error {
+	in := tasksCleanup.Input{
+		AfterTaskID: w.cursor,
+	}
+	out, err := w.usecase.CleanupPending(ctx, in)
+
+	w.cursor = out.NextTaskID
+	return err
+}
+
 func (w *Worker) Run(ctx context.Context) error {
-	cursor := uuid.Nil
-	loop, err := worker.New(retryInterval, w.log, func(ctx context.Context) error {
-		out, err := w.usecase.CleanupPending(ctx, tasksCleanup.Input{
-			AfterTaskID: cursor,
-		})
-		cursor = out.NextTaskID
-		return err
-	})
+	loop, err := worker.New(retryInterval, w.log, w.process)
 	if err != nil {
 		return err
 	}
+
 	return loop.Run(ctx)
 }

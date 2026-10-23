@@ -38,9 +38,6 @@ func (w *Worker) Run(ctx context.Context) error {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
