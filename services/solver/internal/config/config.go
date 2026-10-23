@@ -26,14 +26,14 @@ type Recovery struct {
 }
 
 type Config struct {
-	SQLite         sqlite.Config `envPrefix:"SQLITE_"`
-	Recovery       Recovery      `envPrefix:"RECOVERY_"`
-	OutboxInterval time.Duration `env:"OUTBOX_INTERVAL" envDefault:"1s" validate:"gt=0"`
 	App            App
+	Recovery       Recovery             `envPrefix:"RECOVERY_"`
 	Log            logger.Config        `envPrefix:"LOGGER_"`
 	PinnRunner     mlrunner.Config      `envPrefix:"PINN_RUNNER_"`
 	KafkaProducer  kafka.ProducerConfig `envPrefix:"KAFKA_PRODUCER_"`
 	KafkaConsumer  kafka.ConsumerConfig `envPrefix:"KAFKA_CONSUMER_"`
+	SQLite         sqlite.Config        `envPrefix:"SQLITE_"`
+	OutboxInterval time.Duration        `env:"OUTBOX_INTERVAL" envDefault:"1s" validate:"gt=0"`
 }
 
 func InitConfig() (Config, error) {

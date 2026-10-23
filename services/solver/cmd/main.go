@@ -52,9 +52,6 @@ func AppRun(
 }
 
 func run(ctx context.Context, cfg config.Config, log zerolog.Logger) (err error) {
-	if err := cfg.Validate(); err != nil {
-		return err
-	}
 	journal, err := sqlite.New(cfg.SQLite)
 	if err != nil {
 		return fmt.Errorf("open solver journal: %w", err)

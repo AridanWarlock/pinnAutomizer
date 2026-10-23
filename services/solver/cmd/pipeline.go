@@ -26,7 +26,13 @@ type pipeline struct {
 }
 
 // newPipeline wires business scenarios without starting goroutines or owning dependencies.
-func newPipeline(cfg config.Config, log zerolog.Logger, journal *sqlite.Repository, runner *mlrunner.PinnRunner, producer solverOutbox.Kafka) (pipeline, error) {
+func newPipeline(
+	cfg config.Config,
+	log zerolog.Logger,
+	journal *sqlite.Repository,
+	runner *mlrunner.PinnRunner,
+	producer solverOutbox.Kafka,
+) (pipeline, error) {
 	batch, err := limit.New(cfg.Recovery.BatchSize)
 	if err != nil {
 		return pipeline{}, err

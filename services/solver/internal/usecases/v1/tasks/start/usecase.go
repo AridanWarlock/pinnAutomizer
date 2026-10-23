@@ -15,7 +15,14 @@ import (
 type SQLite interface {
 	GetAttempt(ctx context.Context, id uuid.UUID) (domain.Attempt, error)
 	RecordContainer(ctx context.Context, id uuid.UUID, containerID string) (core.Changed, error)
-	RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event, activeLimit limit.Limit) (core.Changed, error)
+	RequestStart(
+		ctx context.Context,
+		id uuid.UUID,
+		now time.Time,
+		timeout time.Duration,
+		event domain.Event,
+		activeLimit limit.Limit,
+	) (core.Changed, error)
 }
 
 type PinnRunner interface {
@@ -30,7 +37,12 @@ type usecase struct {
 	activeLimit limit.Limit
 }
 
-func New(sqlite SQLite, pinnRunner PinnRunner, timeout time.Duration, activeLimit limit.Limit) Usecase {
+func New(
+	sqlite SQLite,
+	pinnRunner PinnRunner,
+	timeout time.Duration,
+	activeLimit limit.Limit,
+) Usecase {
 	return &usecase{
 		sqlite:      sqlite,
 		pinnRunner:  pinnRunner,

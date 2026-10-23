@@ -87,7 +87,7 @@ func TestRuntimeKafkaDockerAcceptRecoveryOutboxAndShutdownIntegration(t *testing
 	command, err := core.NewProduceKafkaMessage(
 		"tasks.run.queue",
 		[]byte(taskID.String()),
-		[]byte(fmt.Sprintf(`{"task_id":%q,"mode":"predict"}`, taskID.String())),
+		fmt.Appendf(nil, `{"task_id":%q,"mode":"predict"}`, taskID.String()),
 		core.KafkaHeaders{core.KafkaIdempotencyHeader: runID.String()},
 	)
 	require.NoError(t, err)
