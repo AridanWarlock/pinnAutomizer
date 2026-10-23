@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-23 14:22'
-updated_date: '2026-10-23 14:31'
+updated_date: '2026-10-23 14:32'
 labels: []
 dependencies: []
 priority: high
@@ -36,4 +36,6 @@ ordinal: 21000
 
 <!-- SECTION:NOTES:BEGIN -->
 Готово к review: make fmt, make check и PostgreSQL integration с -race прошли. Проверены rollback, частичный upload, отмена, stale cleanup, ожидание commit/rollback и Process.Kill создателя. Ограничения: общий flock-compatible volume; POST без idempotency key; power loss/NFS не проверены.
+
+PR на review: https://github.com/AridanWarlock/pinnAutomizer/pull/27 → codex/task-progress.
 <!-- SECTION:NOTES:END -->
