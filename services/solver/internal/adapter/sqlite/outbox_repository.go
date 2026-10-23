@@ -34,16 +34,8 @@ func (r *Repository) transitionWithEvent(ctx context.Context, id uuid.UUID, even
 	row := newEventRow(event)
 	var changed core.Changed
 	err := r.sqlite.InTransaction(ctx, func(ctx context.Context) error {
-		a, err := r.GetAttempt(ctx, id)
-		if err != nil {
-			return err
-		}
-		previous := a.State
-		changed, err = change(&a)
+		changed, err := r.transitionWithoutTx(ctx, id, change)
 		if err != nil || !changed {
-			return err
-		}
-		if err := r.saveTransition(ctx, a, previous); err != nil {
 			return err
 		}
 		query := r.sb.Insert(outboxTable).
