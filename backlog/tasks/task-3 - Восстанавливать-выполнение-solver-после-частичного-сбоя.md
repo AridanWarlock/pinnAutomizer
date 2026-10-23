@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-23 10:26'
+updated_date: '2026-10-23 11:40'
 labels: []
 dependencies: []
 priority: high
@@ -29,7 +29,7 @@ At-most-once чтение и отсутствие устойчивой попы�
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Runtime: открыть проверенную SQLite schema, собрать accept/start/observe/cleanup/recovery/outbox, обслуживать обе Kafka очереди at-least-once под lifecycle. Kafka success ack только после durable accept; retry/DLQ — существующая политика shared consumer. Закрывать зависимости после остановки workers. Добавить env/Compose, сборку всего cmd-пакета, проверки wiring/replay/shutdown и Docker CPU. Старых сообщений нет, cleanup ctx отменяемый.
+PR аварийного восстановления: SIGKILL дочернего recovery-процесса с реальным CPU Docker-контейнером и SQLite; новый процесс принимает тот же running контейнер без повторного Start, сохраняет результат/events/cleanup. Добавить run/container/state в диагностику и runbook для unknown Start без unsafe повторного запуска. PINN API и политику ручного abort не менять; далее файловые операции tasks.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
