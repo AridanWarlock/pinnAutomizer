@@ -14,14 +14,28 @@ import (
 )
 
 // FinishAttempt stores the result and its outbox event in one transaction.
-func (r *Repository) FinishAttempt(ctx context.Context, id uuid.UUID, code *int, failure *string, now time.Time, event domain.Event) (core.Changed, error) {
+func (r *Repository) FinishAttempt(
+	ctx context.Context,
+	id uuid.UUID,
+	code *int,
+	failure *string,
+	now time.Time,
+	event domain.Event,
+) (core.Changed, error) {
 	return r.transitionWithEvent(ctx, id, event, func(_ context.Context, a *domain.Attempt) (core.Changed, error) {
 		return a.Finish(code, failure, now)
 	})
 }
 
 // RequestStart persists the start event and intent together before Docker Start.
-func (r *Repository) RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event, activeLimit limit.Limit) (core.Changed, error) {
+func (r *Repository) RequestStart(
+	ctx context.Context,
+	id uuid.UUID,
+	now time.Time,
+	timeout time.Duration,
+	event domain.Event,
+	activeLimit limit.Limit,
+) (core.Changed, error) {
 	return r.transitionWithEvent(ctx, id, event, func(ctx context.Context, a *domain.Attempt) (core.Changed, error) {
 		if a.State == domain.AttemptContainerCreated {
 			query := r.sb.Select("COUNT(*)").
@@ -39,7 +53,12 @@ func (r *Repository) RequestStart(ctx context.Context, id uuid.UUID, now time.Ti
 	})
 }
 
-func (r *Repository) transitionWithEvent(ctx context.Context, id uuid.UUID, event domain.Event, change func(context.Context, *domain.Attempt) (core.Changed, error)) (core.Changed, error) {
+func (r *Repository) transitionWithEvent(
+	ctx context.Context,
+	id uuid.UUID,
+	event domain.Event,
+	change func(context.Context, *domain.Attempt) (core.Changed, error),
+) (core.Changed, error) {
 	if event.RunID != id {
 		return false, errs.ErrInvalidArgument
 	}

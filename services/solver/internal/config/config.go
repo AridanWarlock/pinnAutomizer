@@ -52,8 +52,5 @@ func (c Config) Validate() error {
 	if err := validate.V.Struct(c); err != nil {
 		return fmt.Errorf("%w: solver config: %w", errs.ErrInvalidArgument, err)
 	}
-	if c.PinnRunner.Timeout <= 0 {
-		return fmt.Errorf("%w: positive PINN timeout required", errs.ErrInvalidArgument)
-	}
 	return nil
 }

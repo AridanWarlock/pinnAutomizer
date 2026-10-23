@@ -88,7 +88,12 @@ func run(ctx context.Context, cfg config.Config, log zerolog.Logger) (err error)
 	)
 }
 
-func newCommandConsumer(cfg kafka.ConsumerConfig, topic string, producer *kafka.Producer, log zerolog.Logger) (*kafka.Consumer, error) {
+func newCommandConsumer(
+	cfg kafka.ConsumerConfig,
+	topic string,
+	producer *kafka.Producer,
+	log zerolog.Logger,
+) (*kafka.Consumer, error) {
 	consumer, err := kafka.NewConsumer(cfg, topic, kafka.StrategyAtLeastOnce, log, kafka.WithProducer(producer))
 	if err != nil {
 		return nil, fmt.Errorf("create %s consumer: %w", topic, err)
