@@ -41,9 +41,9 @@ func TestDeleteTaskQueuesCleanupInsideDeleteTransaction(t *testing.T) {
 				},
 				QueueFileCleanupFunc: func(_ context.Context, job domain.FileCleanup) error {
 					require.True(t, inTx)
-					require.Equal(t, task.ID, job.TaskID())
-					require.Equal(t, task.DataPath, job.DataPath())
-					require.Equal(t, task.OutputPath, job.OutputPath())
+					require.Equal(t, task.ID, job.TaskID)
+					require.Equal(t, task.DataPath, job.DataPath)
+					require.Equal(t, task.OutputPath, job.OutputPath)
 					steps = append(steps, "queue")
 					if failureAt == "queue" {
 						return failure

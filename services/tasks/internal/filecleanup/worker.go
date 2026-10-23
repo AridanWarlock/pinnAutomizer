@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/worker"
 	tasksCleanup "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/cleanup"
 )
 
@@ -29,26 +30,16 @@ func NewWorker(usecase Usecase, log zerolog.Logger) *Worker {
 }
 
 func (w *Worker) Run(ctx context.Context) error {
-	timer := time.NewTimer(0)
-	defer timer.Stop()
 	cursor := uuid.Nil
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-timer.C:
-		}
-		out, err := w.usecase.CleanupPending(ctx, tasksCleanup.Input{AfterTaskID: cursor})
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		if err != nil {
-			w.log.Error().Err(err).Msg("retry task file cleanup")
-		}
+	loop, err := worker.New(retryInterval, w.log, func(ctx context.Context) error {
+		out, err := w.usecase.CleanupPending(ctx, tasksCleanup.Input{
+			AfterTaskID: cursor,
+		})
 		cursor = out.NextTaskID
-		timer.Reset(retryInterval)
+		return err
+	})
+	if err != nil {
+		return err
 	}
+	return loop.Run(ctx)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/worker"
 	tasksRecover "github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/recover"
 )
 
@@ -36,27 +37,16 @@ func NewWorker(usecase Usecase, interval time.Duration, log zerolog.Logger) (*Wo
 // Run processes its first batch immediately, then waits after every batch.
 // The owner must cancel and await Run before closing dependencies.
 func (w *Worker) Run(ctx context.Context) error {
-	timer := time.NewTimer(w.interval)
-	defer timer.Stop()
 	cursor := uuid.Nil
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		in := tasksRecover.Input{AfterRunID: cursor}
-		out, err := w.usecase.RecoverPending(ctx, in)
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		if err != nil {
-			w.log.Error().Err(err).Msg("recover solver attempts; retry on next sweep")
-		}
+	loop, err := worker.New(w.interval, w.log, func(ctx context.Context) error {
+		out, err := w.usecase.RecoverPending(ctx, tasksRecover.Input{
+			AfterRunID: cursor,
+		})
 		cursor = out.NextRunID
-		timer.Reset(w.interval)
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-timer.C:
-		}
+		return err
+	})
+	if err != nil {
+		return err
 	}
+	return loop.Run(ctx)
 }

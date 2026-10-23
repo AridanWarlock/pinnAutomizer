@@ -83,6 +83,11 @@ func newTaskIntegrationRepository(t *testing.T) (*Repository, *pgx.Conn) {
 	_, err = db.Exec(ctx, string(migration))
 	require.NoError(t, err)
 
+	migration, err = os.ReadFile("../../../migrations/20261023140000_document_file_cleanup.sql")
+	require.NoError(t, err)
+	_, err = db.Exec(ctx, string(migration))
+	require.NoError(t, err)
+
 	repo, err := New(Config{User: cfg.User, Password: cfg.Password, Host: cfg.Host, Port: int(cfg.Port), DB: name, SslMode: "disable", Timeout: 10 * time.Second}, zerolog.Nop())
 	require.NoError(t, err)
 	t.Cleanup(repo.Close)

@@ -30,7 +30,11 @@ type usecase struct {
 	batch       limit.Limit
 }
 
-func New(postgres Postgres, fileService FileService, batch limit.Limit) Usecase {
+func New(
+	postgres Postgres,
+	fileService FileService,
+	batch limit.Limit,
+) Usecase {
 	return &usecase{
 		postgres:    postgres,
 		fileService: fileService,
@@ -56,21 +60,21 @@ func (u *usecase) CleanupPending(ctx context.Context, in Input) (Output, error) 
 			return out, errors.Join(failures, err)
 		}
 		if err := u.cleanup(ctx, job); err != nil {
-			failures = errors.Join(failures, fmt.Errorf("cleanup task %s: %w", job.TaskID(), err))
+			failures = errors.Join(failures, fmt.Errorf("cleanup task %s: %w", job.TaskID, err))
 		}
-		out.NextTaskID = job.TaskID()
+		out.NextTaskID = job.TaskID
 	}
 	return out, failures
 }
 
 func (u *usecase) cleanup(ctx context.Context, job domain.FileCleanup) error {
-	dataErr := u.fileService.RemoveAll(job.DataPath())
+	dataErr := u.fileService.RemoveAll(job.DataPath)
 	if err := ctx.Err(); err != nil {
 		return errors.Join(dataErr, err)
 	}
-	outputErr := u.fileService.RemoveAll(job.OutputPath())
+	outputErr := u.fileService.RemoveAll(job.OutputPath)
 	if err := errors.Join(dataErr, outputErr); err != nil {
 		return err
 	}
-	return u.postgres.DeleteFileCleanup(ctx, job.TaskID())
+	return u.postgres.DeleteFileCleanup(ctx, job.TaskID)
 }

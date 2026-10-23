@@ -8,9 +8,9 @@ import (
 
 func newFileCleanupRow(job domain.FileCleanup) fileCleanupRow {
 	return fileCleanupRow{
-		TaskID:     job.TaskID(),
-		DataPath:   job.DataPath(),
-		OutputPath: job.OutputPath(),
+		TaskID:     job.TaskID,
+		DataPath:   job.DataPath,
+		OutputPath: job.OutputPath,
 	}
 }
 

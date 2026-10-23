@@ -57,7 +57,7 @@ func TestFileCleanupAtomicDeletePartialFailureAndReopenIntegration(t *testing.T)
 	require.NoError(t, err)
 	require.Len(t, jobs, 1)
 	require.NoError(t, tasksDelete.New(repo).DeleteTask(ctx, tasksDelete.Input{TaskID: task.ID}), "replay after a lost HTTP response must succeed")
-	require.Equal(t, task.ID, jobs[0].TaskID())
+	require.Equal(t, task.ID, jobs[0].TaskID)
 	files := cleanupFileService{
 		remove: func(path string) error {
 			var openTransactions int

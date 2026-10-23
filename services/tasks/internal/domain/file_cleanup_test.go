@@ -15,9 +15,9 @@ func TestFileCleanupOnlyAcceptsOwnedTaskDirectories(t *testing.T) {
 	output := filepath.Join("/tasks_output", id.String())
 	job, err := NewFileCleanup(id, data, output)
 	require.NoError(t, err)
-	require.Equal(t, id, job.TaskID())
-	require.Equal(t, data, job.DataPath())
-	require.Equal(t, output, job.OutputPath())
+	require.Equal(t, id, job.TaskID)
+	require.Equal(t, data, job.DataPath)
+	require.Equal(t, output, job.OutputPath)
 	for _, invalid := range []struct {
 		name   string
 		id     uuid.UUID

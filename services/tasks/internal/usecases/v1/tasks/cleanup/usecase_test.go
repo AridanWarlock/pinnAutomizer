@@ -39,7 +39,7 @@ func TestCleanupRetriesPartialFailureAndDoesNotStarveNextJob(t *testing.T) {
 	files := &MockFileService{
 		RemoveAllFunc: func(path string) error {
 			removed = append(removed, path)
-			if path == first.DataPath() {
+			if path == first.DataPath {
 				return failure
 			}
 			return nil
@@ -48,18 +48,27 @@ func TestCleanupRetriesPartialFailureAndDoesNotStarveNextJob(t *testing.T) {
 	uc := New(postgres, files, limit.MustNew(2))
 	out, err := uc.CleanupPending(t.Context(), Input{})
 	require.ErrorIs(t, err, failure)
-	require.ErrorContains(t, err, first.TaskID().String())
-	require.Equal(t, second.TaskID(), out.NextTaskID)
-	require.Equal(t, []uuid.UUID{second.TaskID()}, deleted)
-	require.Equal(t, []string{first.DataPath(), first.OutputPath(), second.DataPath(), second.OutputPath()}, removed)
-	// A later sweep retries the retained first job; already removed paths are harmless.
+	require.ErrorContains(t, err, first.TaskID.String())
+	require.Equal(t, second.TaskID, out.NextTaskID)
+	require.Equal(t, []uuid.UUID{second.TaskID}, deleted)
+	require.Equal(t, []string{first.DataPath, first.OutputPath, second.DataPath, second.OutputPath}, removed)
+	// Advance to an empty page: the worker will use its Nil output for a new sweep.
+	postgres.GetFileCleanupsFunc = func(_ context.Context, after uuid.UUID, _ limit.Limit) ([]domain.FileCleanup, error) {
+		require.Equal(t, second.TaskID, after)
+		return nil, nil
+	}
+	out, err = uc.CleanupPending(t.Context(), Input{AfterTaskID: out.NextTaskID})
+	require.NoError(t, err)
+	require.Equal(t, uuid.Nil, out.NextTaskID)
+	// The retained first job is selected again, rather than forgotten behind the cursor.
 	files.RemoveAllFunc = func(path string) error { return nil }
-	postgres.GetFileCleanupsFunc = func(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanup, error) {
+	postgres.GetFileCleanupsFunc = func(_ context.Context, after uuid.UUID, _ limit.Limit) ([]domain.FileCleanup, error) {
+		require.Equal(t, uuid.Nil, after)
 		return []domain.FileCleanup{first}, nil
 	}
-	_, err = uc.CleanupPending(t.Context(), Input{})
+	_, err = uc.CleanupPending(t.Context(), Input{AfterTaskID: out.NextTaskID})
 	require.NoError(t, err)
-	require.Equal(t, []uuid.UUID{second.TaskID(), first.TaskID()}, deleted)
+	require.Equal(t, []uuid.UUID{second.TaskID, first.TaskID}, deleted)
 }
 
 func TestCleanupRetainsCursorOnListingFailureAndDoesNotAcknowledgeOnCancellation(t *testing.T) {
