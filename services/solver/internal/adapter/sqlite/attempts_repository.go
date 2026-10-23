@@ -69,20 +69,29 @@ func (r *Repository) RecordContainer(ctx context.Context, id uuid.UUID, containe
 	})
 }
 
-func (r *Repository) transition(ctx context.Context, id uuid.UUID, change func(*domain.Attempt) (core.Changed, error)) (core.Changed, error) {
-	var changed core.Changed
-	err := r.sqlite.InTransaction(ctx, func(ctx context.Context) error {
-		a, err := r.GetAttempt(ctx, id)
-		if err != nil {
-			return err
-		}
-		previous := a.State
-		changed, err = change(&a)
-		if err != nil || !changed {
-			return err
-		}
-		return r.saveTransition(ctx, a, previous)
+func (r *Repository) transition(
+	ctx context.Context,
+	id uuid.UUID,
+	change func(*domain.Attempt) (core.Changed, error),
+) (changed core.Changed, err error) {
+	err = r.sqlite.InTransaction(ctx, func(ctx context.Context) error {
+		changed, err = r.transitionWithoutTx(ctx, id, change)
+		return err
 	})
+	return
+}
+
+func (r *Repository) transitionWithoutTx(ctx context.Context, id uuid.UUID, change func(*domain.Attempt) (core.Changed, error)) (core.Changed, error) {
+	a, err := r.GetAttempt(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	previous := a.State
+	changed, err := change(&a)
+	if err != nil || !changed {
+		return false, err
+	}
+	err = r.saveTransition(ctx, a, previous)
 	if err != nil {
 		return false, err
 	}
