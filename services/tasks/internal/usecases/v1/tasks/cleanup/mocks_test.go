@@ -276,8 +276,8 @@ var _ FileService = &MockFileService{}
 //			RemoveAllFunc: func(dir string) error {
 //				panic("mock out the RemoveAll method")
 //			},
-//			WithTaskFilesFunc: func(ctx context.Context, dataPath string, process func(context.Context) error) error {
-//				panic("mock out the WithTaskFiles method")
+//			WithDirectoryLockFunc: func(ctx context.Context, dataPath string, process func(context.Context) error) error {
+//				panic("mock out the WithDirectoryLock method")
 //			},
 //		}
 //
@@ -289,8 +289,8 @@ type MockFileService struct {
 	// RemoveAllFunc mocks the RemoveAll method.
 	RemoveAllFunc func(dir string) error
 
-	// WithTaskFilesFunc mocks the WithTaskFiles method.
-	WithTaskFilesFunc func(ctx context.Context, dataPath string, process func(context.Context) error) error
+	// WithDirectoryLockFunc mocks the WithDirectoryLock method.
+	WithDirectoryLockFunc func(ctx context.Context, dataPath string, process func(context.Context) error) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -299,8 +299,8 @@ type MockFileService struct {
 			// Dir is the dir argument value.
 			Dir string
 		}
-		// WithTaskFiles holds details about calls to the WithTaskFiles method.
-		WithTaskFiles []struct {
+		// WithDirectoryLock holds details about calls to the WithDirectoryLock method.
+		WithDirectoryLock []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// DataPath is the dataPath argument value.
@@ -309,8 +309,8 @@ type MockFileService struct {
 			Process func(context.Context) error
 		}
 	}
-	lockRemoveAll     sync.RWMutex
-	lockWithTaskFiles sync.RWMutex
+	lockRemoveAll         sync.RWMutex
+	lockWithDirectoryLock sync.RWMutex
 }
 
 // RemoveAll calls RemoveAllFunc.
@@ -345,10 +345,10 @@ func (mock *MockFileService) RemoveAllCalls() []struct {
 	return calls
 }
 
-// WithTaskFiles calls WithTaskFilesFunc.
-func (mock *MockFileService) WithTaskFiles(ctx context.Context, dataPath string, process func(context.Context) error) error {
-	if mock.WithTaskFilesFunc == nil {
-		panic("MockFileService.WithTaskFilesFunc: method is nil but FileService.WithTaskFiles was just called")
+// WithDirectoryLock calls WithDirectoryLockFunc.
+func (mock *MockFileService) WithDirectoryLock(ctx context.Context, dataPath string, process func(context.Context) error) error {
+	if mock.WithDirectoryLockFunc == nil {
+		panic("MockFileService.WithDirectoryLockFunc: method is nil but FileService.WithDirectoryLock was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
@@ -359,17 +359,17 @@ func (mock *MockFileService) WithTaskFiles(ctx context.Context, dataPath string,
 		DataPath: dataPath,
 		Process:  process,
 	}
-	mock.lockWithTaskFiles.Lock()
-	mock.calls.WithTaskFiles = append(mock.calls.WithTaskFiles, callInfo)
-	mock.lockWithTaskFiles.Unlock()
-	return mock.WithTaskFilesFunc(ctx, dataPath, process)
+	mock.lockWithDirectoryLock.Lock()
+	mock.calls.WithDirectoryLock = append(mock.calls.WithDirectoryLock, callInfo)
+	mock.lockWithDirectoryLock.Unlock()
+	return mock.WithDirectoryLockFunc(ctx, dataPath, process)
 }
 
-// WithTaskFilesCalls gets all the calls that were made to WithTaskFiles.
+// WithDirectoryLockCalls gets all the calls that were made to WithDirectoryLock.
 // Check the length with:
 //
-//	len(mockedFileService.WithTaskFilesCalls())
-func (mock *MockFileService) WithTaskFilesCalls() []struct {
+//	len(mockedFileService.WithDirectoryLockCalls())
+func (mock *MockFileService) WithDirectoryLockCalls() []struct {
 	Ctx      context.Context
 	DataPath string
 	Process  func(context.Context) error
@@ -379,8 +379,8 @@ func (mock *MockFileService) WithTaskFilesCalls() []struct {
 		DataPath string
 		Process  func(context.Context) error
 	}
-	mock.lockWithTaskFiles.RLock()
-	calls = mock.calls.WithTaskFiles
-	mock.lockWithTaskFiles.RUnlock()
+	mock.lockWithDirectoryLock.RLock()
+	calls = mock.calls.WithDirectoryLock
+	mock.lockWithDirectoryLock.RUnlock()
 	return calls
 }

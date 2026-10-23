@@ -3,7 +3,6 @@ package tasksCreate
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -44,6 +43,9 @@ func TestCreationKeepsCleanupUntilFilesAndTransactionSucceed(t *testing.T) {
 					return nil
 				},
 				InTransactionFunc: func(ctx context.Context, process func(context.Context) error) error {
+					if err := ctx.Err(); err != nil {
+						return err
+					}
 					inTransaction = true
 					defer func() { inTransaction = false }()
 					err := process(ctx)
@@ -68,12 +70,12 @@ func TestCreationKeepsCleanupUntilFilesAndTransactionSucceed(t *testing.T) {
 			}
 			mkdirCalls := 0
 			files := &MockTaskFileStore{
-				WithTaskFilesFunc: func(ctx context.Context, _ string, process func(context.Context) error) error {
+				WithDirectoryLockFunc: func(ctx context.Context, _ string, process func(context.Context) error) error {
 					locked = true
 					defer func() { locked = false }()
 					return process(ctx)
 				},
-				MkdirAllFunc: func(string, os.FileMode) error {
+				MkdirAllFunc: func(string) error {
 					require.False(t, inTransaction, "filesystem I/O must not hold a SQL transaction")
 					require.True(t, pending, "durable compensation must precede filesystem I/O")
 					mkdirCalls++

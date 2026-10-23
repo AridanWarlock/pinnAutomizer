@@ -38,7 +38,7 @@ func TestCleanupRetriesPartialFailureAndDoesNotStarveNextJob(t *testing.T) {
 		},
 	}
 	files := &MockFileService{
-		WithTaskFilesFunc: func(ctx context.Context, _ string, process func(context.Context) error) error { return process(ctx) },
+		WithDirectoryLockFunc: func(ctx context.Context, _ string, process func(context.Context) error) error { return process(ctx) },
 		RemoveAllFunc: func(path string) error {
 			removed = append(removed, path)
 			if path == first.DataPath {
@@ -82,7 +82,7 @@ func TestCleanupRetainsCursorOnListingFailureAndDoesNotAcknowledgeOnCancellation
 		GetFileCleanupsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanup, error) { return nil, failure },
 	}
 	files := &MockFileService{
-		WithTaskFilesFunc: func(ctx context.Context, _ string, process func(context.Context) error) error { return process(ctx) },
+		WithDirectoryLockFunc: func(ctx context.Context, _ string, process func(context.Context) error) error { return process(ctx) },
 	}
 	out, err := New(postgres, files, limit.MustNew(1)).CleanupPending(t.Context(), Input{AfterTaskID: cursor})
 	require.ErrorIs(t, err, failure)

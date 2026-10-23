@@ -3,7 +3,6 @@ package tasksCreate
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/google/uuid"
 
@@ -21,12 +20,12 @@ type Postgres interface {
 }
 
 type TaskFileStore interface {
-	WithTaskFiles(
+	WithDirectoryLock(
 		ctx context.Context,
 		dataPath string,
 		process func(context.Context) error,
 	) error
-	MkdirAll(name string, perm os.FileMode) error
+	MkdirAll(name string) error
 	Store(dir string, files []domain.TaskFile) error
 }
 
@@ -62,30 +61,16 @@ func (u *usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 		return Output{}, fmt.Errorf("create task model: %w", err)
 	}
 
-	job, err := domain.NewFileCleanup(task.ID, task.DataPath, task.OutputPath)
-	if err != nil {
-		return Output{}, fmt.Errorf("plan creation cleanup: %w", err)
-	}
-	err = u.fileStore.WithTaskFiles(ctx, task.DataPath, func(ctx context.Context) error {
-		if err := u.postgres.QueueFileCleanup(ctx, job); err != nil {
-			return fmt.Errorf("reserve creation cleanup: %w", err)
-		}
-		if err := u.storeTaskFiles(ctx, task, in); err != nil {
+	// Acquire filesystem ownership before publishing the compensation job.
+	err = u.fileStore.WithDirectoryLock(ctx, task.DataPath, func(ctx context.Context) error {
+		if err := u.prepareTaskFiles(ctx, task, in); err != nil {
 			return err
 		}
-		// If commit is ambiguous, keep the durable outcome in PostgreSQL; do not
-		// compensate by deleting files here, since the task may have committed.
-		return u.postgres.InTransaction(ctx, func(ctx context.Context) error {
-			created, err := u.postgres.CreateTask(ctx, task)
-			if err != nil {
-				return fmt.Errorf("create task in postgres: %w", err)
-			}
-			if err := u.postgres.DeleteFileCleanup(ctx, task.ID); err != nil {
-				return fmt.Errorf("confirm creation: %w", err)
-			}
+		created, err := u.confirmTask(ctx, task)
+		if err == nil {
 			task = created
-			return nil
-		})
+		}
+		return err
 	})
 	if err != nil {
 		return Output{}, fmt.Errorf("create task: %w", err)
@@ -94,28 +79,51 @@ func (u *usecase) CreateTask(ctx context.Context, in Input) (Output, error) {
 	return Output{Task: task}, nil
 }
 
-func (u *usecase) storeTaskFiles(
+func (u *usecase) prepareTaskFiles(
 	ctx context.Context,
 	task domain.Task,
 	in Input,
 ) error {
-	if err := ctx.Err(); err != nil {
-		return err
+	job, err := domain.NewFileCleanup(task.ID, task.DataPath, task.OutputPath)
+	if err != nil {
+		return fmt.Errorf("plan creation cleanup: %w", err)
 	}
-	if err := u.fileStore.MkdirAll(task.DataPath, 0755); err != nil {
+	if err := u.postgres.QueueFileCleanup(ctx, job); err != nil {
+		return fmt.Errorf("reserve creation cleanup: %w", err)
+	}
+	return u.storeTaskFiles(task, in)
+}
+
+func (u *usecase) storeTaskFiles(task domain.Task, in Input) error {
+	if err := u.fileStore.MkdirAll(task.DataPath); err != nil {
 		return fmt.Errorf("create task data dir: %w", err)
 	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if err := u.fileStore.MkdirAll(task.OutputPath, 0755); err != nil {
+	if err := u.fileStore.MkdirAll(task.OutputPath); err != nil {
 		return fmt.Errorf("create task out dir: %w", err)
-	}
-	if err := ctx.Err(); err != nil {
-		return err
 	}
 	if err := u.fileStore.Store(task.DataPath, in.Files); err != nil {
 		return fmt.Errorf("store files: %w", err)
 	}
-	return ctx.Err()
+	return nil
+}
+
+// Ownership is held until this transaction returns. An ambiguous commit must
+// be reconciled by the worker, never by synchronously removing the files here.
+func (u *usecase) confirmTask(
+	ctx context.Context,
+	task domain.Task,
+) (domain.Task, error) {
+	var created domain.Task
+	err := u.postgres.InTransaction(ctx, func(ctx context.Context) error {
+		var err error
+		created, err = u.postgres.CreateTask(ctx, task)
+		if err != nil {
+			return fmt.Errorf("create task in postgres: %w", err)
+		}
+		if err := u.postgres.DeleteFileCleanup(ctx, task.ID); err != nil {
+			return fmt.Errorf("confirm creation: %w", err)
+		}
+		return nil
+	})
+	return created, err
 }

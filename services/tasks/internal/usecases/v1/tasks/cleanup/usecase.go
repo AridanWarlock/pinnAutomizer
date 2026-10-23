@@ -22,7 +22,7 @@ type Postgres interface {
 }
 
 type FileService interface {
-	WithTaskFiles(
+	WithDirectoryLock(
 		ctx context.Context,
 		dataPath string,
 		process func(context.Context) error,
@@ -65,7 +65,7 @@ func (u *usecase) CleanupPending(ctx context.Context, in Input) (Output, error) 
 		if err := ctx.Err(); err != nil {
 			return out, errors.Join(failures, err)
 		}
-		if err := u.fileService.WithTaskFiles(ctx, job.DataPath, func(ctx context.Context) error {
+		if err := u.fileService.WithDirectoryLock(ctx, job.DataPath, func(ctx context.Context) error {
 			pending, err := u.postgres.HasFileCleanup(ctx, job.TaskID)
 			if err != nil {
 				return err

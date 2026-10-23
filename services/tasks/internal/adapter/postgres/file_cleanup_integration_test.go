@@ -13,7 +13,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/fileservice"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/fileservice"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	tasksCleanup "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/cleanup"
 	tasksDelete "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/delete"
@@ -27,12 +27,12 @@ func (f cleanupFileService) RemoveAll(path string) error {
 	return f.remove(path)
 }
 
-func (f cleanupFileService) WithTaskFiles(
+func (f cleanupFileService) WithDirectoryLock(
 	ctx context.Context,
 	path string,
 	process func(context.Context) error,
 ) error {
-	return fileservice.NewFileService().WithTaskFiles(ctx, path, process)
+	return fileservice.NewFileService().WithDirectoryLock(ctx, path, process)
 }
 
 func TestFileCleanupAtomicDeletePartialFailureAndReopenIntegration(t *testing.T) {

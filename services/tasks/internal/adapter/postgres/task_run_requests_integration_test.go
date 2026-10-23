@@ -11,7 +11,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/fileservice"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/fileservice"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	tasksAfterRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/afterRun"
 	tasksDelete "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/delete"

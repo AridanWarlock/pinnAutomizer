@@ -13,13 +13,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/fileservice"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/fileservice"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/filestore"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	tasksCleanup "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/cleanup"
@@ -35,16 +36,16 @@ func (v creationVolume) path(path string) string {
 	return filepath.Join(v.root, strings.TrimPrefix(path, "/"))
 }
 
-func (v creationVolume) WithTaskFiles(
+func (v creationVolume) WithDirectoryLock(
 	ctx context.Context,
 	path string,
 	process func(context.Context) error,
 ) error {
-	return fileservice.NewFileService().WithTaskFiles(ctx, v.path(path), process)
+	return fileservice.NewFileService().WithDirectoryLock(ctx, v.path(path), process)
 }
 
-func (v creationVolume) MkdirAll(path string, perm os.FileMode) error {
-	return os.MkdirAll(v.path(path), perm)
+func (v creationVolume) MkdirAll(path string) error {
+	return os.MkdirAll(v.path(path), 0755)
 }
 
 func (v creationVolume) RemoveAll(path string) error {
@@ -52,7 +53,7 @@ func (v creationVolume) RemoveAll(path string) error {
 }
 
 func (v creationVolume) Store(path string, files []domain.TaskFile) error {
-	return filestore.NewFileStore().Store(v.path(path), files)
+	return filestore.NewFileStore(fileservice.NewFileService()).Store(v.path(path), files)
 }
 
 type observingCreationVolume struct {
@@ -74,6 +75,18 @@ type staleCleanupPostgres struct {
 
 func (p staleCleanupPostgres) GetFileCleanups(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanup, error) {
 	return p.jobs, nil
+}
+
+type inspectedCreationPostgres struct {
+	*Repository
+	beforeConfirm func() error
+}
+
+func (p inspectedCreationPostgres) DeleteFileCleanup(ctx context.Context, taskID uuid.UUID) error {
+	if err := p.beforeConfirm(); err != nil {
+		return err
+	}
+	return p.Repository.DeleteFileCleanup(ctx, taskID)
 }
 
 func TestCreationStagingAndStaleCleanupIntegration(t *testing.T) {
@@ -117,7 +130,17 @@ func TestCreationStagingAndStaleCleanupIntegration(t *testing.T) {
 			require.NoError(t, err)
 			_, err = source.Seek(0, 0)
 			require.NoError(t, err)
-			out, err := tasksCreate.New(repo, files).CreateTask(ctx, tasksCreate.Input{
+			creationPostgres := inspectedCreationPostgres{
+				Repository: repo,
+				beforeConfirm: func() error {
+					// INSERT has executed but confirmation has not: cleanup still cannot enter.
+					_, err := tasksCleanup.New(repo, volume, limit.MustNew(32)).CleanupPending(ctx, tasksCleanup.Input{})
+					require.ErrorIs(t, err, errs.ErrConflict)
+					require.FileExists(t, volume.path(filepath.Join(staged[0].DataPath, "data.txt")))
+					return nil
+				},
+			}
+			out, err := tasksCreate.New(creationPostgres, files).CreateTask(ctx, tasksCreate.Input{
 				Name: "staged", Mode: domain.TaskModeTrain,
 				Files: []domain.TaskFile{{Name: "data.txt", File: source}},
 			})
@@ -155,7 +178,7 @@ func TestCreationStagingAndStaleCleanupIntegration(t *testing.T) {
 	}
 }
 
-func TestCleanupCheckWaitsForCreationTransactionIntegration(t *testing.T) {
+func TestCleanupCheckDefersUncommittedCreationIntegration(t *testing.T) {
 	repo, db := newTaskIntegrationRepository(t)
 	ctx, task := integrationTask(t, repo, domain.TaskStatusCreated)
 	job, err := domain.NewFileCleanup(task.ID, task.DataPath, task.OutputPath)
@@ -168,31 +191,27 @@ func TestCleanupCheckWaitsForCreationTransactionIntegration(t *testing.T) {
 			defer tx.Rollback(ctx)
 			_, err = tx.Exec(ctx, "DELETE FROM file_cleanup WHERE task_id=$1", task.ID)
 			require.NoError(t, err)
-			type result struct {
-				pending bool
-				err     error
-			}
-			done := make(chan result, 1)
-			go func() {
-				pending, err := repo.HasFileCleanup(ctx, task.ID)
-				done <- result{pending: pending, err: err}
-			}()
-			// HasFileCleanup must block on the uncommitted DELETE, not read the old row.
-			// db owns the transaction, so observe locks through a separate connection.
-			var waiting bool
-			require.Eventually(t, func() bool {
-				err := repo.pool.Getx(ctx, &waiting, repo.sb.Select("EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock')"))
-				return err == nil && waiting
-			}, 5*time.Second, time.Millisecond)
+			// Do not read the old MVCC version, and do not wait for the creator.
+			_, err = repo.HasFileCleanup(ctx, task.ID)
+			var lockError *pgconn.PgError
+			require.ErrorAs(t, err, &lockError)
+			require.Equal(t, "55P03", lockError.Code, "NOWAIT must defer cleanup")
 			if commit {
 				require.NoError(t, tx.Commit(ctx))
 			} else {
 				require.NoError(t, tx.Rollback(ctx))
 			}
-			got := <-done
-			require.NoError(t, got.err)
-			require.Equal(t, !commit, got.pending)
+			pending, err := repo.HasFileCleanup(ctx, task.ID)
+			require.NoError(t, err)
+			require.Equal(t, !commit, pending)
 			if !commit {
+				// The standalone read has returned: no transaction or row lock remains.
+				tx, err := db.Begin(ctx)
+				require.NoError(t, err)
+				defer tx.Rollback(ctx)
+				_, err = tx.Exec(ctx, "SELECT task_id FROM file_cleanup WHERE task_id=$1 FOR UPDATE NOWAIT", task.ID)
+				require.NoError(t, err)
+				require.NoError(t, tx.Rollback(ctx))
 				require.NoError(t, repo.DeleteFileCleanup(ctx, task.ID))
 			}
 		})

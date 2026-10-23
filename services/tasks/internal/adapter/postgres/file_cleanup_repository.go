@@ -50,13 +50,15 @@ func (r *Repository) DeleteFileCleanup(ctx context.Context, taskID uuid.UUID) er
 	return err
 }
 
+// HasFileCleanup is called outside an explicit transaction. NOWAIT defers
+// cleanup on an in-flight commit; an acquired lock lasts only this statement.
 func (r *Repository) HasFileCleanup(ctx context.Context, taskID uuid.UUID) (bool, error) {
-	// Locking read waits for an in-flight creation commit and rechecks deletion.
-	// A plain MVCC read could see its old cleanup row and remove committed files.
+	// A plain MVCC read could see the old cleanup row during creation commit.
+	// A locked row must be retried later, never treated as permission to remove files.
 	query := r.sb.Select("true").
 		From(FileCleanupTable).
 		Where(sq.Eq{FileCleanupTaskID: taskID}).
-		Suffix("FOR UPDATE")
+		Suffix("FOR UPDATE NOWAIT")
 	var pending bool
 	err := r.pool.Getx(ctx, &pending, query)
 	if errors.Is(err, errs.ErrNotFound) {

@@ -2,8 +2,9 @@ package fileservice
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
+	"hash/fnv"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -26,26 +27,37 @@ func (s *FileService) RemoveAll(dir string) error {
 	return os.RemoveAll(dir)
 }
 
-// WithTaskFiles serializes writes and cleanup using one of 256 stable lock files
-// in the shared data volume. Hash collisions only defer unrelated operations.
-func (s *FileService) WithTaskFiles(
+// WithDirectoryLock serializes cooperating operations using a bounded set of
+// stable lock files in the parent directory. Collisions defer unrelated work.
+func (s *FileService) WithDirectoryLock(
 	ctx context.Context,
-	dataPath string,
+	directory string,
 	process func(context.Context) error,
 ) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	parent := filepath.Dir(filepath.Clean(dataPath))
+	parent := filepath.Dir(filepath.Clean(directory))
 	if err := os.MkdirAll(parent, 0755); err != nil {
 		return err
 	}
-	shard := sha256.Sum256([]byte(filepath.Base(filepath.Clean(dataPath))))
-	lockPath := filepath.Join(parent, fmt.Sprintf(".files-%02x.lock", shard[0]))
+	const lockShards = 256
+	hash := fnv.New32a()
+	_, _ = hash.Write([]byte(filepath.Base(filepath.Clean(directory))))
+	shard := hash.Sum32() % lockShards
+	lockPath := filepath.Join(parent, fmt.Sprintf(".files-%02x.lock", shard))
 	return filelock.WithLock(lockPath, func() error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		return process(ctx)
 	})
+}
+
+func (s *FileService) MkdirAll(path string) error {
+	return os.MkdirAll(path, 0755)
+}
+
+func (s *FileService) Create(path string) (io.WriteCloser, error) {
+	return os.Create(path)
 }

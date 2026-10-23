@@ -6,7 +6,6 @@ package tasksCreate
 
 import (
 	"context"
-	"os"
 	"sync"
 
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
@@ -317,14 +316,14 @@ var _ TaskFileStore = &MockTaskFileStore{}
 //
 //		// make and configure a mocked TaskFileStore
 //		mockedTaskFileStore := &MockTaskFileStore{
-//			MkdirAllFunc: func(name string, perm os.FileMode) error {
+//			MkdirAllFunc: func(name string) error {
 //				panic("mock out the MkdirAll method")
 //			},
 //			StoreFunc: func(dir string, files []domain.TaskFile) error {
 //				panic("mock out the Store method")
 //			},
-//			WithTaskFilesFunc: func(ctx context.Context, dataPath string, process func(context.Context) error) error {
-//				panic("mock out the WithTaskFiles method")
+//			WithDirectoryLockFunc: func(ctx context.Context, dataPath string, process func(context.Context) error) error {
+//				panic("mock out the WithDirectoryLock method")
 //			},
 //		}
 //
@@ -334,13 +333,13 @@ var _ TaskFileStore = &MockTaskFileStore{}
 //	}
 type MockTaskFileStore struct {
 	// MkdirAllFunc mocks the MkdirAll method.
-	MkdirAllFunc func(name string, perm os.FileMode) error
+	MkdirAllFunc func(name string) error
 
 	// StoreFunc mocks the Store method.
 	StoreFunc func(dir string, files []domain.TaskFile) error
 
-	// WithTaskFilesFunc mocks the WithTaskFiles method.
-	WithTaskFilesFunc func(ctx context.Context, dataPath string, process func(context.Context) error) error
+	// WithDirectoryLockFunc mocks the WithDirectoryLock method.
+	WithDirectoryLockFunc func(ctx context.Context, dataPath string, process func(context.Context) error) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -348,8 +347,6 @@ type MockTaskFileStore struct {
 		MkdirAll []struct {
 			// Name is the name argument value.
 			Name string
-			// Perm is the perm argument value.
-			Perm os.FileMode
 		}
 		// Store holds details about calls to the Store method.
 		Store []struct {
@@ -358,8 +355,8 @@ type MockTaskFileStore struct {
 			// Files is the files argument value.
 			Files []domain.TaskFile
 		}
-		// WithTaskFiles holds details about calls to the WithTaskFiles method.
-		WithTaskFiles []struct {
+		// WithDirectoryLock holds details about calls to the WithDirectoryLock method.
+		WithDirectoryLock []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// DataPath is the dataPath argument value.
@@ -368,27 +365,25 @@ type MockTaskFileStore struct {
 			Process func(context.Context) error
 		}
 	}
-	lockMkdirAll      sync.RWMutex
-	lockStore         sync.RWMutex
-	lockWithTaskFiles sync.RWMutex
+	lockMkdirAll          sync.RWMutex
+	lockStore             sync.RWMutex
+	lockWithDirectoryLock sync.RWMutex
 }
 
 // MkdirAll calls MkdirAllFunc.
-func (mock *MockTaskFileStore) MkdirAll(name string, perm os.FileMode) error {
+func (mock *MockTaskFileStore) MkdirAll(name string) error {
 	if mock.MkdirAllFunc == nil {
 		panic("MockTaskFileStore.MkdirAllFunc: method is nil but TaskFileStore.MkdirAll was just called")
 	}
 	callInfo := struct {
 		Name string
-		Perm os.FileMode
 	}{
 		Name: name,
-		Perm: perm,
 	}
 	mock.lockMkdirAll.Lock()
 	mock.calls.MkdirAll = append(mock.calls.MkdirAll, callInfo)
 	mock.lockMkdirAll.Unlock()
-	return mock.MkdirAllFunc(name, perm)
+	return mock.MkdirAllFunc(name)
 }
 
 // MkdirAllCalls gets all the calls that were made to MkdirAll.
@@ -397,11 +392,9 @@ func (mock *MockTaskFileStore) MkdirAll(name string, perm os.FileMode) error {
 //	len(mockedTaskFileStore.MkdirAllCalls())
 func (mock *MockTaskFileStore) MkdirAllCalls() []struct {
 	Name string
-	Perm os.FileMode
 } {
 	var calls []struct {
 		Name string
-		Perm os.FileMode
 	}
 	mock.lockMkdirAll.RLock()
 	calls = mock.calls.MkdirAll
@@ -445,10 +438,10 @@ func (mock *MockTaskFileStore) StoreCalls() []struct {
 	return calls
 }
 
-// WithTaskFiles calls WithTaskFilesFunc.
-func (mock *MockTaskFileStore) WithTaskFiles(ctx context.Context, dataPath string, process func(context.Context) error) error {
-	if mock.WithTaskFilesFunc == nil {
-		panic("MockTaskFileStore.WithTaskFilesFunc: method is nil but TaskFileStore.WithTaskFiles was just called")
+// WithDirectoryLock calls WithDirectoryLockFunc.
+func (mock *MockTaskFileStore) WithDirectoryLock(ctx context.Context, dataPath string, process func(context.Context) error) error {
+	if mock.WithDirectoryLockFunc == nil {
+		panic("MockTaskFileStore.WithDirectoryLockFunc: method is nil but TaskFileStore.WithDirectoryLock was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
@@ -459,17 +452,17 @@ func (mock *MockTaskFileStore) WithTaskFiles(ctx context.Context, dataPath strin
 		DataPath: dataPath,
 		Process:  process,
 	}
-	mock.lockWithTaskFiles.Lock()
-	mock.calls.WithTaskFiles = append(mock.calls.WithTaskFiles, callInfo)
-	mock.lockWithTaskFiles.Unlock()
-	return mock.WithTaskFilesFunc(ctx, dataPath, process)
+	mock.lockWithDirectoryLock.Lock()
+	mock.calls.WithDirectoryLock = append(mock.calls.WithDirectoryLock, callInfo)
+	mock.lockWithDirectoryLock.Unlock()
+	return mock.WithDirectoryLockFunc(ctx, dataPath, process)
 }
 
-// WithTaskFilesCalls gets all the calls that were made to WithTaskFiles.
+// WithDirectoryLockCalls gets all the calls that were made to WithDirectoryLock.
 // Check the length with:
 //
-//	len(mockedTaskFileStore.WithTaskFilesCalls())
-func (mock *MockTaskFileStore) WithTaskFilesCalls() []struct {
+//	len(mockedTaskFileStore.WithDirectoryLockCalls())
+func (mock *MockTaskFileStore) WithDirectoryLockCalls() []struct {
 	Ctx      context.Context
 	DataPath string
 	Process  func(context.Context) error
@@ -479,8 +472,8 @@ func (mock *MockTaskFileStore) WithTaskFilesCalls() []struct {
 		DataPath string
 		Process  func(context.Context) error
 	}
-	mock.lockWithTaskFiles.RLock()
-	calls = mock.calls.WithTaskFiles
-	mock.lockWithTaskFiles.RUnlock()
+	mock.lockWithDirectoryLock.RLock()
+	calls = mock.calls.WithDirectoryLock
+	mock.lockWithDirectoryLock.RUnlock()
 	return calls
 }
