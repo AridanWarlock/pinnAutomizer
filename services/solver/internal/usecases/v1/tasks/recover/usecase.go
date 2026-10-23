@@ -73,7 +73,7 @@ func (u *usecase) RecoverPending(ctx context.Context, in Input) (Output, error) 
 			return out, errors.Join(failures, err)
 		}
 		if err := u.recoverAttempt(ctx, a); err != nil {
-			failures = errors.Join(failures, fmt.Errorf("recover run %s: %w", a.RunID, err))
+			failures = errors.Join(failures, fmt.Errorf("recover run %s (snapshot state=%s, container=%q): %w", a.RunID, a.State, a.ContainerID, err))
 		}
 		out.NextRunID = a.RunID
 	}

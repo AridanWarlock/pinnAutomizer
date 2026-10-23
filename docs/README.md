@@ -1,13 +1,14 @@
 # Контекст проекта
 
-Эти документы описывают код PR [#16](https://github.com/AridanWarlock/pinnAutomizer/pull/16)
-с учётом review и merge 18 октября 2026 года. Merge не означает, что подготовленные
-адаптеры уже подключены к runtime или развёрнуты.
+Эти документы описывают текущий код накопительной ветки; исходный разбор начался
+с PR [#16](https://github.com/AridanWarlock/pinnAutomizer/pull/16).
+Подключение в runtime не означает deploy или проверку реального PINN API.
 
 | Документ | Для чего читать |
 | --- | --- |
 | [architecture.md](architecture.md) | Сервисы, потоки данных, источники истины, сильные стороны и ограничения |
 | [review-principles.md](review-principles.md) | Причины требований пользователя и критерии хорошего изменения |
+| [solver-recovery.md](solver-recovery.md) | Аварийный перезапуск и разбор неизвестного Start |
 | [next-steps.md](next-steps.md) | Результаты аудита, оставшиеся риски и порядок следующих небольших PR |
 
 Для следующего агента: сначала прочитать корневой `AGENTS.md` и Backlog overview,
