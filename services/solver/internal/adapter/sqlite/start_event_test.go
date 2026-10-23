@@ -27,7 +27,7 @@ func TestStartIntentAndEventRollbackThenConcurrentReplay(t *testing.T) {
 	db := sqliteClient(repo).Database()
 	_, err = db.Exec("CREATE TRIGGER reject_start BEFORE INSERT ON outbox BEGIN SELECT RAISE(ABORT,'injected start event failure'); END;")
 	require.NoError(t, err)
-	changed, err := repo.RequestStart(t.Context(), a.RunID, time.Now(), time.Minute, startEvent)
+	changed, err := repo.RequestStart(t.Context(), a.RunID, time.Now(), time.Minute, startEvent, limit.MustNew(1))
 	require.Error(t, err)
 	require.Equal(t, core.Changed(false), changed)
 	stored, err := repo.GetAttempt(t.Context(), a.RunID)
@@ -41,7 +41,7 @@ func TestStartIntentAndEventRollbackThenConcurrentReplay(t *testing.T) {
 	require.NoError(t, err)
 
 	foreign := fixtures.NewEvent(t, fixtures.NewAttempt(t))
-	_, err = repo.RequestStart(t.Context(), a.RunID, time.Now(), time.Minute, foreign)
+	_, err = repo.RequestStart(t.Context(), a.RunID, time.Now(), time.Minute, foreign, limit.MustNew(1))
 	require.ErrorIs(t, err, errs.ErrInvalidArgument)
 
 	type result struct {
@@ -52,7 +52,7 @@ func TestStartIntentAndEventRollbackThenConcurrentReplay(t *testing.T) {
 	var workers sync.WaitGroup
 	for range 2 {
 		workers.Go(func() {
-			changed, err := repo.RequestStart(t.Context(), a.RunID, time.Now(), time.Minute, startEvent)
+			changed, err := repo.RequestStart(t.Context(), a.RunID, time.Now(), time.Minute, startEvent, limit.MustNew(1))
 			results <- result{changed: changed, err: err}
 		})
 	}
@@ -74,7 +74,7 @@ func TestStartIntentAndEventRollbackThenConcurrentReplay(t *testing.T) {
 	require.NoError(t, repo.DeleteEvents(t.Context(), []uuid.UUID{startEvent.ID}))
 	require.NoError(t, repo.Close())
 	repo = open(t, cfg)
-	changed, err = repo.RequestStart(t.Context(), a.RunID, time.Now(), time.Hour, fixtures.NewEvent(t, a))
+	changed, err = repo.RequestStart(t.Context(), a.RunID, time.Now(), time.Hour, fixtures.NewEvent(t, a), limit.MustNew(1))
 	require.NoError(t, err)
 	require.Equal(t, core.Changed(false), changed)
 	stored, err = repo.GetAttempt(t.Context(), a.RunID)

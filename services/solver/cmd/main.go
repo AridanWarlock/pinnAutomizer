@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/signal"
 	"syscall"
@@ -12,8 +13,8 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/lifecycle"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/adapter/mlrunner"
+	"github.com/AridanWarlock/pinnAutomizer/solver/internal/adapter/sqlite"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/config"
-	tasksRun "github.com/AridanWarlock/pinnAutomizer/solver/internal/usecases/v1/tasks/run"
 )
 
 // @title		PINN Automizer SolverService
@@ -47,62 +48,55 @@ func AppRun(
 	)
 	defer cancel()
 
-	// adapters
-	// pinn runner
+	return run(ctx, cfg, log)
+}
+
+func run(ctx context.Context, cfg config.Config, log zerolog.Logger) (err error) {
+	journal, err := sqlite.New(cfg.SQLite)
+	if err != nil {
+		return fmt.Errorf("open solver journal: %w", err)
+	}
+	defer func() { err = errors.Join(err, journal.Close()) }()
 	runner, err := mlrunner.NewPinnRunner(cfg.PinnRunner, log)
 	if err != nil {
-		return fmt.Errorf("start pinn runner: %w", err)
+		return fmt.Errorf("create pinn runner: %w", err)
 	}
-	defer func() {
-		if err := runner.Close(); err != nil {
-			log.Error().Err(err).Msg("pinn runner shutdown error")
-			return
-		}
-		log.Info().Msg("pinn runner shutdown gracefully")
-	}()
-	log.Info().Msg("pinn runner connected")
-	// kafka producer
+	defer func() { err = errors.Join(err, runner.Close()) }()
 	producer := kafka.NewProducer(cfg.KafkaProducer, log)
-	defer func() {
-		if err := producer.Close(); err != nil {
-			log.Error().Err(err).Msg("kafka producer shutdown error")
-			return
-		}
-		log.Info().Msg("kafka producer shutdown gracefully")
-	}()
-	log.Info().Msg("kafka producer connected")
-	// kafka consumer
-	runQueueConsumer, err := kafka.NewConsumer(
-		cfg.KafkaConsumer,
-		"tasks.run.queue",
-		kafka.StrategyAtMostOnce,
-		log,
-	)
+	defer func() { err = errors.Join(err, producer.Close()) }()
+	pipeline, err := newPipeline(cfg, log, journal, runner, producer)
 	if err != nil {
-		return fmt.Errorf("start on run kafka reader: %w", err)
+		return err
 	}
-	predictQueueConsumer, err := kafka.NewConsumer(
-		cfg.KafkaConsumer,
-		"tasks.predict.queue",
-		kafka.StrategyAtMostOnce,
-		log,
-	)
+	runQueueConsumer, err := newCommandConsumer(cfg.KafkaConsumer, "tasks.run.queue", producer, log)
 	if err != nil {
-		return fmt.Errorf("start on run kafka reader: %w", err)
+		return err
 	}
-
-	// usecases
-	// tasks
-	runUsecase := tasksRun.New(runner)
-
-	// consumers
-	runConsumer := tasksRun.NewConsumer(runUsecase, producer)
+	predictQueueConsumer, err := newCommandConsumer(cfg.KafkaConsumer, "tasks.predict.queue", producer, log)
+	if err != nil {
+		return err
+	}
 	return lifecycle.Run(ctx,
 		lifecycle.Worker("tasks.run.queue", func(ctx context.Context) error {
-			return runQueueConsumer.Run(ctx, runConsumer.HandleMessage)
+			return runQueueConsumer.Run(ctx, pipeline.consumer.HandleMessage)
 		}),
 		lifecycle.Worker("tasks.predict.queue", func(ctx context.Context) error {
-			return predictQueueConsumer.Run(ctx, runConsumer.HandleMessage)
+			return predictQueueConsumer.Run(ctx, pipeline.consumer.HandleMessage)
 		}),
+		lifecycle.Worker("solver.recovery", pipeline.recovery.Run),
+		lifecycle.Worker("solver.outbox", pipeline.outbox.Run),
 	)
+}
+
+func newCommandConsumer(
+	cfg kafka.ConsumerConfig,
+	topic string,
+	producer *kafka.Producer,
+	log zerolog.Logger,
+) (*kafka.Consumer, error) {
+	consumer, err := kafka.NewConsumer(cfg, topic, kafka.StrategyAtLeastOnce, log, kafka.WithProducer(producer))
+	if err != nil {
+		return nil, fmt.Errorf("create %s consumer: %w", topic, err)
+	}
+	return consumer, nil
 }

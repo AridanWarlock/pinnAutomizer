@@ -14,35 +14,69 @@ import (
 )
 
 // FinishAttempt stores the result and its outbox event in one transaction.
-func (r *Repository) FinishAttempt(ctx context.Context, id uuid.UUID, code *int, failure *string, now time.Time, event domain.Event) (core.Changed, error) {
-	return r.transitionWithEvent(ctx, id, event, func(a *domain.Attempt) (core.Changed, error) {
+func (r *Repository) FinishAttempt(
+	ctx context.Context,
+	id uuid.UUID,
+	code *int,
+	failure *string,
+	now time.Time,
+	event domain.Event,
+) (core.Changed, error) {
+	return r.transitionWithEvent(ctx, id, event, func(_ context.Context, a *domain.Attempt) (core.Changed, error) {
 		return a.Finish(code, failure, now)
 	})
 }
 
 // RequestStart persists the start event and intent together before Docker Start.
-func (r *Repository) RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event) (core.Changed, error) {
-	return r.transitionWithEvent(ctx, id, event, func(a *domain.Attempt) (core.Changed, error) {
+func (r *Repository) RequestStart(
+	ctx context.Context,
+	id uuid.UUID,
+	now time.Time,
+	timeout time.Duration,
+	event domain.Event,
+	activeLimit limit.Limit,
+) (core.Changed, error) {
+	return r.transitionWithEvent(ctx, id, event, func(ctx context.Context, a *domain.Attempt) (core.Changed, error) {
+		if a.State == domain.AttemptContainerCreated {
+			query := r.sb.Select("COUNT(*)").
+				From(attemptsTable).
+				Where(sq.Eq{attemptsState: []domain.AttemptState{domain.AttemptStartRequested, domain.AttemptRunning}})
+			var active int
+			if err := r.sqlite.Getx(ctx, &active, query); err != nil {
+				return false, err
+			}
+			if active >= activeLimit.Int() {
+				return false, nil
+			}
+		}
 		return a.RequestStart(now, timeout)
 	})
 }
 
-func (r *Repository) transitionWithEvent(ctx context.Context, id uuid.UUID, event domain.Event, change func(*domain.Attempt) (core.Changed, error)) (core.Changed, error) {
+func (r *Repository) transitionWithEvent(
+	ctx context.Context,
+	id uuid.UUID,
+	event domain.Event,
+	change func(context.Context, *domain.Attempt) (core.Changed, error),
+) (core.Changed, error) {
 	if event.RunID != id {
 		return false, errs.ErrInvalidArgument
 	}
 	row := newEventRow(event)
 	var changed core.Changed
 	err := r.sqlite.InTransaction(ctx, func(ctx context.Context) error {
-		changed, err := r.transitionWithoutTx(ctx, id, change)
-		if err != nil || !changed {
-			return err
+		var transitionErr error
+		changed, transitionErr = r.transitionWithoutTx(ctx, id, func(a *domain.Attempt) (core.Changed, error) {
+			return change(ctx, a)
+		})
+		if transitionErr != nil || !changed {
+			return transitionErr
 		}
 		query := r.sb.Insert(outboxTable).
 			Columns(eventColumns...).
 			Values(row.Values()...)
-		_, err = r.sqlite.Execx(ctx, query)
-		return err
+		_, insertErr := r.sqlite.Execx(ctx, query)
+		return insertErr
 	})
 	if err != nil {
 		return false, err

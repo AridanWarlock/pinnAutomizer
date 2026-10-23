@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 	"github.com/google/uuid"
 )
@@ -102,7 +103,7 @@ var _ SQLite = &MockSQLite{}
 //			RecordContainerFunc: func(ctx context.Context, id uuid.UUID, containerID string) (core.Changed, error) {
 //				panic("mock out the RecordContainer method")
 //			},
-//			RequestStartFunc: func(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event) (core.Changed, error) {
+//			RequestStartFunc: func(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event, activeLimit limit.Limit) (core.Changed, error) {
 //				panic("mock out the RequestStart method")
 //			},
 //		}
@@ -119,7 +120,7 @@ type MockSQLite struct {
 	RecordContainerFunc func(ctx context.Context, id uuid.UUID, containerID string) (core.Changed, error)
 
 	// RequestStartFunc mocks the RequestStart method.
-	RequestStartFunc func(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event) (core.Changed, error)
+	RequestStartFunc func(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event, activeLimit limit.Limit) (core.Changed, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -151,6 +152,8 @@ type MockSQLite struct {
 			Timeout time.Duration
 			// Event is the event argument value.
 			Event domain.Event
+			// ActiveLimit is the activeLimit argument value.
+			ActiveLimit limit.Limit
 		}
 	}
 	lockGetAttempt      sync.RWMutex
@@ -235,27 +238,29 @@ func (mock *MockSQLite) RecordContainerCalls() []struct {
 }
 
 // RequestStart calls RequestStartFunc.
-func (mock *MockSQLite) RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event) (core.Changed, error) {
+func (mock *MockSQLite) RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event, activeLimit limit.Limit) (core.Changed, error) {
 	if mock.RequestStartFunc == nil {
 		panic("MockSQLite.RequestStartFunc: method is nil but SQLite.RequestStart was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		ID      uuid.UUID
-		Now     time.Time
-		Timeout time.Duration
-		Event   domain.Event
+		Ctx         context.Context
+		ID          uuid.UUID
+		Now         time.Time
+		Timeout     time.Duration
+		Event       domain.Event
+		ActiveLimit limit.Limit
 	}{
-		Ctx:     ctx,
-		ID:      id,
-		Now:     now,
-		Timeout: timeout,
-		Event:   event,
+		Ctx:         ctx,
+		ID:          id,
+		Now:         now,
+		Timeout:     timeout,
+		Event:       event,
+		ActiveLimit: activeLimit,
 	}
 	mock.lockRequestStart.Lock()
 	mock.calls.RequestStart = append(mock.calls.RequestStart, callInfo)
 	mock.lockRequestStart.Unlock()
-	return mock.RequestStartFunc(ctx, id, now, timeout, event)
+	return mock.RequestStartFunc(ctx, id, now, timeout, event, activeLimit)
 }
 
 // RequestStartCalls gets all the calls that were made to RequestStart.
@@ -263,18 +268,20 @@ func (mock *MockSQLite) RequestStart(ctx context.Context, id uuid.UUID, now time
 //
 //	len(mockedSQLite.RequestStartCalls())
 func (mock *MockSQLite) RequestStartCalls() []struct {
-	Ctx     context.Context
-	ID      uuid.UUID
-	Now     time.Time
-	Timeout time.Duration
-	Event   domain.Event
+	Ctx         context.Context
+	ID          uuid.UUID
+	Now         time.Time
+	Timeout     time.Duration
+	Event       domain.Event
+	ActiveLimit limit.Limit
 } {
 	var calls []struct {
-		Ctx     context.Context
-		ID      uuid.UUID
-		Now     time.Time
-		Timeout time.Duration
-		Event   domain.Event
+		Ctx         context.Context
+		ID          uuid.UUID
+		Now         time.Time
+		Timeout     time.Duration
+		Event       domain.Event
+		ActiveLimit limit.Limit
 	}
 	mock.lockRequestStart.RLock()
 	calls = mock.calls.RequestStart

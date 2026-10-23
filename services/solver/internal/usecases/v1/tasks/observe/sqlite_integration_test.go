@@ -46,7 +46,7 @@ func registerStarted(t *testing.T, repo *sqlite.Repository) domain.Attempt {
 	require.NoError(t, err)
 	_, err = repo.RecordContainer(t.Context(), a.RunID, "container-id")
 	require.NoError(t, err)
-	_, err = repo.RequestStart(t.Context(), a.RunID, time.Now(), time.Minute, fixtures.NewEvent(t, a))
+	_, err = repo.RequestStart(t.Context(), a.RunID, time.Now(), time.Minute, fixtures.NewEvent(t, a), limit.MustNew(1))
 	require.NoError(t, err)
 	a, err = repo.GetAttempt(t.Context(), a.RunID)
 	require.NoError(t, err)

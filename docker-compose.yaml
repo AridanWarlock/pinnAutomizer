@@ -212,6 +212,15 @@ services:
       - PINN_RUNNER_HOST_TASKS_OUTPUT_DIR=${PROJECT_ROOT}/out/pinn/tasks/output
       - PINN_RUNNER_TIMEOUT=30m
       - PINN_RUNNER_CONTAINER_NAME_PREFIX=${PINN_RUNNER_CONTAINER_NAME_PREFIX:-pinn-solver}
+      # Durable journal and background workers (apply goose-solver migrations first)
+      - SQLITE_PATH=/journal/journal.db
+      - SQLITE_MIGRATIONS_DIR=/app/migrations
+      - SQLITE_BUSY_TIMEOUT=5s
+      - RECOVERY_ACTIVE_LIMIT=${SOLVER_RECOVERY_ACTIVE_LIMIT:-1}
+      - RECOVERY_BATCH_SIZE=${SOLVER_RECOVERY_BATCH_SIZE:-8}
+      - RECOVERY_INTERVAL=${SOLVER_RECOVERY_INTERVAL:-1s}
+      - RECOVERY_ATTEMPT_TIMEOUT=${SOLVER_RECOVERY_ATTEMPT_TIMEOUT:-10s}
+      - OUTBOX_INTERVAL=${SOLVER_OUTBOX_INTERVAL:-1s}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${PROJECT_ROOT}/out/solver/logs:/app/out/logs
@@ -225,8 +234,8 @@ services:
 
   goose-solver:
     image: kukymbr/goose-docker:3.27.0
-    entrypoint: ["/bin/sh", "/goose-solver/entrypoint.sh"]
-    profiles: [tools]
+    entrypoint: [ "/bin/sh", "/goose-solver/entrypoint.sh" ]
+    profiles: [ tools ]
     environment:
       - GOOSE_DRIVER=sqlite3
       - GOOSE_DBSTRING=file:/journal/journal.db?_pragma=journal_mode(WAL)&_pragma=synchronous(FULL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)
@@ -242,7 +251,7 @@ services:
         FROM golang:1.26.1-alpine AS builder
         RUN apk add --no-cache git
         RUN go install github.com/swaggo/swag/cmd/swag@v1.16.6
-        
+
         FROM golang:1.26.1-alpine
         COPY --from=builder /go/bin/swag /usr/local/bin/swag
         WORKDIR /code
@@ -255,7 +264,7 @@ services:
     volumes:
       - ${PROJECT_ROOT}:/src
     working_dir: /src
-    entrypoint: ["/bin/sh", "-ec"]
+    entrypoint: [ "/bin/sh", "-ec" ]
     command:
       - |
         cd "$$(mktemp -d)"
@@ -293,7 +302,7 @@ services:
       - KAFKA_AUTO_CREATE_TOPICS_ENABLE=false
     volumes:
       - kafka_data:/var/lib/kafka/data
-#    user: "1000:1000"
+    #    user: "1000:1000"
     healthcheck:
       test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092" ]
       interval: 10s
@@ -322,7 +331,6 @@ services:
     environment:
       - KAFKA_CLUSTERS_0_NAME=local
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9094
-
 
 volumes:
   tasks_data:

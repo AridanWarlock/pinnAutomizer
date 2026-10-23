@@ -26,7 +26,10 @@ func (r *Repository) GetAttempt(ctx context.Context, id uuid.UUID) (domain.Attem
 	return row.toDomain(), nil
 }
 
-func (r *Repository) RegisterAttempt(ctx context.Context, a domain.Attempt) (stored domain.Attempt, created core.Created, err error) {
+func (r *Repository) RegisterAttempt(
+	ctx context.Context,
+	a domain.Attempt,
+) (stored domain.Attempt, created core.Created, err error) {
 	if !a.CanRegister() {
 		return domain.Attempt{}, false, errs.ErrInvalidArgument
 	}
@@ -63,7 +66,11 @@ func (r *Repository) RegisterAttempt(ctx context.Context, a domain.Attempt) (sto
 	return stored, created, nil
 }
 
-func (r *Repository) RecordContainer(ctx context.Context, id uuid.UUID, containerID string) (changed core.Changed, err error) {
+func (r *Repository) RecordContainer(
+	ctx context.Context,
+	id uuid.UUID,
+	containerID string,
+) (changed core.Changed, err error) {
 	return r.transition(ctx, id, func(a *domain.Attempt) (core.Changed, error) {
 		return a.RecordContainer(containerID)
 	})
@@ -78,10 +85,17 @@ func (r *Repository) transition(
 		changed, err = r.transitionWithoutTx(ctx, id, change)
 		return err
 	})
-	return
+	if err != nil {
+		return false, err
+	}
+	return changed, nil
 }
 
-func (r *Repository) transitionWithoutTx(ctx context.Context, id uuid.UUID, change func(*domain.Attempt) (core.Changed, error)) (core.Changed, error) {
+func (r *Repository) transitionWithoutTx(
+	ctx context.Context,
+	id uuid.UUID,
+	change func(*domain.Attempt) (core.Changed, error),
+) (core.Changed, error) {
 	a, err := r.GetAttempt(ctx, id)
 	if err != nil {
 		return false, err
@@ -122,7 +136,11 @@ func (r *Repository) saveTransition(ctx context.Context, a domain.Attempt, previ
 }
 
 // GetRecoverableAttempts includes finished containers whose cleanup is not yet recorded.
-func (r *Repository) GetRecoverableAttempts(ctx context.Context, afterRunID uuid.UUID, batch limit.Limit) ([]domain.Attempt, error) {
+func (r *Repository) GetRecoverableAttempts(
+	ctx context.Context,
+	afterRunID uuid.UUID,
+	batch limit.Limit,
+) ([]domain.Attempt, error) {
 	query := r.sb.Select(attemptColumns...).
 		From(attemptsTable).
 		Where(sq.Or{
