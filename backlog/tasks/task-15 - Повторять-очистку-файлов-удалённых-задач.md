@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-23 12:17'
-updated_date: '2026-10-23 12:46'
+updated_date: '2026-10-23 12:47'
 labels: []
 dependencies: []
 priority: high
@@ -36,4 +36,6 @@ Up-only таблица file_cleanup; валидная domain сущность; d
 
 <!-- SECTION:NOTES:BEGIN -->
 Реализованы атомарная очередь очистки при DELETE и lifecycle worker. Проверено: make fmt; make check; PostgreSQL integration с -race (rollback, частичное удаление, сбой ACK, reopen, конкуренция, повтор DELETE). Ограничения: общий файловый volume; создание задачи с файловым I/O внутри транзакции вынесено в следующий этап.
+
+Готово к review: https://github.com/AridanWarlock/pinnAutomizer/pull/26 (base codex/task-progress). Проверки успешны, одноразовый PostgreSQL остановлен.
 <!-- SECTION:NOTES:END -->
