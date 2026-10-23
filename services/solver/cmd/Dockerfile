@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     GOOS=linux \
     go build \
     -ldflags="-s -w" \
-    -o /app/exe ./cmd/main.go
+    -o /app/exe ./cmd
 
 FROM scratch
 WORKDIR /app

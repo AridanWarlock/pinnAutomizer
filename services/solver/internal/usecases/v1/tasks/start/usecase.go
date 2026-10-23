@@ -8,13 +8,14 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 )
 
 type SQLite interface {
 	GetAttempt(ctx context.Context, id uuid.UUID) (domain.Attempt, error)
 	RecordContainer(ctx context.Context, id uuid.UUID, containerID string) (core.Changed, error)
-	RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event) (core.Changed, error)
+	RequestStart(ctx context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event, activeLimit limit.Limit) (core.Changed, error)
 }
 
 type PinnRunner interface {
@@ -23,16 +24,18 @@ type PinnRunner interface {
 }
 
 type usecase struct {
-	sqlite     SQLite
-	pinnRunner PinnRunner
-	timeout    time.Duration
+	sqlite      SQLite
+	pinnRunner  PinnRunner
+	timeout     time.Duration
+	activeLimit limit.Limit
 }
 
-func New(sqlite SQLite, pinnRunner PinnRunner, timeout time.Duration) Usecase {
+func New(sqlite SQLite, pinnRunner PinnRunner, timeout time.Duration, activeLimit limit.Limit) Usecase {
 	return &usecase{
-		sqlite:     sqlite,
-		pinnRunner: pinnRunner,
-		timeout:    timeout,
+		sqlite:      sqlite,
+		pinnRunner:  pinnRunner,
+		timeout:     timeout,
+		activeLimit: activeLimit,
 	}
 }
 
@@ -60,7 +63,7 @@ func (u *usecase) StartTask(ctx context.Context, in Input) (Output, error) {
 	if err != nil {
 		return Output{}, err
 	}
-	changed, err := u.sqlite.RequestStart(ctx, a.RunID, time.Now(), u.timeout, event)
+	changed, err := u.sqlite.RequestStart(ctx, a.RunID, time.Now(), u.timeout, event, u.activeLimit)
 	if err != nil {
 		return Output{}, fmt.Errorf("request start: %w", err)
 	}

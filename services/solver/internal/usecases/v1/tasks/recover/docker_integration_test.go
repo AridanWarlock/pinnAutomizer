@@ -89,7 +89,7 @@ func TestRecoveryReopensIntentWithoutRestartingDockerIntegration(t *testing.T) {
 			require.NoError(t, err)
 			_, err = repo.RecordContainer(ctx, a.RunID, id)
 			require.NoError(t, err)
-			_, err = repo.RequestStart(ctx, a.RunID, time.Now(), time.Minute, fixtures.NewEvent(t, a))
+			_, err = repo.RequestStart(ctx, a.RunID, time.Now(), time.Minute, fixtures.NewEvent(t, a), limit.MustNew(1))
 			require.NoError(t, err)
 			if executed {
 				require.NoError(t, cli.Start(ctx, id))
@@ -110,7 +110,7 @@ func TestRecoveryReopensIntentWithoutRestartingDockerIntegration(t *testing.T) {
 			}, zerolog.Nop())
 			require.NoError(t, err)
 			defer runner.Close()
-			uc, err := New(repo, tasksStart.New(repo, runner, time.Minute), tasksObserve.New(repo, runner), tasksCleanup.New(repo, runner), limit.MustNew(2), 5*time.Second)
+			uc, err := New(repo, tasksStart.New(repo, runner, time.Minute, limit.MustNew(1)), tasksObserve.New(repo, runner), tasksCleanup.New(repo, runner), limit.MustNew(2), 5*time.Second)
 			require.NoError(t, err)
 			out, err := uc.RecoverPending(ctx, Input{})
 			require.Equal(t, a.RunID, out.NextRunID)

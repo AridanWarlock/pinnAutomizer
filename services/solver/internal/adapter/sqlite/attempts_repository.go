@@ -78,7 +78,10 @@ func (r *Repository) transition(
 		changed, err = r.transitionWithoutTx(ctx, id, change)
 		return err
 	})
-	return
+	if err != nil {
+		return false, err
+	}
+	return changed, nil
 }
 
 func (r *Repository) transitionWithoutTx(ctx context.Context, id uuid.UUID, change func(*domain.Attempt) (core.Changed, error)) (core.Changed, error) {

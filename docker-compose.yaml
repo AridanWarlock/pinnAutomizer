@@ -212,6 +212,15 @@ services:
       - PINN_RUNNER_HOST_TASKS_OUTPUT_DIR=${PROJECT_ROOT}/out/pinn/tasks/output
       - PINN_RUNNER_TIMEOUT=30m
       - PINN_RUNNER_CONTAINER_NAME_PREFIX=${PINN_RUNNER_CONTAINER_NAME_PREFIX:-pinn-solver}
+      # Durable journal and background workers (apply goose-solver migrations first)
+      - SQLITE_PATH=/journal/journal.db
+      - SQLITE_MIGRATIONS_DIR=/app/migrations
+      - SQLITE_BUSY_TIMEOUT=5s
+      - RECOVERY_ACTIVE_LIMIT=${SOLVER_RECOVERY_ACTIVE_LIMIT:-1}
+      - RECOVERY_BATCH_SIZE=${SOLVER_RECOVERY_BATCH_SIZE:-8}
+      - RECOVERY_INTERVAL=${SOLVER_RECOVERY_INTERVAL:-1s}
+      - RECOVERY_ATTEMPT_TIMEOUT=${SOLVER_RECOVERY_ATTEMPT_TIMEOUT:-10s}
+      - OUTBOX_INTERVAL=${SOLVER_OUTBOX_INTERVAL:-1s}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${PROJECT_ROOT}/out/solver/logs:/app/out/logs

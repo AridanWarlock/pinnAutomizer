@@ -58,7 +58,7 @@ func TestDeadlineStopsDockerBeforePersistingResultIntegration(t *testing.T) {
 	require.NoError(t, err)
 	_, err = repo.RecordContainer(ctx, a.RunID, id)
 	require.NoError(t, err)
-	_, err = repo.RequestStart(ctx, a.RunID, a.CreatedAt, time.Minute, fixtures.NewEvent(t, a))
+	_, err = repo.RequestStart(ctx, a.RunID, a.CreatedAt, time.Minute, fixtures.NewEvent(t, a), limit.MustNew(1))
 	require.NoError(t, err)
 	// Simulate an overdue container left by an interrupted solver.
 	require.NoError(t, cli.Start(ctx, id))

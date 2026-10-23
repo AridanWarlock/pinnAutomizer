@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain/fixtures"
 )
@@ -42,7 +43,7 @@ func TestStartTaskPersistsIntentBeforeDockerStart(t *testing.T) {
 					require.Equal(t, a.RunID, id)
 					return a.RecordContainer(containerID)
 				},
-				RequestStartFunc: func(_ context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event) (core.Changed, error) {
+				RequestStartFunc: func(_ context.Context, id uuid.UUID, now time.Time, timeout time.Duration, event domain.Event, activeLimit limit.Limit) (core.Changed, error) {
 					steps = append(steps, "intent")
 					require.Equal(t, "tasks.on.run", event.Message.Topic)
 					require.Equal(t, a.RunID, event.RunID)
@@ -66,7 +67,7 @@ func TestStartTaskPersistsIntentBeforeDockerStart(t *testing.T) {
 					return fail("start")
 				},
 			}
-			uc := New(sqlite, runner, time.Minute)
+			uc := New(sqlite, runner, time.Minute, limit.MustNew(1))
 			out, err := uc.StartTask(t.Context(), Input{RunID: a.RunID})
 			if failureAt == "none" {
 				require.NoError(t, err)
@@ -98,12 +99,12 @@ func TestStartTaskSkipsDockerWhenAnotherCallerClaimsStart(t *testing.T) {
 	require.NoError(t, err)
 	sqlite := &MockSQLite{
 		GetAttemptFunc: func(context.Context, uuid.UUID) (domain.Attempt, error) { return a, nil },
-		RequestStartFunc: func(context.Context, uuid.UUID, time.Time, time.Duration, domain.Event) (core.Changed, error) {
+		RequestStartFunc: func(context.Context, uuid.UUID, time.Time, time.Duration, domain.Event, limit.Limit) (core.Changed, error) {
 			return false, nil
 		},
 	}
 	runner := &MockPinnRunner{}
-	out, err := New(sqlite, runner, time.Minute).StartTask(t.Context(), Input{RunID: a.RunID})
+	out, err := New(sqlite, runner, time.Minute, limit.MustNew(1)).StartTask(t.Context(), Input{RunID: a.RunID})
 	require.NoError(t, err)
 	require.Equal(t, core.Changed(false), out.StartRequested)
 	require.Empty(t, runner.EnsureContainerCalls())

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-13 19:18'
-updated_date: '2026-10-22 05:28'
+updated_date: '2026-10-23 07:48'
 labels: []
 dependencies: []
 priority: high
@@ -29,7 +29,7 @@ At-most-once чтение и отсутствие устойчивой попы�
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Перед runtime wiring сохранить контракт tasks.on.run: создание стабильного start event в tasks/start и атомарная запись вместе с RequestStart в SQLite. Проверить rollback, повтор после доставки, конкуренцию и ошибку Docker Start. Затем отдельный PR runtime/accept/recovery/outbox; старые сообщения не поддерживаем, отменяемый cleanup ctx сохраняем.
+Runtime: открыть проверенную SQLite schema, собрать accept/start/observe/cleanup/recovery/outbox, обслуживать обе Kafka очереди at-least-once под lifecycle. Kafka success ack только после durable accept; retry/DLQ — существующая политика shared consumer. Закрывать зависимости после остановки workers. Добавить env/Compose, сборку всего cmd-пакета, проверки wiring/replay/shutdown и Docker CPU. Старых сообщений нет, cleanup ctx отменяемый.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

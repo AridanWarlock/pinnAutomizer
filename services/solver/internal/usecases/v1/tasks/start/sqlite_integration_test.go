@@ -13,6 +13,7 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/adapter/sqlite"
 	"github.com/AridanWarlock/pinnAutomizer/solver/internal/domain"
@@ -41,7 +42,7 @@ func TestStartTaskConcurrentCallersAndReplayOnDisk(t *testing.T) {
 		EnsureContainerFunc: func(context.Context, domain.Attempt) (string, error) { return "container", nil },
 		StartContainerFunc:  func(context.Context, domain.Attempt) error { return domain.ErrStartOutcomeUnknown },
 	}
-	uc := New(repo, runner, time.Minute)
+	uc := New(repo, runner, time.Minute, limit.MustNew(1))
 	gate := make(chan struct{})
 	var workers sync.WaitGroup
 	results := make(chan error, 8)
@@ -66,7 +67,7 @@ func TestStartTaskConcurrentCallersAndReplayOnDisk(t *testing.T) {
 	repo, err = sqlite.New(cfg)
 	require.NoError(t, err)
 	defer repo.Close()
-	_, err = New(repo, runner, time.Minute).StartTask(t.Context(), Input{RunID: a.RunID})
+	_, err = New(repo, runner, time.Minute, limit.MustNew(1)).StartTask(t.Context(), Input{RunID: a.RunID})
 	require.NoError(t, err)
 	require.Len(t, runner.StartContainerCalls(), 1, "reopen must preserve the consumed intent")
 }
