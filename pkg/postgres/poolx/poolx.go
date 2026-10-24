@@ -12,14 +12,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
 )
 
 type TxManager interface {
-	InTransaction(ctx context.Context, inTx func(context.Context) error) error
+	InTransaction(
+		ctx context.Context,
+		inTx func(context.Context) error,
+	) error
 }
 
-type txKey struct{}
+type txKey struct {
+	postgres *Poolx
+}
 
 func toSqlErr(err error) error {
 	return fmt.Errorf("postgres: to sql: %w", err)
@@ -30,8 +34,15 @@ type executor interface {
 	Query(ctx context.Context, query string, args ...any) (pgx.Rows, error)
 }
 
+type Postgres interface {
+	executor
+	Begin(ctx context.Context) (pgx.Tx, error)
+	Ping(ctx context.Context) error
+	Close()
+}
+
 type Poolx struct {
-	pool *pgxpool.Pool
+	postgres Postgres
 
 	timeout time.Duration
 }
@@ -59,14 +70,27 @@ func New(cfg Config) (Pool, error) {
 		return nil, fmt.Errorf("pgxpool connect: %w", err)
 	}
 
-	err = pgxPool.Ping(ctx)
-	if err != nil {
+	return newPoolx(ctx, pgxPool, cfg.Timeout)
+}
+
+// newPoolx takes ownership: failed verification closes the pool, success transfers
+// it to the returned client, whose owner must call Close.
+func newPoolx(
+	ctx context.Context,
+	postgres Postgres,
+	timeout time.Duration,
+) (client Pool, err error) {
+	defer func() {
+		if err != nil {
+			postgres.Close()
+		}
+	}()
+	if err := postgres.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("ping postgres: %w", err)
 	}
-
 	return &Poolx{
-		pool:    pgxPool,
-		timeout: cfg.Timeout,
+		postgres: postgres,
+		timeout:  timeout,
 	}, nil
 }
 
@@ -118,35 +142,36 @@ func (p *Poolx) Execx(ctx context.Context, sqlizer Sqlizer) (Tag, error) {
 	return newTagxFromPgx(tag), nil
 }
 
-func (p *Poolx) InTransaction(ctx context.Context, inTx func(context.Context) error) error {
+func (p *Poolx) InTransaction(
+	ctx context.Context,
+	inTx func(context.Context) error,
+) (err error) {
+	if inTx == nil {
+		return fmt.Errorf("%w: nil transaction callback", errs.ErrInvalidArgument)
+	}
+	if _, ok := ctx.Value(txKey{postgres: p}).(pgx.Tx); ok {
+		return fmt.Errorf("%w: nested PostgreSQL transaction", errs.ErrInvalidArgument)
+	}
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
-	tx, err := p.pool.Begin(ctx)
+	tx, err := p.postgres.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		if p := recover(); p != nil {
-			_ = tx.Rollback(ctx)
-			panic(p)
+		rollbackErr := tx.Rollback(ctx)
+		if rollbackErr != nil && !errors.Is(rollbackErr, pgx.ErrTxClosed) {
+			err = errors.Join(err, fmt.Errorf("tx.Rollback: %w", rollbackErr))
 		}
-
-		err := tx.Rollback(ctx)
-		if err == nil || errors.Is(err, pgx.ErrTxClosed) {
-			return
-		}
-
-		log := logger.FromContext(ctx)
-		log.Error().Err(err).Msg("poolx: tx.Rollback")
 	}()
 
-	ctx = context.WithValue(ctx, txKey{}, tx)
+	ctx = context.WithValue(ctx, txKey{postgres: p}, tx)
 
 	err = inTx(ctx)
 	if err != nil {
-		return fmt.Errorf("fn: %w", err)
+		return err
 	}
 
 	err = tx.Commit(ctx)
@@ -157,11 +182,11 @@ func (p *Poolx) InTransaction(ctx context.Context, inTx func(context.Context) er
 }
 
 func (p *Poolx) executor(ctx context.Context) executor {
-	tx, ok := ctx.Value(txKey{}).(pgx.Tx)
+	tx, ok := ctx.Value(txKey{postgres: p}).(pgx.Tx)
 	if ok {
 		return tx
 	}
-	return p.pool
+	return p.postgres
 }
 
 func (p *Poolx) handleErr(err error) error {
@@ -183,5 +208,5 @@ func (p *Poolx) handleErr(err error) error {
 }
 
 func (p *Poolx) Close() {
-	p.pool.Close()
+	p.postgres.Close()
 }

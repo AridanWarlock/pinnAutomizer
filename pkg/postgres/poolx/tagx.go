@@ -15,3 +15,7 @@ func newTagxFromPgx(tag pgconn.CommandTag) Tagx {
 func (t Tagx) RowsAffected() int {
 	return t.rowsAffected
 }
+
+func (t Tagx) ExactlyOneRowAffected() bool {
+	return t.rowsAffected == 1
+}
