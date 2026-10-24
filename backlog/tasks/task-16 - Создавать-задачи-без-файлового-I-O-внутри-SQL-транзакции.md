@@ -1,11 +1,11 @@
 ---
 id: TASK-16
 title: Создавать задачи без файлового I/O внутри SQL-транзакции
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-23 14:22'
-updated_date: '2026-10-23 14:32'
+updated_date: '2026-10-24 16:25'
 labels: []
 dependencies: []
 priority: high
@@ -39,3 +39,9 @@ ordinal: 21000
 
 PR на review: https://github.com/AridanWarlock/pinnAutomizer/pull/27 → codex/task-progress.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+PR #27 принят пользователем. Файлы записываются вне SQL-транзакции; устойчивая FileCleanupJob и filesystem lock защищают от сбоев и конкуренции. Проверены make check, PostgreSQL -race, NOWAIT, rollback, stale job и Process.Kill. Ограничения: общий flock-compatible volume; POST без idempotency key.
+<!-- SECTION:FINAL_SUMMARY:END -->
