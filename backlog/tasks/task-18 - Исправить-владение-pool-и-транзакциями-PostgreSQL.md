@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-24 16:31'
-updated_date: '2026-10-24 16:38'
+updated_date: '2026-10-24 16:39'
 labels: []
 dependencies: []
 priority: high
@@ -35,4 +35,6 @@ poolx не закрывает pool после ошибки Ping и переда�
 
 <!-- SECTION:NOTES:BEGIN -->
 Проверено: регрессия общего ключа воспроизведена на PostgreSQL (rollback A терял запись B); с исправлением адресный -race и полный make check с PINN_TEST_POSTGRES_DSN прошли. Unit проверяет Close при Ping failure, вложенность, panic и объединение ошибок rollback без logger. Обнаруженный panic при отмене устранён; WithoutCancel не добавлялся.
+
+PR на review: https://github.com/AridanWarlock/pinnAutomizer/pull/29 → codex/task-progress.
 <!-- SECTION:NOTES:END -->
