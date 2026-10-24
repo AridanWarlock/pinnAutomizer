@@ -411,3 +411,189 @@ func (mock *mockexecutor) QueryCalls() []struct {
 	mock.lockQuery.RUnlock()
 	return calls
 }
+
+var _ Postgres = &MockPostgres{}
+
+type MockPostgres struct {
+	BeginFunc func(ctx context.Context) (pgx.Tx, error)
+
+	CloseFunc func()
+
+	ExecFunc func(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+
+	PingFunc func(ctx context.Context) error
+
+	QueryFunc func(ctx context.Context, query string, args ...any) (pgx.Rows, error)
+
+	calls struct {
+		Begin []struct {
+			Ctx context.Context
+		}
+		Close []struct {
+		}
+		Exec []struct {
+			Ctx       context.Context
+			SQL       string
+			Arguments []any
+		}
+		Ping []struct {
+			Ctx context.Context
+		}
+		Query []struct {
+			Ctx   context.Context
+			Query string
+			Args  []any
+		}
+	}
+	lockBegin sync.RWMutex
+	lockClose sync.RWMutex
+	lockExec  sync.RWMutex
+	lockPing  sync.RWMutex
+	lockQuery sync.RWMutex
+}
+
+func (mock *MockPostgres) Begin(ctx context.Context) (pgx.Tx, error) {
+	if mock.BeginFunc == nil {
+		panic("MockPostgres.BeginFunc: method is nil but Postgres.Begin was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockBegin.Lock()
+	mock.calls.Begin = append(mock.calls.Begin, callInfo)
+	mock.lockBegin.Unlock()
+	return mock.BeginFunc(ctx)
+}
+
+func (mock *MockPostgres) BeginCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockBegin.RLock()
+	calls = mock.calls.Begin
+	mock.lockBegin.RUnlock()
+	return calls
+}
+
+func (mock *MockPostgres) Close() {
+	if mock.CloseFunc == nil {
+		panic("MockPostgres.CloseFunc: method is nil but Postgres.Close was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockClose.Lock()
+	mock.calls.Close = append(mock.calls.Close, callInfo)
+	mock.lockClose.Unlock()
+	mock.CloseFunc()
+}
+
+func (mock *MockPostgres) CloseCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockClose.RLock()
+	calls = mock.calls.Close
+	mock.lockClose.RUnlock()
+	return calls
+}
+
+func (mock *MockPostgres) Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
+	if mock.ExecFunc == nil {
+		panic("MockPostgres.ExecFunc: method is nil but Postgres.Exec was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		SQL       string
+		Arguments []any
+	}{
+		Ctx:       ctx,
+		SQL:       sql,
+		Arguments: arguments,
+	}
+	mock.lockExec.Lock()
+	mock.calls.Exec = append(mock.calls.Exec, callInfo)
+	mock.lockExec.Unlock()
+	return mock.ExecFunc(ctx, sql, arguments...)
+}
+
+func (mock *MockPostgres) ExecCalls() []struct {
+	Ctx       context.Context
+	SQL       string
+	Arguments []any
+} {
+	var calls []struct {
+		Ctx       context.Context
+		SQL       string
+		Arguments []any
+	}
+	mock.lockExec.RLock()
+	calls = mock.calls.Exec
+	mock.lockExec.RUnlock()
+	return calls
+}
+
+func (mock *MockPostgres) Ping(ctx context.Context) error {
+	if mock.PingFunc == nil {
+		panic("MockPostgres.PingFunc: method is nil but Postgres.Ping was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockPing.Lock()
+	mock.calls.Ping = append(mock.calls.Ping, callInfo)
+	mock.lockPing.Unlock()
+	return mock.PingFunc(ctx)
+}
+
+func (mock *MockPostgres) PingCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockPing.RLock()
+	calls = mock.calls.Ping
+	mock.lockPing.RUnlock()
+	return calls
+}
+
+func (mock *MockPostgres) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
+	if mock.QueryFunc == nil {
+		panic("MockPostgres.QueryFunc: method is nil but Postgres.Query was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Query string
+		Args  []any
+	}{
+		Ctx:   ctx,
+		Query: query,
+		Args:  args,
+	}
+	mock.lockQuery.Lock()
+	mock.calls.Query = append(mock.calls.Query, callInfo)
+	mock.lockQuery.Unlock()
+	return mock.QueryFunc(ctx, query, args...)
+}
+
+func (mock *MockPostgres) QueryCalls() []struct {
+	Ctx   context.Context
+	Query string
+	Args  []any
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Query string
+		Args  []any
+	}
+	mock.lockQuery.RLock()
+	calls = mock.calls.Query
+	mock.lockQuery.RUnlock()
+	return calls
+}

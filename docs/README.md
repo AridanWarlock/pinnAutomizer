@@ -10,6 +10,7 @@
 | [review-principles.md](review-principles.md) | Причины требований пользователя и критерии хорошего изменения |
 | [solver-recovery.md](solver-recovery.md) | Аварийный перезапуск и разбор неизвестного Start |
 | [task-file-cleanup.md](task-file-cleanup.md) | Устойчивая отложенная очистка файлов удалённых задач |
+| [postgres-pool.md](postgres-pool.md) | Владение PostgreSQL pool и transaction context |
 | [next-steps.md](next-steps.md) | Результаты аудита, оставшиеся риски и порядок следующих небольших PR |
 
 Для следующего агента: сначала прочитать корневой `AGENTS.md` и Backlog overview,
