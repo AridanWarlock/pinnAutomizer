@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-24 16:21'
-updated_date: '2026-10-24 16:26'
+updated_date: '2026-10-24 16:27'
 labels: []
 dependencies: []
 priority: medium
@@ -35,4 +35,6 @@ ordinal: 22000
 
 <!-- SECTION:NOTES:BEGIN -->
 Все 38 моков переведены на компактный локальный шаблон; значимые Go-токены совпадают с исходными. Два штатных make mockery дали побайтово одинаковый результат; make fmt и make check прошли. Фактический Docker Mockery v3.7.0 закреплён digest, версия не обновлялась. Generated mocks исключены из лимита PR по правилу пользователя.
+
+PR на review: https://github.com/AridanWarlock/pinnAutomizer/pull/28 → codex/task-progress.
 <!-- SECTION:NOTES:END -->
