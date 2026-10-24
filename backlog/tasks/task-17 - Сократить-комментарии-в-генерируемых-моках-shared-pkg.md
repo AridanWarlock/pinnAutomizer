@@ -1,11 +1,11 @@
 ---
 id: TASK-17
 title: Сократить комментарии во всех генерируемых моках
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-24 16:21'
-updated_date: '2026-10-24 16:27'
+updated_date: '2026-10-24 16:39'
 labels: []
 dependencies: []
 priority: medium
@@ -38,3 +38,9 @@ ordinal: 22000
 
 PR на review: https://github.com/AridanWarlock/pinnAutomizer/pull/28 → codex/task-progress.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+PR #28 принят пользователем. Все 38 моков генерируются компактным шаблоном; Go-токены сохранены, повторная генерация побайтово идентична, make check прошёл.
+<!-- SECTION:FINAL_SUMMARY:END -->
