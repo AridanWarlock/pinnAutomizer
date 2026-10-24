@@ -171,7 +171,7 @@ func (p *Poolx) InTransaction(
 
 	err = inTx(ctx)
 	if err != nil {
-		return fmt.Errorf("fn: %w", err)
+		return err
 	}
 
 	err = tx.Commit(ctx)
