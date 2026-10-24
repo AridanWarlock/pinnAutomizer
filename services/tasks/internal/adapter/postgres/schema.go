@@ -67,16 +67,16 @@ var TaskRunRequestsColumns = []string{
 	TaskRunRequestsCreatedAt,
 }
 
-const FileCleanupTable = "file_cleanup"
+const FileCleanupJobsTable = "file_cleanup"
 
 const (
-	FileCleanupTaskID     = "task_id"
-	FileCleanupDataPath   = "data_path"
-	FileCleanupOutputPath = "output_path"
+	FileCleanupJobTaskID     = "task_id"
+	FileCleanupJobDataPath   = "data_path"
+	FileCleanupJobOutputPath = "output_path"
 )
 
-var fileCleanupColumns = []string{
-	FileCleanupTaskID,
-	FileCleanupDataPath,
-	FileCleanupOutputPath,
+var fileCleanupJobColumns = []string{
+	FileCleanupJobTaskID,
+	FileCleanupJobDataPath,
+	FileCleanupJobOutputPath,
 }

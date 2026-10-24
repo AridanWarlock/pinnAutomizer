@@ -39,7 +39,7 @@ func TestDeleteTaskQueuesCleanupInsideDeleteTransaction(t *testing.T) {
 				GetTaskByIDAndUserIDForUpdateFunc: func(context.Context, uuid.UUID, uuid.UUID) (domain.Task, error) {
 					return task, nil
 				},
-				QueueFileCleanupFunc: func(_ context.Context, job domain.FileCleanup) error {
+				QueueFileCleanupJobFunc: func(_ context.Context, job domain.FileCleanupJob) error {
 					require.True(t, inTx)
 					require.Equal(t, task.ID, job.TaskID)
 					require.Equal(t, task.DataPath, job.DataPath)
@@ -86,6 +86,6 @@ func TestDeleteMissingTaskIsAnIdempotentNoop(t *testing.T) {
 	auth := corefixtures.NewAuthInfo()
 	ctx := auth.WithContext(test.ContextWithZeroLogger())
 	require.NoError(t, New(postgres).DeleteTask(ctx, Input{TaskID: uuid.New()}))
-	require.Empty(t, postgres.QueueFileCleanupCalls())
+	require.Empty(t, postgres.QueueFileCleanupJobCalls())
 	require.Empty(t, postgres.DeleteTaskByIDAndUserIDCalls())
 }

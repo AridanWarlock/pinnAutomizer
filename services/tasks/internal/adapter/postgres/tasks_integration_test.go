@@ -19,8 +19,8 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/fileservice"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/fileservice"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 	tasksAfterRun "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/afterRun"
 	tasksCleanup "github.com/AridanWarlock/pinnAutomizer/tasks/internal/usecases/v1/tasks/cleanup"
@@ -84,6 +84,11 @@ func newTaskIntegrationRepository(t *testing.T) (*Repository, *pgx.Conn) {
 	require.NoError(t, err)
 
 	migration, err = os.ReadFile("../../../migrations/20261023140000_document_file_cleanup.sql")
+	require.NoError(t, err)
+	_, err = db.Exec(ctx, string(migration))
+	require.NoError(t, err)
+
+	migration, err = os.ReadFile("../../../migrations/20261023180000_document_creation_cleanup.sql")
 	require.NoError(t, err)
 	_, err = db.Exec(ctx, string(migration))
 	require.NoError(t, err)

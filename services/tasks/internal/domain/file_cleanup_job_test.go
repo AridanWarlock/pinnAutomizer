@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFileCleanupOnlyAcceptsOwnedTaskDirectories(t *testing.T) {
+func TestFileCleanupJobOnlyAcceptsOwnedTaskDirectories(t *testing.T) {
 	t.Parallel()
 	id := uuid.New()
 	data := filepath.Join("/tasks_data", id.String())
 	output := filepath.Join("/tasks_output", id.String())
-	job, err := NewFileCleanup(id, data, output)
+	job, err := NewFileCleanupJob(id, data, output)
 	require.NoError(t, err)
 	require.Equal(t, id, job.TaskID)
 	require.Equal(t, data, job.DataPath)
@@ -32,7 +32,7 @@ func TestFileCleanupOnlyAcceptsOwnedTaskDirectories(t *testing.T) {
 		{name: "same directories", id: id, data: data, output: data},
 	} {
 		t.Run(invalid.name, func(t *testing.T) {
-			_, err := NewFileCleanup(invalid.id, invalid.data, invalid.output)
+			_, err := NewFileCleanupJob(invalid.id, invalid.data, invalid.output)
 			require.Error(t, err, "id=%s data=%q output=%q", invalid.id, invalid.data, invalid.output)
 		})
 	}

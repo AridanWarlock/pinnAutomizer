@@ -9,11 +9,11 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/fileservice"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/lifecycle"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/logger"
-	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/fileservice"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/filestore"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/filewriter"
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/adapter/postgres"
@@ -94,7 +94,7 @@ func AppRun(
 	}()
 	log.Info().Msg("outbox worker started")
 	// file store
-	fileStore := filestore.NewFileStore()
+	fileStore := filestore.NewFileStore(fileservice.NewFileService())
 	// zipper
 	zip := zipper.NewZipper()
 	// file writer

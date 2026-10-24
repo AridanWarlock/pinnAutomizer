@@ -16,7 +16,7 @@ import (
 type Postgres interface {
 	GetTaskByIDAndUserIDForUpdate(ctx context.Context, id, userID uuid.UUID) (domain.Task, error)
 	DeleteTaskByIDAndUserID(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
-	QueueFileCleanup(ctx context.Context, job domain.FileCleanup) error
+	QueueFileCleanupJob(ctx context.Context, job domain.FileCleanupJob) error
 
 	poolx.TxManager
 }
@@ -64,11 +64,11 @@ func (u *usecase) deleteTaskIfAvailable(
 		return fmt.Errorf("%w: task is in progress", errs.ErrConflict)
 	}
 
-	job, err := domain.NewFileCleanup(task.ID, task.DataPath, task.OutputPath)
+	job, err := domain.NewFileCleanupJob(task.ID, task.DataPath, task.OutputPath)
 	if err != nil {
 		return fmt.Errorf("plan file cleanup: %w", err)
 	}
-	if err := u.postgres.QueueFileCleanup(ctx, job); err != nil {
+	if err := u.postgres.QueueFileCleanupJob(ctx, job); err != nil {
 		return fmt.Errorf("queue file cleanup: %w", err)
 	}
 	if err := u.postgres.DeleteTaskByIDAndUserID(ctx, task.ID, userID); err != nil {

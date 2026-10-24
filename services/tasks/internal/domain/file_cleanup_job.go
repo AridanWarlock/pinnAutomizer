@@ -10,31 +10,31 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 )
 
-// FileCleanup preserves task paths after the task row has been deleted.
-// Construct it through NewFileCleanup; callers must not mutate its fields.
-type FileCleanup struct {
+// FileCleanupJob preserves paths for an incomplete creation or deleted task.
+// Construct it through NewFileCleanupJob; callers must not mutate its fields.
+type FileCleanupJob struct {
 	TaskID     uuid.UUID `validate:"required,uuid"`
 	DataPath   string    `validate:"required"`
 	OutputPath string    `validate:"required"`
 }
 
-func NewFileCleanup(
+func NewFileCleanupJob(
 	taskID uuid.UUID,
 	dataPath string,
 	outputPath string,
-) (FileCleanup, error) {
-	job := FileCleanup{
+) (FileCleanupJob, error) {
+	job := FileCleanupJob{
 		TaskID:     taskID,
 		DataPath:   dataPath,
 		OutputPath: outputPath,
 	}
 	if err := job.Validate(); err != nil {
-		return FileCleanup{}, err
+		return FileCleanupJob{}, err
 	}
 	return job, nil
 }
 
-func (j FileCleanup) Validate() error {
+func (j FileCleanupJob) Validate() error {
 	if err := validate.V.Struct(j); err != nil {
 		return err
 	}
