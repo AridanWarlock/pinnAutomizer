@@ -44,6 +44,10 @@ func (h *Handler) ErrorResponse(err error, msg string) {
 	errors.Join()
 
 	switch {
+	case errors.Is(err, errs.ErrServiceUnavailable):
+		statusCode = http.StatusServiceUnavailable
+		log = h.log.Error()
+
 	case errs.OneOf(
 		err,
 		errs.ErrAuthorizationFailed,

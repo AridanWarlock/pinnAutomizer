@@ -22,7 +22,17 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
+      PINN_TEST_REDIS_ADDR: 127.0.0.1:6379
       PINN_TEST_POSTGRES_DSN: postgres://pinn_test:pinn_test@127.0.0.1:5432/postgres?sslmode=disable
     steps:
       - uses: actions/checkout@v6

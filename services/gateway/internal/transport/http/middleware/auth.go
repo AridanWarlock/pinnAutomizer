@@ -97,10 +97,10 @@ func (a *auth) middleware() httpmv.Middleware {
 
 			if err != nil {
 				rh := httpout.NewHandler(w, log)
-				rh.ErrorResponse(
-					fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, err),
-					"failed to authenticate",
-				)
+				if !errors.Is(err, errs.ErrServiceUnavailable) {
+					err = fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, err)
+				}
+				rh.ErrorResponse(err, "failed to authenticate")
 				return
 			}
 
@@ -187,7 +187,7 @@ func (a *auth) getSessionFromRedis(ctx context.Context, jti core.Jti) (core.Redi
 		if errors.Is(err, errs.ErrKeyNotFound) {
 			return core.RedisSession{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, ErrTokenIsExpired)
 		}
-		return core.RedisSession{}, fmt.Errorf("redis error: %w", err)
+		return core.RedisSession{}, fmt.Errorf("%w: redis error: %w", errs.ErrServiceUnavailable, err)
 	}
 	return session, nil
 }

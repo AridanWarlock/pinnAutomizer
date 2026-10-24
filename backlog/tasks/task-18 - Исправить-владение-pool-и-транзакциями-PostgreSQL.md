@@ -1,11 +1,11 @@
 ---
 id: TASK-18
 title: Исправить владение pool и транзакциями PostgreSQL
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-24 16:31'
-updated_date: '2026-10-24 16:39'
+updated_date: '2026-10-24 21:27'
 labels: []
 dependencies: []
 priority: high
@@ -38,3 +38,9 @@ poolx не закрывает pool после ошибки Ping и переда�
 
 PR на review: https://github.com/AridanWarlock/pinnAutomizer/pull/29 → codex/task-progress.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+PR #29 принят пользователем. Pool закрывается при неуспешном Ping, transaction context привязан к клиенту. Unit и PostgreSQL -race проверили независимость транзакций, отмену и ошибки rollback; make check прошёл.
+<!-- SECTION:FINAL_SUMMARY:END -->
