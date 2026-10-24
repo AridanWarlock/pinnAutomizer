@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-24 21:19'
-updated_date: '2026-10-24 21:27'
+updated_date: '2026-10-24 21:28'
 labels: []
 dependencies: []
 priority: high
@@ -39,4 +39,6 @@ Gateway кеширует RedisSession на 30 секунд независимо 
 Пользователь согласовал: убрать L1 из авторизации; читать Redis на каждом защищённом запросе. При недоступном Redis запрещать доступ с 503, отсутствующая сессия — 401. Уже авторизованные запросы продолжаются.
 
 Согласованный вариант реализован: прямой Redis в gateway, отсутствие сессии 401, backend error 503. make fmt/check с PINN_TEST_REDIS_ADDR и адресный -race -count=3 прошли. HTTP-интеграции: два gateway, DEL отдельным клиентом, TTL expiry, обрыв TCP через proxy. CI получил одноразовый Redis. Гонки refresh/logout и Redis failover остаются вне гарантии.
+
+PR на review: https://github.com/AridanWarlock/pinnAutomizer/pull/30 → codex/task-progress.
 <!-- SECTION:NOTES:END -->
