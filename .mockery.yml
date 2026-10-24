@@ -1,4 +1,4 @@
-template: matryer
+template: file://tools/mockery/matryer.templ
 filename: mocks_test.go
 all: true
 recursive: true

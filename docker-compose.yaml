@@ -260,7 +260,7 @@ services:
   #      - ${PROJECT_ROOT}:/code
 
   mockery:
-    image: vektra/mockery:3.7
+    image: vektra/mockery:3.7@sha256:c2f1f3320809009784094d8de0003b5af48a380fcfb2716dc0def3ebc4d12a35
     volumes:
       - ${PROJECT_ROOT}:/src
     working_dir: /src
