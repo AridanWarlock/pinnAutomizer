@@ -33,7 +33,7 @@ func TestCreationKeepsCleanupUntilFilesAndTransactionSucceed(t *testing.T) {
 				return nil
 			}
 			postgres := &MockPostgres{
-				QueueFileCleanupFunc: func(_ context.Context, job domain.FileCleanup) error {
+				QueueFileCleanupJobFunc: func(_ context.Context, job domain.FileCleanupJob) error {
 					require.True(t, locked)
 					require.False(t, inTransaction)
 					if err := operation("reserve"); err != nil {
@@ -63,7 +63,7 @@ func TestCreationKeepsCleanupUntilFilesAndTransactionSucceed(t *testing.T) {
 					require.True(t, inTransaction)
 					return task, operation("insert")
 				},
-				DeleteFileCleanupFunc: func(context.Context, uuid.UUID) error {
+				DeleteFileCleanupJobFunc: func(context.Context, uuid.UUID) error {
 					require.True(t, inTransaction)
 					return operation("confirm")
 				},

@@ -103,8 +103,8 @@ var _ Postgres = &MockPostgres{}
 //			InTransactionFunc: func(ctx context.Context, inTx func(context.Context) error) error {
 //				panic("mock out the InTransaction method")
 //			},
-//			QueueFileCleanupFunc: func(ctx context.Context, job domain.FileCleanup) error {
-//				panic("mock out the QueueFileCleanup method")
+//			QueueFileCleanupJobFunc: func(ctx context.Context, job domain.FileCleanupJob) error {
+//				panic("mock out the QueueFileCleanupJob method")
 //			},
 //		}
 //
@@ -122,8 +122,8 @@ type MockPostgres struct {
 	// InTransactionFunc mocks the InTransaction method.
 	InTransactionFunc func(ctx context.Context, inTx func(context.Context) error) error
 
-	// QueueFileCleanupFunc mocks the QueueFileCleanup method.
-	QueueFileCleanupFunc func(ctx context.Context, job domain.FileCleanup) error
+	// QueueFileCleanupJobFunc mocks the QueueFileCleanupJob method.
+	QueueFileCleanupJobFunc func(ctx context.Context, job domain.FileCleanupJob) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -152,18 +152,18 @@ type MockPostgres struct {
 			// InTx is the inTx argument value.
 			InTx func(context.Context) error
 		}
-		// QueueFileCleanup holds details about calls to the QueueFileCleanup method.
-		QueueFileCleanup []struct {
+		// QueueFileCleanupJob holds details about calls to the QueueFileCleanupJob method.
+		QueueFileCleanupJob []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Job is the job argument value.
-			Job domain.FileCleanup
+			Job domain.FileCleanupJob
 		}
 	}
 	lockDeleteTaskByIDAndUserID       sync.RWMutex
 	lockGetTaskByIDAndUserIDForUpdate sync.RWMutex
 	lockInTransaction                 sync.RWMutex
-	lockQueueFileCleanup              sync.RWMutex
+	lockQueueFileCleanupJob           sync.RWMutex
 }
 
 // DeleteTaskByIDAndUserID calls DeleteTaskByIDAndUserIDFunc.
@@ -282,38 +282,38 @@ func (mock *MockPostgres) InTransactionCalls() []struct {
 	return calls
 }
 
-// QueueFileCleanup calls QueueFileCleanupFunc.
-func (mock *MockPostgres) QueueFileCleanup(ctx context.Context, job domain.FileCleanup) error {
-	if mock.QueueFileCleanupFunc == nil {
-		panic("MockPostgres.QueueFileCleanupFunc: method is nil but Postgres.QueueFileCleanup was just called")
+// QueueFileCleanupJob calls QueueFileCleanupJobFunc.
+func (mock *MockPostgres) QueueFileCleanupJob(ctx context.Context, job domain.FileCleanupJob) error {
+	if mock.QueueFileCleanupJobFunc == nil {
+		panic("MockPostgres.QueueFileCleanupJobFunc: method is nil but Postgres.QueueFileCleanupJob was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		Job domain.FileCleanup
+		Job domain.FileCleanupJob
 	}{
 		Ctx: ctx,
 		Job: job,
 	}
-	mock.lockQueueFileCleanup.Lock()
-	mock.calls.QueueFileCleanup = append(mock.calls.QueueFileCleanup, callInfo)
-	mock.lockQueueFileCleanup.Unlock()
-	return mock.QueueFileCleanupFunc(ctx, job)
+	mock.lockQueueFileCleanupJob.Lock()
+	mock.calls.QueueFileCleanupJob = append(mock.calls.QueueFileCleanupJob, callInfo)
+	mock.lockQueueFileCleanupJob.Unlock()
+	return mock.QueueFileCleanupJobFunc(ctx, job)
 }
 
-// QueueFileCleanupCalls gets all the calls that were made to QueueFileCleanup.
+// QueueFileCleanupJobCalls gets all the calls that were made to QueueFileCleanupJob.
 // Check the length with:
 //
-//	len(mockedPostgres.QueueFileCleanupCalls())
-func (mock *MockPostgres) QueueFileCleanupCalls() []struct {
+//	len(mockedPostgres.QueueFileCleanupJobCalls())
+func (mock *MockPostgres) QueueFileCleanupJobCalls() []struct {
 	Ctx context.Context
-	Job domain.FileCleanup
+	Job domain.FileCleanupJob
 } {
 	var calls []struct {
 		Ctx context.Context
-		Job domain.FileCleanup
+		Job domain.FileCleanupJob
 	}
-	mock.lockQueueFileCleanup.RLock()
-	calls = mock.calls.QueueFileCleanup
-	mock.lockQueueFileCleanup.RUnlock()
+	mock.lockQueueFileCleanupJob.RLock()
+	calls = mock.calls.QueueFileCleanupJob
+	mock.lockQueueFileCleanupJob.RUnlock()
 	return calls
 }

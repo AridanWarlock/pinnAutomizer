@@ -95,14 +95,14 @@ var _ Postgres = &MockPostgres{}
 //
 //		// make and configure a mocked Postgres
 //		mockedPostgres := &MockPostgres{
-//			DeleteFileCleanupFunc: func(ctx context.Context, taskID uuid.UUID) error {
-//				panic("mock out the DeleteFileCleanup method")
+//			DeleteFileCleanupJobFunc: func(ctx context.Context, taskID uuid.UUID) error {
+//				panic("mock out the DeleteFileCleanupJob method")
 //			},
-//			GetFileCleanupsFunc: func(ctx context.Context, afterTaskID uuid.UUID, batch limit.Limit) ([]domain.FileCleanup, error) {
-//				panic("mock out the GetFileCleanups method")
+//			GetFileCleanupJobsFunc: func(ctx context.Context, afterTaskID uuid.UUID, batch limit.Limit) ([]domain.FileCleanupJob, error) {
+//				panic("mock out the GetFileCleanupJobs method")
 //			},
-//			HasFileCleanupFunc: func(ctx context.Context, taskID uuid.UUID) (bool, error) {
-//				panic("mock out the HasFileCleanup method")
+//			HasFileCleanupJobFunc: func(ctx context.Context, taskID uuid.UUID) (bool, error) {
+//				panic("mock out the HasFileCleanupJob method")
 //			},
 //		}
 //
@@ -111,26 +111,26 @@ var _ Postgres = &MockPostgres{}
 //
 //	}
 type MockPostgres struct {
-	// DeleteFileCleanupFunc mocks the DeleteFileCleanup method.
-	DeleteFileCleanupFunc func(ctx context.Context, taskID uuid.UUID) error
+	// DeleteFileCleanupJobFunc mocks the DeleteFileCleanupJob method.
+	DeleteFileCleanupJobFunc func(ctx context.Context, taskID uuid.UUID) error
 
-	// GetFileCleanupsFunc mocks the GetFileCleanups method.
-	GetFileCleanupsFunc func(ctx context.Context, afterTaskID uuid.UUID, batch limit.Limit) ([]domain.FileCleanup, error)
+	// GetFileCleanupJobsFunc mocks the GetFileCleanupJobs method.
+	GetFileCleanupJobsFunc func(ctx context.Context, afterTaskID uuid.UUID, batch limit.Limit) ([]domain.FileCleanupJob, error)
 
-	// HasFileCleanupFunc mocks the HasFileCleanup method.
-	HasFileCleanupFunc func(ctx context.Context, taskID uuid.UUID) (bool, error)
+	// HasFileCleanupJobFunc mocks the HasFileCleanupJob method.
+	HasFileCleanupJobFunc func(ctx context.Context, taskID uuid.UUID) (bool, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// DeleteFileCleanup holds details about calls to the DeleteFileCleanup method.
-		DeleteFileCleanup []struct {
+		// DeleteFileCleanupJob holds details about calls to the DeleteFileCleanupJob method.
+		DeleteFileCleanupJob []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// TaskID is the taskID argument value.
 			TaskID uuid.UUID
 		}
-		// GetFileCleanups holds details about calls to the GetFileCleanups method.
-		GetFileCleanups []struct {
+		// GetFileCleanupJobs holds details about calls to the GetFileCleanupJobs method.
+		GetFileCleanupJobs []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// AfterTaskID is the afterTaskID argument value.
@@ -138,23 +138,23 @@ type MockPostgres struct {
 			// Batch is the batch argument value.
 			Batch limit.Limit
 		}
-		// HasFileCleanup holds details about calls to the HasFileCleanup method.
-		HasFileCleanup []struct {
+		// HasFileCleanupJob holds details about calls to the HasFileCleanupJob method.
+		HasFileCleanupJob []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// TaskID is the taskID argument value.
 			TaskID uuid.UUID
 		}
 	}
-	lockDeleteFileCleanup sync.RWMutex
-	lockGetFileCleanups   sync.RWMutex
-	lockHasFileCleanup    sync.RWMutex
+	lockDeleteFileCleanupJob sync.RWMutex
+	lockGetFileCleanupJobs   sync.RWMutex
+	lockHasFileCleanupJob    sync.RWMutex
 }
 
-// DeleteFileCleanup calls DeleteFileCleanupFunc.
-func (mock *MockPostgres) DeleteFileCleanup(ctx context.Context, taskID uuid.UUID) error {
-	if mock.DeleteFileCleanupFunc == nil {
-		panic("MockPostgres.DeleteFileCleanupFunc: method is nil but Postgres.DeleteFileCleanup was just called")
+// DeleteFileCleanupJob calls DeleteFileCleanupJobFunc.
+func (mock *MockPostgres) DeleteFileCleanupJob(ctx context.Context, taskID uuid.UUID) error {
+	if mock.DeleteFileCleanupJobFunc == nil {
+		panic("MockPostgres.DeleteFileCleanupJobFunc: method is nil but Postgres.DeleteFileCleanupJob was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -163,17 +163,17 @@ func (mock *MockPostgres) DeleteFileCleanup(ctx context.Context, taskID uuid.UUI
 		Ctx:    ctx,
 		TaskID: taskID,
 	}
-	mock.lockDeleteFileCleanup.Lock()
-	mock.calls.DeleteFileCleanup = append(mock.calls.DeleteFileCleanup, callInfo)
-	mock.lockDeleteFileCleanup.Unlock()
-	return mock.DeleteFileCleanupFunc(ctx, taskID)
+	mock.lockDeleteFileCleanupJob.Lock()
+	mock.calls.DeleteFileCleanupJob = append(mock.calls.DeleteFileCleanupJob, callInfo)
+	mock.lockDeleteFileCleanupJob.Unlock()
+	return mock.DeleteFileCleanupJobFunc(ctx, taskID)
 }
 
-// DeleteFileCleanupCalls gets all the calls that were made to DeleteFileCleanup.
+// DeleteFileCleanupJobCalls gets all the calls that were made to DeleteFileCleanupJob.
 // Check the length with:
 //
-//	len(mockedPostgres.DeleteFileCleanupCalls())
-func (mock *MockPostgres) DeleteFileCleanupCalls() []struct {
+//	len(mockedPostgres.DeleteFileCleanupJobCalls())
+func (mock *MockPostgres) DeleteFileCleanupJobCalls() []struct {
 	Ctx    context.Context
 	TaskID uuid.UUID
 } {
@@ -181,16 +181,16 @@ func (mock *MockPostgres) DeleteFileCleanupCalls() []struct {
 		Ctx    context.Context
 		TaskID uuid.UUID
 	}
-	mock.lockDeleteFileCleanup.RLock()
-	calls = mock.calls.DeleteFileCleanup
-	mock.lockDeleteFileCleanup.RUnlock()
+	mock.lockDeleteFileCleanupJob.RLock()
+	calls = mock.calls.DeleteFileCleanupJob
+	mock.lockDeleteFileCleanupJob.RUnlock()
 	return calls
 }
 
-// GetFileCleanups calls GetFileCleanupsFunc.
-func (mock *MockPostgres) GetFileCleanups(ctx context.Context, afterTaskID uuid.UUID, batch limit.Limit) ([]domain.FileCleanup, error) {
-	if mock.GetFileCleanupsFunc == nil {
-		panic("MockPostgres.GetFileCleanupsFunc: method is nil but Postgres.GetFileCleanups was just called")
+// GetFileCleanupJobs calls GetFileCleanupJobsFunc.
+func (mock *MockPostgres) GetFileCleanupJobs(ctx context.Context, afterTaskID uuid.UUID, batch limit.Limit) ([]domain.FileCleanupJob, error) {
+	if mock.GetFileCleanupJobsFunc == nil {
+		panic("MockPostgres.GetFileCleanupJobsFunc: method is nil but Postgres.GetFileCleanupJobs was just called")
 	}
 	callInfo := struct {
 		Ctx         context.Context
@@ -201,17 +201,17 @@ func (mock *MockPostgres) GetFileCleanups(ctx context.Context, afterTaskID uuid.
 		AfterTaskID: afterTaskID,
 		Batch:       batch,
 	}
-	mock.lockGetFileCleanups.Lock()
-	mock.calls.GetFileCleanups = append(mock.calls.GetFileCleanups, callInfo)
-	mock.lockGetFileCleanups.Unlock()
-	return mock.GetFileCleanupsFunc(ctx, afterTaskID, batch)
+	mock.lockGetFileCleanupJobs.Lock()
+	mock.calls.GetFileCleanupJobs = append(mock.calls.GetFileCleanupJobs, callInfo)
+	mock.lockGetFileCleanupJobs.Unlock()
+	return mock.GetFileCleanupJobsFunc(ctx, afterTaskID, batch)
 }
 
-// GetFileCleanupsCalls gets all the calls that were made to GetFileCleanups.
+// GetFileCleanupJobsCalls gets all the calls that were made to GetFileCleanupJobs.
 // Check the length with:
 //
-//	len(mockedPostgres.GetFileCleanupsCalls())
-func (mock *MockPostgres) GetFileCleanupsCalls() []struct {
+//	len(mockedPostgres.GetFileCleanupJobsCalls())
+func (mock *MockPostgres) GetFileCleanupJobsCalls() []struct {
 	Ctx         context.Context
 	AfterTaskID uuid.UUID
 	Batch       limit.Limit
@@ -221,16 +221,16 @@ func (mock *MockPostgres) GetFileCleanupsCalls() []struct {
 		AfterTaskID uuid.UUID
 		Batch       limit.Limit
 	}
-	mock.lockGetFileCleanups.RLock()
-	calls = mock.calls.GetFileCleanups
-	mock.lockGetFileCleanups.RUnlock()
+	mock.lockGetFileCleanupJobs.RLock()
+	calls = mock.calls.GetFileCleanupJobs
+	mock.lockGetFileCleanupJobs.RUnlock()
 	return calls
 }
 
-// HasFileCleanup calls HasFileCleanupFunc.
-func (mock *MockPostgres) HasFileCleanup(ctx context.Context, taskID uuid.UUID) (bool, error) {
-	if mock.HasFileCleanupFunc == nil {
-		panic("MockPostgres.HasFileCleanupFunc: method is nil but Postgres.HasFileCleanup was just called")
+// HasFileCleanupJob calls HasFileCleanupJobFunc.
+func (mock *MockPostgres) HasFileCleanupJob(ctx context.Context, taskID uuid.UUID) (bool, error) {
+	if mock.HasFileCleanupJobFunc == nil {
+		panic("MockPostgres.HasFileCleanupJobFunc: method is nil but Postgres.HasFileCleanupJob was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -239,17 +239,17 @@ func (mock *MockPostgres) HasFileCleanup(ctx context.Context, taskID uuid.UUID) 
 		Ctx:    ctx,
 		TaskID: taskID,
 	}
-	mock.lockHasFileCleanup.Lock()
-	mock.calls.HasFileCleanup = append(mock.calls.HasFileCleanup, callInfo)
-	mock.lockHasFileCleanup.Unlock()
-	return mock.HasFileCleanupFunc(ctx, taskID)
+	mock.lockHasFileCleanupJob.Lock()
+	mock.calls.HasFileCleanupJob = append(mock.calls.HasFileCleanupJob, callInfo)
+	mock.lockHasFileCleanupJob.Unlock()
+	return mock.HasFileCleanupJobFunc(ctx, taskID)
 }
 
-// HasFileCleanupCalls gets all the calls that were made to HasFileCleanup.
+// HasFileCleanupJobCalls gets all the calls that were made to HasFileCleanupJob.
 // Check the length with:
 //
-//	len(mockedPostgres.HasFileCleanupCalls())
-func (mock *MockPostgres) HasFileCleanupCalls() []struct {
+//	len(mockedPostgres.HasFileCleanupJobCalls())
+func (mock *MockPostgres) HasFileCleanupJobCalls() []struct {
 	Ctx    context.Context
 	TaskID uuid.UUID
 } {
@@ -257,9 +257,9 @@ func (mock *MockPostgres) HasFileCleanupCalls() []struct {
 		Ctx    context.Context
 		TaskID uuid.UUID
 	}
-	mock.lockHasFileCleanup.RLock()
-	calls = mock.calls.HasFileCleanup
-	mock.lockHasFileCleanup.RUnlock()
+	mock.lockHasFileCleanupJob.RLock()
+	calls = mock.calls.HasFileCleanupJob
+	mock.lockHasFileCleanupJob.RUnlock()
 	return calls
 }
 

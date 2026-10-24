@@ -35,7 +35,7 @@ func (f cleanupFileService) WithDirectoryLock(
 	return fileservice.NewFileService().WithDirectoryLock(ctx, path, process)
 }
 
-func TestFileCleanupAtomicDeletePartialFailureAndReopenIntegration(t *testing.T) {
+func TestFileCleanupJobAtomicDeletePartialFailureAndReopenIntegration(t *testing.T) {
 	repo, db := newTaskIntegrationRepository(t)
 	ctx, task := integrationTask(t, repo, domain.TaskStatusCreated)
 	_, err := db.Exec(ctx, `
@@ -48,7 +48,7 @@ func TestFileCleanupAtomicDeletePartialFailureAndReopenIntegration(t *testing.T)
 	require.ErrorContains(t, err, "injected delete failure")
 	_, err = repo.GetTaskByID(ctx, task.ID)
 	require.NoError(t, err)
-	jobs, err := repo.GetFileCleanups(ctx, uuid.Nil, limit.MustNew(10))
+	jobs, err := repo.GetFileCleanupJobs(ctx, uuid.Nil, limit.MustNew(10))
 	require.NoError(t, err)
 	require.Empty(t, jobs, "failed delete must roll back the queued cleanup")
 	require.DirExists(t, task.DataPath)
@@ -61,7 +61,7 @@ func TestFileCleanupAtomicDeletePartialFailureAndReopenIntegration(t *testing.T)
 	require.ErrorIs(t, err, errs.ErrNotFound)
 	require.DirExists(t, task.DataPath, "HTTP deletion commits before filesystem work")
 	require.DirExists(t, task.OutputPath)
-	jobs, err = repo.GetFileCleanups(ctx, uuid.Nil, limit.MustNew(10))
+	jobs, err = repo.GetFileCleanupJobs(ctx, uuid.Nil, limit.MustNew(10))
 	require.NoError(t, err)
 	require.Len(t, jobs, 1)
 	require.NoError(t, tasksDelete.New(repo).DeleteTask(ctx, tasksDelete.Input{TaskID: task.ID}), "replay after a lost HTTP response must succeed")
@@ -82,7 +82,7 @@ func TestFileCleanupAtomicDeletePartialFailureAndReopenIntegration(t *testing.T)
 	require.ErrorContains(t, err, "output filesystem unavailable")
 	require.NoDirExists(t, task.DataPath)
 	require.DirExists(t, task.OutputPath)
-	jobs, err = repo.GetFileCleanups(ctx, uuid.Nil, limit.MustNew(10))
+	jobs, err = repo.GetFileCleanupJobs(ctx, uuid.Nil, limit.MustNew(10))
 	require.NoError(t, err)
 	require.Len(t, jobs, 1)
 
@@ -110,7 +110,7 @@ func TestFileCleanupAtomicDeletePartialFailureAndReopenIntegration(t *testing.T)
 	}, zerolog.Nop())
 	require.NoError(t, err)
 	defer reopened.Close()
-	jobs, err = reopened.GetFileCleanups(ctx, uuid.Nil, limit.MustNew(10))
+	jobs, err = reopened.GetFileCleanupJobs(ctx, uuid.Nil, limit.MustNew(10))
 	require.NoError(t, err)
 	require.Len(t, jobs, 1, "an ack failure after physical deletion must remain retryable")
 	_, err = db.Exec(ctx, "DROP TRIGGER reject_cleanup_ack ON file_cleanup")
@@ -121,19 +121,19 @@ func TestFileCleanupAtomicDeletePartialFailureAndReopenIntegration(t *testing.T)
 	out, err := uc.CleanupPending(ctx, tasksCleanup.Input{})
 	require.NoError(t, err)
 	require.Equal(t, uuid.Nil, out.NextTaskID)
-	jobs, err = reopened.GetFileCleanups(ctx, uuid.Nil, limit.MustNew(10))
+	jobs, err = reopened.GetFileCleanupJobs(ctx, uuid.Nil, limit.MustNew(10))
 	require.NoError(t, err)
 	require.Empty(t, jobs)
 	require.NoError(t, tasksDelete.New(reopened).DeleteTask(ctx, tasksDelete.Input{TaskID: task.ID}))
-	jobs, err = reopened.GetFileCleanups(ctx, uuid.Nil, limit.MustNew(10))
+	jobs, err = reopened.GetFileCleanupJobs(ctx, uuid.Nil, limit.MustNew(10))
 	require.NoError(t, err)
 	require.Empty(t, jobs, "replay after cleanup must not recreate a job")
 }
 
-func TestFileCleanupInvalidRowIsPersistenceFailure(t *testing.T) {
+func TestFileCleanupJobInvalidRowIsPersistenceFailure(t *testing.T) {
 	t.Parallel()
 	require.Panics(t, func() {
-		_ = (fileCleanupRow{TaskID: uuid.New(), DataPath: "/", OutputPath: "/"}).toDomain()
+		_ = (fileCleanupJobRow{TaskID: uuid.New(), DataPath: "/", OutputPath: "/"}).toDomain()
 	})
 }
 
@@ -174,7 +174,7 @@ func TestConcurrentFileCleanupIsIdempotentIntegration(t *testing.T) {
 	require.NoError(t, err, "a later sweep safely observes the acknowledged job")
 	require.NoDirExists(t, task.DataPath)
 	require.NoDirExists(t, task.OutputPath)
-	jobs, err := repo.GetFileCleanups(ctx, uuid.Nil, limit.MustNew(10))
+	jobs, err := repo.GetFileCleanupJobs(ctx, uuid.Nil, limit.MustNew(10))
 	require.NoError(t, err)
 	require.Empty(t, jobs)
 }

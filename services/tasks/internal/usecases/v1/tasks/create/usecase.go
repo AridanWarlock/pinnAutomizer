@@ -14,8 +14,8 @@ import (
 
 type Postgres interface {
 	CreateTask(ctx context.Context, task domain.Task) (domain.Task, error)
-	QueueFileCleanup(ctx context.Context, job domain.FileCleanup) error
-	DeleteFileCleanup(ctx context.Context, taskID uuid.UUID) error
+	QueueFileCleanupJob(ctx context.Context, job domain.FileCleanupJob) error
+	DeleteFileCleanupJob(ctx context.Context, taskID uuid.UUID) error
 	poolx.TxManager
 }
 
@@ -84,11 +84,11 @@ func (u *usecase) prepareTaskFiles(
 	task domain.Task,
 	in Input,
 ) error {
-	job, err := domain.NewFileCleanup(task.ID, task.DataPath, task.OutputPath)
+	job, err := domain.NewFileCleanupJob(task.ID, task.DataPath, task.OutputPath)
 	if err != nil {
 		return fmt.Errorf("plan creation cleanup: %w", err)
 	}
-	if err := u.postgres.QueueFileCleanup(ctx, job); err != nil {
+	if err := u.postgres.QueueFileCleanupJob(ctx, job); err != nil {
 		return fmt.Errorf("reserve creation cleanup: %w", err)
 	}
 	return u.storeTaskFiles(task, in)
@@ -120,7 +120,7 @@ func (u *usecase) confirmTask(
 		if err != nil {
 			return fmt.Errorf("create task in postgres: %w", err)
 		}
-		if err := u.postgres.DeleteFileCleanup(ctx, task.ID); err != nil {
+		if err := u.postgres.DeleteFileCleanupJob(ctx, task.ID); err != nil {
 			return fmt.Errorf("confirm creation: %w", err)
 		}
 		return nil

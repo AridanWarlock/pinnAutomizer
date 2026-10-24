@@ -70,10 +70,10 @@ func (v observingCreationVolume) Store(path string, files []domain.TaskFile) err
 
 type staleCleanupPostgres struct {
 	*Repository
-	jobs []domain.FileCleanup
+	jobs []domain.FileCleanupJob
 }
 
-func (p staleCleanupPostgres) GetFileCleanups(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanup, error) {
+func (p staleCleanupPostgres) GetFileCleanupJobs(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanupJob, error) {
 	return p.jobs, nil
 }
 
@@ -82,11 +82,11 @@ type inspectedCreationPostgres struct {
 	beforeConfirm func() error
 }
 
-func (p inspectedCreationPostgres) DeleteFileCleanup(ctx context.Context, taskID uuid.UUID) error {
+func (p inspectedCreationPostgres) DeleteFileCleanupJob(ctx context.Context, taskID uuid.UUID) error {
 	if err := p.beforeConfirm(); err != nil {
 		return err
 	}
-	return p.Repository.DeleteFileCleanup(ctx, taskID)
+	return p.Repository.DeleteFileCleanupJob(ctx, taskID)
 }
 
 func TestCreationStagingAndStaleCleanupIntegration(t *testing.T) {
@@ -96,7 +96,7 @@ func TestCreationStagingAndStaleCleanupIntegration(t *testing.T) {
 			ctx := corefixtures.NewAuthInfo().WithContext(t.Context())
 			volume := creationVolume{root: t.TempDir()}
 			failure := errors.New("partial upload")
-			var staged []domain.FileCleanup
+			var staged []domain.FileCleanupJob
 			files := observingCreationVolume{
 				creationVolume: volume,
 				hook: func() error {
@@ -104,7 +104,7 @@ func TestCreationStagingAndStaleCleanupIntegration(t *testing.T) {
 					err := db.QueryRow(ctx, "SELECT COUNT(*) FROM pg_stat_activity WHERE datname=current_database() AND state='idle in transaction'").Scan(&active)
 					require.NoError(t, err)
 					require.Zero(t, active, "file I/O must not hold a transaction")
-					staged, err = repo.GetFileCleanups(ctx, uuid.Nil, limit.MustNew(32))
+					staged, err = repo.GetFileCleanupJobs(ctx, uuid.Nil, limit.MustNew(32))
 					require.NoError(t, err)
 					require.Len(t, staged, 1)
 					_, err = repo.GetTaskByID(ctx, staged[0].TaskID)
@@ -159,7 +159,7 @@ func TestCreationStagingAndStaleCleanupIntegration(t *testing.T) {
 				require.Error(t, err)
 				_, getErr := repo.GetTaskByID(ctx, job.TaskID)
 				require.ErrorIs(t, getErr, errs.ErrNotFound)
-				pending, getErr := repo.HasFileCleanup(ctx, job.TaskID)
+				pending, getErr := repo.HasFileCleanupJob(ctx, job.TaskID)
 				require.NoError(t, getErr)
 				require.True(t, pending, "rollback must retain durable cleanup")
 				if failureAt == "confirm" {
@@ -171,7 +171,7 @@ func TestCreationStagingAndStaleCleanupIntegration(t *testing.T) {
 				require.NoDirExists(t, volume.path(job.DataPath))
 				require.NoDirExists(t, volume.path(job.OutputPath))
 			}
-			pending, err := repo.HasFileCleanup(ctx, job.TaskID)
+			pending, err := repo.HasFileCleanupJob(ctx, job.TaskID)
 			require.NoError(t, err)
 			require.False(t, pending)
 		})
@@ -181,18 +181,18 @@ func TestCreationStagingAndStaleCleanupIntegration(t *testing.T) {
 func TestCleanupCheckDefersUncommittedCreationIntegration(t *testing.T) {
 	repo, db := newTaskIntegrationRepository(t)
 	ctx, task := integrationTask(t, repo, domain.TaskStatusCreated)
-	job, err := domain.NewFileCleanup(task.ID, task.DataPath, task.OutputPath)
+	job, err := domain.NewFileCleanupJob(task.ID, task.DataPath, task.OutputPath)
 	require.NoError(t, err)
 	for _, commit := range []bool{false, true} {
 		t.Run(map[bool]string{false: "rollback", true: "commit"}[commit], func(t *testing.T) {
-			require.NoError(t, repo.QueueFileCleanup(ctx, job))
+			require.NoError(t, repo.QueueFileCleanupJob(ctx, job))
 			tx, err := db.Begin(ctx)
 			require.NoError(t, err)
 			defer tx.Rollback(ctx)
 			_, err = tx.Exec(ctx, "DELETE FROM file_cleanup WHERE task_id=$1", task.ID)
 			require.NoError(t, err)
 			// Do not read the old MVCC version, and do not wait for the creator.
-			_, err = repo.HasFileCleanup(ctx, task.ID)
+			_, err = repo.HasFileCleanupJob(ctx, task.ID)
 			var lockError *pgconn.PgError
 			require.ErrorAs(t, err, &lockError)
 			require.Equal(t, "55P03", lockError.Code, "NOWAIT must defer cleanup")
@@ -201,7 +201,7 @@ func TestCleanupCheckDefersUncommittedCreationIntegration(t *testing.T) {
 			} else {
 				require.NoError(t, tx.Rollback(ctx))
 			}
-			pending, err := repo.HasFileCleanup(ctx, task.ID)
+			pending, err := repo.HasFileCleanupJob(ctx, task.ID)
 			require.NoError(t, err)
 			require.Equal(t, !commit, pending)
 			if !commit {
@@ -212,7 +212,7 @@ func TestCleanupCheckDefersUncommittedCreationIntegration(t *testing.T) {
 				_, err = tx.Exec(ctx, "SELECT task_id FROM file_cleanup WHERE task_id=$1 FOR UPDATE NOWAIT", task.ID)
 				require.NoError(t, err)
 				require.NoError(t, tx.Rollback(ctx))
-				require.NoError(t, repo.DeleteFileCleanup(ctx, task.ID))
+				require.NoError(t, repo.DeleteFileCleanupJob(ctx, task.ID))
 			}
 		})
 	}
@@ -277,7 +277,7 @@ func TestCreationCleanupAfterProcessDeathIntegration(t *testing.T) {
 	_, err = io.ReadFull(ready, signal)
 	require.NoError(t, err, "child must reach staged filesystem work")
 	require.Equal(t, byte(1), signal[0], "child must signal readiness, not print a test failure")
-	jobs, err := repo.GetFileCleanups(ctx, uuid.Nil, limit.MustNew(32))
+	jobs, err := repo.GetFileCleanupJobs(ctx, uuid.Nil, limit.MustNew(32))
 	require.NoError(t, err)
 	require.Len(t, jobs, 1)
 	require.DirExists(t, volume.path(jobs[0].DataPath))
@@ -290,7 +290,7 @@ func TestCreationCleanupAfterProcessDeathIntegration(t *testing.T) {
 	require.NoError(t, err)
 	require.NoDirExists(t, volume.path(jobs[0].DataPath))
 	require.NoDirExists(t, volume.path(jobs[0].OutputPath))
-	pending, err := repo.HasFileCleanup(ctx, jobs[0].TaskID)
+	pending, err := repo.HasFileCleanupJob(ctx, jobs[0].TaskID)
 	require.NoError(t, err)
 	require.False(t, pending)
 }

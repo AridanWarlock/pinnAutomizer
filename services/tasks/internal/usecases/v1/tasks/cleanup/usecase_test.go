@@ -13,10 +13,10 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/tasks/internal/domain"
 )
 
-func job(t *testing.T) domain.FileCleanup {
+func job(t *testing.T) domain.FileCleanupJob {
 	t.Helper()
 	id := uuid.New()
-	job, err := domain.NewFileCleanup(id, filepath.Join("/tasks_data", id.String()), filepath.Join("/tasks_output", id.String()))
+	job, err := domain.NewFileCleanupJob(id, filepath.Join("/tasks_data", id.String()), filepath.Join("/tasks_output", id.String()))
 	require.NoError(t, err)
 	return job
 }
@@ -28,11 +28,11 @@ func TestCleanupRetriesPartialFailureAndDoesNotStarveNextJob(t *testing.T) {
 	var removed []string
 	var deleted []uuid.UUID
 	postgres := &MockPostgres{
-		HasFileCleanupFunc: func(context.Context, uuid.UUID) (bool, error) { return true, nil },
-		GetFileCleanupsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanup, error) {
-			return []domain.FileCleanup{first, second}, nil
+		HasFileCleanupJobFunc: func(context.Context, uuid.UUID) (bool, error) { return true, nil },
+		GetFileCleanupJobsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanupJob, error) {
+			return []domain.FileCleanupJob{first, second}, nil
 		},
-		DeleteFileCleanupFunc: func(_ context.Context, id uuid.UUID) error {
+		DeleteFileCleanupJobFunc: func(_ context.Context, id uuid.UUID) error {
 			deleted = append(deleted, id)
 			return nil
 		},
@@ -55,7 +55,7 @@ func TestCleanupRetriesPartialFailureAndDoesNotStarveNextJob(t *testing.T) {
 	require.Equal(t, []uuid.UUID{second.TaskID}, deleted)
 	require.Equal(t, []string{first.DataPath, first.OutputPath, second.DataPath, second.OutputPath}, removed)
 	// Advance to an empty page: the worker will use its Nil output for a new sweep.
-	postgres.GetFileCleanupsFunc = func(_ context.Context, after uuid.UUID, _ limit.Limit) ([]domain.FileCleanup, error) {
+	postgres.GetFileCleanupJobsFunc = func(_ context.Context, after uuid.UUID, _ limit.Limit) ([]domain.FileCleanupJob, error) {
 		require.Equal(t, second.TaskID, after)
 		return nil, nil
 	}
@@ -64,9 +64,9 @@ func TestCleanupRetriesPartialFailureAndDoesNotStarveNextJob(t *testing.T) {
 	require.Equal(t, uuid.Nil, out.NextTaskID)
 	// The retained first job is selected again, rather than forgotten behind the cursor.
 	files.RemoveAllFunc = func(path string) error { return nil }
-	postgres.GetFileCleanupsFunc = func(_ context.Context, after uuid.UUID, _ limit.Limit) ([]domain.FileCleanup, error) {
+	postgres.GetFileCleanupJobsFunc = func(_ context.Context, after uuid.UUID, _ limit.Limit) ([]domain.FileCleanupJob, error) {
 		require.Equal(t, uuid.Nil, after)
-		return []domain.FileCleanup{first}, nil
+		return []domain.FileCleanupJob{first}, nil
 	}
 	_, err = uc.CleanupPending(t.Context(), Input{AfterTaskID: out.NextTaskID})
 	require.NoError(t, err)
@@ -78,8 +78,8 @@ func TestCleanupRetainsCursorOnListingFailureAndDoesNotAcknowledgeOnCancellation
 	cursor := uuid.New()
 	failure := errors.New("database unavailable")
 	postgres := &MockPostgres{
-		HasFileCleanupFunc:  func(context.Context, uuid.UUID) (bool, error) { return true, nil },
-		GetFileCleanupsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanup, error) { return nil, failure },
+		HasFileCleanupJobFunc:  func(context.Context, uuid.UUID) (bool, error) { return true, nil },
+		GetFileCleanupJobsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanupJob, error) { return nil, failure },
 	}
 	files := &MockFileService{
 		WithDirectoryLockFunc: func(ctx context.Context, _ string, process func(context.Context) error) error { return process(ctx) },
@@ -92,12 +92,12 @@ func TestCleanupRetainsCursorOnListingFailureAndDoesNotAcknowledgeOnCancellation
 	j := job(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	postgres.GetFileCleanupsFunc = func(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanup, error) {
-		return []domain.FileCleanup{j}, nil
+	postgres.GetFileCleanupJobsFunc = func(context.Context, uuid.UUID, limit.Limit) ([]domain.FileCleanupJob, error) {
+		return []domain.FileCleanupJob{j}, nil
 	}
 	files.RemoveAllFunc = func(string) error { cancel(); return nil }
 	_, err = New(postgres, files, limit.MustNew(1)).CleanupPending(ctx, Input{})
 	require.ErrorIs(t, err, context.Canceled)
 	require.Len(t, files.RemoveAllCalls(), 1)
-	require.Empty(t, postgres.DeleteFileCleanupCalls())
+	require.Empty(t, postgres.DeleteFileCleanupJobCalls())
 }
