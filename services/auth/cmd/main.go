@@ -11,6 +11,8 @@ import (
 	_ "github.com/AridanWarlock/pinnAutomizer/auth/docs"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres"
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/config"
+	"github.com/AridanWarlock/pinnAutomizer/auth/internal/sessionRevocation"
+	"github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/cleanupSessions"
 	authCompromised "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/compromised"
 	authLogin "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/login"
 	authLogout "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/logout"
@@ -104,6 +106,15 @@ func AppRun(
 	authRefreshUsecase := authRefresh.New(postgresAdapter, redisAdapter, accessTokenGenerator)
 	authCompromisedUsecase := authCompromised.New(postgresAdapter, redisAdapter)
 
+	revocationWorker, err := sessionRevocation.NewWorker(
+		cleanupSessions.New(postgresAdapter, redisAdapter),
+		cfg.SessionRevocation,
+		log,
+	)
+	if err != nil {
+		return fmt.Errorf("session revocation worker: %w", err)
+	}
+
 	// consumers
 	authCompromisedConsumer := authCompromised.NewConsumer(authCompromisedUsecase)
 	authCompromisedKafkaConsumer, err := kafka.NewConsumer(
@@ -142,6 +153,7 @@ func AppRun(
 	// httpServer.RegisterSwagger()
 
 	return lifecycle.Run(ctx,
+		lifecycle.Worker("session revocations", revocationWorker.Run),
 		lifecycle.Worker("http server", server.Run),
 		lifecycle.Worker("auth.session.compromised", func(ctx context.Context) error {
 			return authCompromisedKafkaConsumer.Run(ctx, authCompromisedConsumer.HandleMessage)

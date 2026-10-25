@@ -6,6 +6,7 @@ import (
 	"github.com/caarlos0/env/v11"
 
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres"
+	"github.com/AridanWarlock/pinnAutomizer/auth/internal/sessionRevocation"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
@@ -18,6 +19,7 @@ type App struct {
 }
 
 type Config struct {
+	SessionRevocation    sessionRevocation.Config `envPrefix:"SESSION_REVOCATION_"`
 	App                  App
 	HTTP                 httpsrv.Config       `envPrefix:"HTTP_"`
 	Log                  logger.Config        `envPrefix:"LOGGER_"`

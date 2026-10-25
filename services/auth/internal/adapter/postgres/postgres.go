@@ -40,10 +40,23 @@ func New(cfg Config) (*Repository, error) {
 		return nil, fmt.Errorf("postgres: poolx create: %w", err)
 	}
 
-	return &Repository{
+	ready := false
+	defer func() {
+		if !ready {
+			p.Close()
+		}
+	}()
+	repository := &Repository{
 		pool: p,
 		sb:   sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
-	}, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
+	defer cancel()
+	if err := repository.checkSessionRevocationsSchema(ctx); err != nil {
+		return nil, fmt.Errorf("session revocations schema is not ready; apply auth migrations: %w", err)
+	}
+	ready = true
+	return repository, nil
 }
 
 func (r *Repository) InTransaction(ctx context.Context, inTx func(ctx context.Context) error) error {

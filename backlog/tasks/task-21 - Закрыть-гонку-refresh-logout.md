@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-10-25 11:27'
-updated_date: '2026-10-25 11:35'
+updated_date: '2026-10-25 12:16'
 labels: []
 dependencies: []
 priority: high
@@ -15,20 +15,25 @@ ordinal: 27000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Logout с уже авторизованным старым JTI должен отзывать и сессию конкурентного refresh.
+Отзыв refresh фиксируется вместе с устойчивыми заданиями Redis DEL; после commit сбой Redis или отмена запроса не восстанавливают авторизацию через refresh.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [x] #1 После успешного logout ни старый access, ни access конкурентного refresh не имеют Redis-сессии
-- [x] #2 Условная ротация после удаления refresh-записи не выдаёт токены; повтор logout допустим
-- [x] #3 Unit и PostgreSQL/Redis integration проверяют оба порядка гонки, отмену и частичный сбой
+- [x] #1 Logout атомарно удаляет refresh и сохраняет JTI запроса/актуальной сессии в очереди PostgreSQL до Redis I/O
+- [x] #2 После commit отзыва отказ Redis, отмена и неизвестный ответ commit не позволяют refresh выдать новую пару при committed исходе
+- [x] #3 Подключённый worker повторяет DEL/подтверждение; повтор logout учитывает все pending JTI user/fingerprint
+- [x] #4 Тесты покрывают оба порядка гонки, транзакционные/Redis/ACK сбои, конкурентную очистку, scope и keyset
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Короткая SQL-транзакция: lock, очередь JTI, удаление refresh, commit. Вне транзакции — Redis DEL/ACK и устойчивый повтор через pkg/worker.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-FOR UPDATE сериализует logout с refresh CAS; Redis DEL актуального и request JTI выполняются перед удалением строки и commit. RED на прежнем коде: новая Redis-сессия оставалась после успешного logout. Проверено make fmt/check с PostgreSQL/Redis, адресный race logout + auth PostgreSQL; оба порядка гонки, DEL до/после эффекта, отмена, повтор, отсутствующая refresh-запись. Ограничения: короткий Redis I/O под SQL-блокировкой; нет durable intent до подтверждения; новый login и неизвестный commit отдельно. docs/session-auth.md.
-
-PR на review: https://github.com/AridanWarlock/pinnAutomizer/pull/33 → codex/task-progress.
+PR #33: https://github.com/AridanWarlock/pinnAutomizer/pull/33. make fmt/check с одноразовыми PostgreSQL/Redis и адресный race прошли. Семантика и ограничения — docs/session-auth.md; новый login и немедленный отзыв access при отказе Redis остаются отдельными решениями.
 <!-- SECTION:NOTES:END -->

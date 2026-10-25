@@ -116,6 +116,19 @@ func TestUsecase_Logout(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			f := &fields{
 				postgres: &MockPostgres{
+					QueueSessionRevocationFunc: func(context.Context, uuid.UUID, core.Fingerprint, core.Jti) error {
+						return nil
+					},
+					GetSessionRevocationsFunc: func(ctx context.Context, _ uuid.UUID, _ core.Fingerprint) ([]core.Jti, error) {
+						return []core.Jti{core.MustAuthInfoFromContext(ctx).Jti}, nil
+					},
+					ConfirmSessionRevocationFunc: func(context.Context, core.Jti) error {
+						return nil
+					},
+					LogoutFunc: func(context.Context, uuid.UUID, core.Fingerprint) error {
+						return nil
+					},
+
 					InTransactionFunc: func(ctx context.Context, fn func(context.Context) error) error {
 						return fn(ctx)
 					},
@@ -143,7 +156,7 @@ func TestUsecase_Logout(t *testing.T) {
 	}
 }
 
-func TestLogoutLocksCurrentSessionBeforeRevokingAccess(t *testing.T) {
+func TestLogoutCommitsRevocationBeforeDeletingRedisSessions(t *testing.T) {
 	t.Parallel()
 	auth := corefixtures.NewAuthInfo()
 	audit := corefixtures.NewAuditInfo()
@@ -152,6 +165,17 @@ func TestLogoutLocksCurrentSessionBeforeRevokingAccess(t *testing.T) {
 	ctx := auth.WithContext(audit.WithContext(t.Context()))
 	operations := []string{}
 	postgres := &MockPostgres{
+		QueueSessionRevocationFunc: func(_ context.Context, _ uuid.UUID, _ core.Fingerprint, jti core.Jti) error {
+			operations = append(operations, "queue "+jti.ToRedisKey())
+			return nil
+		},
+		GetSessionRevocationsFunc: func(context.Context, uuid.UUID, core.Fingerprint) ([]core.Jti, error) {
+			return []core.Jti{current, auth.Jti}, nil
+		},
+		ConfirmSessionRevocationFunc: func(_ context.Context, jti core.Jti) error {
+			operations = append(operations, "ack "+jti.ToRedisKey())
+			return nil
+		},
 		InTransactionFunc: func(ctx context.Context, fn func(context.Context) error) error {
 			operations = append(operations, "begin")
 			if err := fn(ctx); err != nil {
@@ -182,7 +206,10 @@ func TestLogoutLocksCurrentSessionBeforeRevokingAccess(t *testing.T) {
 		},
 	}
 	require.NoError(t, New(postgres, redis).Logout(ctx))
-	require.Equal(t, []string{"begin", "lock", current.ToRedisKey(), auth.Jti.ToRedisKey(), "delete refresh", "commit"}, operations)
+	require.Equal(t, []string{
+		"begin", "lock", "queue " + current.ToRedisKey(), "queue " + auth.Jti.ToRedisKey(), "delete refresh", "commit",
+		current.ToRedisKey(), "ack " + current.ToRedisKey(), auth.Jti.ToRedisKey(), "ack " + auth.Jti.ToRedisKey(),
+	}, operations)
 }
 
 func TestLogoutLockFailureDoesNotDeleteRedisSession(t *testing.T) {
