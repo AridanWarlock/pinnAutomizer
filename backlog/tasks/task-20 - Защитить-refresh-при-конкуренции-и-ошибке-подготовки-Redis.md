@@ -1,11 +1,11 @@
 ---
 id: TASK-20
 title: Защитить refresh при конкуренции и ошибке подготовки Redis
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-25 10:42'
-updated_date: '2026-10-25 10:56'
+updated_date: '2026-10-25 11:26'
 labels: []
 dependencies: []
 priority: high

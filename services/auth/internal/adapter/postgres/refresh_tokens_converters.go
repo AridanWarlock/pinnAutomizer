@@ -72,3 +72,11 @@ func toRefreshTokenModel(raw RefreshTokenRaw) domain.RefreshToken {
 	}
 	return token
 }
+
+func toJtiModel(raw uuid.UUID) core.Jti {
+	jti, err := core.NewJti(raw)
+	if err != nil {
+		panic(fmt.Errorf("postgres: invalid session JTI: %w", err))
+	}
+	return jti
+}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
@@ -114,8 +115,19 @@ func TestUsecase_Logout(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := &fields{
-				postgres: &MockPostgres{},
-				redis:    &MockRedis{},
+				postgres: &MockPostgres{
+					InTransactionFunc: func(ctx context.Context, fn func(context.Context) error) error {
+						return fn(ctx)
+					},
+					GetJtiByFingerprintForUpdateFunc: func(
+						ctx context.Context,
+						_ uuid.UUID,
+						_ core.Fingerprint,
+					) (core.Jti, error) {
+						return core.MustAuthInfoFromContext(ctx).Jti, nil
+					},
+				},
+				redis: &MockRedis{},
 			}
 			tt.prepare(f)
 
@@ -129,4 +141,68 @@ func TestUsecase_Logout(t *testing.T) {
 			tt.check(t, err, f)
 		})
 	}
+}
+
+func TestLogoutLocksCurrentSessionBeforeRevokingAccess(t *testing.T) {
+	t.Parallel()
+	auth := corefixtures.NewAuthInfo()
+	audit := corefixtures.NewAuditInfo()
+	current, err := core.NewJti(uuid.New())
+	require.NoError(t, err)
+	ctx := auth.WithContext(audit.WithContext(t.Context()))
+	operations := []string{}
+	postgres := &MockPostgres{
+		InTransactionFunc: func(ctx context.Context, fn func(context.Context) error) error {
+			operations = append(operations, "begin")
+			if err := fn(ctx); err != nil {
+				return err
+			}
+			operations = append(operations, "commit")
+			return nil
+		},
+		GetJtiByFingerprintForUpdateFunc: func(
+			_ context.Context,
+			userID uuid.UUID,
+			fingerprint core.Fingerprint,
+		) (core.Jti, error) {
+			require.Equal(t, auth.UserID, userID)
+			require.Equal(t, audit.Fingerprint, fingerprint)
+			operations = append(operations, "lock")
+			return current, nil
+		},
+		LogoutFunc: func(context.Context, uuid.UUID, core.Fingerprint) error {
+			operations = append(operations, "delete refresh")
+			return nil
+		},
+	}
+	redis := &MockRedis{
+		DeleteFunc: func(_ context.Context, key string) error {
+			operations = append(operations, key)
+			return nil
+		},
+	}
+	require.NoError(t, New(postgres, redis).Logout(ctx))
+	require.Equal(t, []string{"begin", "lock", current.ToRedisKey(), auth.Jti.ToRedisKey(), "delete refresh", "commit"}, operations)
+}
+
+func TestLogoutLockFailureDoesNotDeleteRedisSession(t *testing.T) {
+	t.Parallel()
+	failure := errors.New("postgres unavailable")
+	postgres := &MockPostgres{
+		InTransactionFunc: func(ctx context.Context, fn func(context.Context) error) error {
+			return fn(ctx)
+		},
+		GetJtiByFingerprintForUpdateFunc: func(
+			context.Context,
+			uuid.UUID,
+			core.Fingerprint,
+		) (core.Jti, error) {
+			return core.Jti{}, failure
+		},
+	}
+	redis := &MockRedis{}
+	ctx := corefixtures.NewAuthInfo().WithContext(corefixtures.NewAuditInfo().WithContext(t.Context()))
+	require.ErrorIs(t, New(postgres, redis).Logout(ctx), failure)
+	require.Empty(t, redis.DeleteCalls())
+	require.Empty(t, postgres.LogoutCalls())
 }

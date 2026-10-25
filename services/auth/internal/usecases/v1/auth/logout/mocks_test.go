@@ -53,16 +53,97 @@ func (mock *MockUsecase) LogoutCalls() []struct {
 var _ Postgres = &MockPostgres{}
 
 type MockPostgres struct {
+	GetJtiByFingerprintForUpdateFunc func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (core.Jti, error)
+
+	InTransactionFunc func(ctx context.Context, inTx func(context.Context) error) error
+
 	LogoutFunc func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error
 
 	calls struct {
+		GetJtiByFingerprintForUpdate []struct {
+			Ctx         context.Context
+			UserID      uuid.UUID
+			Fingerprint core.Fingerprint
+		}
+		InTransaction []struct {
+			Ctx  context.Context
+			InTx func(context.Context) error
+		}
 		Logout []struct {
 			Ctx         context.Context
 			UserID      uuid.UUID
 			Fingerprint core.Fingerprint
 		}
 	}
-	lockLogout sync.RWMutex
+	lockGetJtiByFingerprintForUpdate sync.RWMutex
+	lockInTransaction                sync.RWMutex
+	lockLogout                       sync.RWMutex
+}
+
+func (mock *MockPostgres) GetJtiByFingerprintForUpdate(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) (core.Jti, error) {
+	if mock.GetJtiByFingerprintForUpdateFunc == nil {
+		panic("MockPostgres.GetJtiByFingerprintForUpdateFunc: method is nil but Postgres.GetJtiByFingerprintForUpdate was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		UserID      uuid.UUID
+		Fingerprint core.Fingerprint
+	}{
+		Ctx:         ctx,
+		UserID:      userID,
+		Fingerprint: fingerprint,
+	}
+	mock.lockGetJtiByFingerprintForUpdate.Lock()
+	mock.calls.GetJtiByFingerprintForUpdate = append(mock.calls.GetJtiByFingerprintForUpdate, callInfo)
+	mock.lockGetJtiByFingerprintForUpdate.Unlock()
+	return mock.GetJtiByFingerprintForUpdateFunc(ctx, userID, fingerprint)
+}
+
+func (mock *MockPostgres) GetJtiByFingerprintForUpdateCalls() []struct {
+	Ctx         context.Context
+	UserID      uuid.UUID
+	Fingerprint core.Fingerprint
+} {
+	var calls []struct {
+		Ctx         context.Context
+		UserID      uuid.UUID
+		Fingerprint core.Fingerprint
+	}
+	mock.lockGetJtiByFingerprintForUpdate.RLock()
+	calls = mock.calls.GetJtiByFingerprintForUpdate
+	mock.lockGetJtiByFingerprintForUpdate.RUnlock()
+	return calls
+}
+
+func (mock *MockPostgres) InTransaction(ctx context.Context, inTx func(context.Context) error) error {
+	if mock.InTransactionFunc == nil {
+		panic("MockPostgres.InTransactionFunc: method is nil but Postgres.InTransaction was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		InTx func(context.Context) error
+	}{
+		Ctx:  ctx,
+		InTx: inTx,
+	}
+	mock.lockInTransaction.Lock()
+	mock.calls.InTransaction = append(mock.calls.InTransaction, callInfo)
+	mock.lockInTransaction.Unlock()
+	return mock.InTransactionFunc(ctx, inTx)
+}
+
+func (mock *MockPostgres) InTransactionCalls() []struct {
+	Ctx  context.Context
+	InTx func(context.Context) error
+} {
+	var calls []struct {
+		Ctx  context.Context
+		InTx func(context.Context) error
+	}
+	mock.lockInTransaction.RLock()
+	calls = mock.calls.InTransaction
+	mock.lockInTransaction.RUnlock()
+	return calls
 }
 
 func (mock *MockPostgres) Logout(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error {
