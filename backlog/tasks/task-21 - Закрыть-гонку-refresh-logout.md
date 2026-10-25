@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-10-25 11:27'
-updated_date: '2026-10-25 11:32'
+updated_date: '2026-10-25 11:35'
 labels: []
 dependencies: []
 priority: high
@@ -29,4 +29,6 @@ Logout с уже авторизованным старым JTI должен от
 
 <!-- SECTION:NOTES:BEGIN -->
 FOR UPDATE сериализует logout с refresh CAS; Redis DEL актуального и request JTI выполняются перед удалением строки и commit. RED на прежнем коде: новая Redis-сессия оставалась после успешного logout. Проверено make fmt/check с PostgreSQL/Redis, адресный race logout + auth PostgreSQL; оба порядка гонки, DEL до/после эффекта, отмена, повтор, отсутствующая refresh-запись. Ограничения: короткий Redis I/O под SQL-блокировкой; нет durable intent до подтверждения; новый login и неизвестный commit отдельно. docs/session-auth.md.
+
+PR на review: https://github.com/AridanWarlock/pinnAutomizer/pull/33 → codex/task-progress.
 <!-- SECTION:NOTES:END -->
