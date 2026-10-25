@@ -1,6 +1,6 @@
 module github.com/AridanWarlock/pinnAutomizer/tasks
 
-go 1.26.1
+go 1.27.3
 
 require (
 	github.com/AridanWarlock/pinnAutomizer/pkg v0.0.0-00010101000000-000000000000
@@ -24,6 +24,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect

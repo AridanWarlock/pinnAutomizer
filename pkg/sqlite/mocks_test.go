@@ -79,54 +79,54 @@ func (mock *MockTag) RowsAffectedCalls() []struct {
 var _ executor = &mockexecutor{}
 
 type mockexecutor struct {
-	ExecContextFunc func(context1 context.Context, s string, vs ...any) (sql.Result, error)
+	ExecContextFunc func(context1 context.Context, s string, anyMoqParams ...any) (sql.Result, error)
 
-	QueryContextFunc func(context1 context.Context, s string, vs ...any) (*sql.Rows, error)
+	QueryContextFunc func(context1 context.Context, s string, anyMoqParams ...any) (*sql.Rows, error)
 
 	calls struct {
 		ExecContext []struct {
-			Context1 context.Context
-			S        string
-			Vs       []any
+			Context1     context.Context
+			S            string
+			AnyMoqParams []any
 		}
 		QueryContext []struct {
-			Context1 context.Context
-			S        string
-			Vs       []any
+			Context1     context.Context
+			S            string
+			AnyMoqParams []any
 		}
 	}
 	lockExecContext  sync.RWMutex
 	lockQueryContext sync.RWMutex
 }
 
-func (mock *mockexecutor) ExecContext(context1 context.Context, s string, vs ...any) (sql.Result, error) {
+func (mock *mockexecutor) ExecContext(context1 context.Context, s string, anyMoqParams ...any) (sql.Result, error) {
 	if mock.ExecContextFunc == nil {
 		panic("mockexecutor.ExecContextFunc: method is nil but executor.ExecContext was just called")
 	}
 	callInfo := struct {
-		Context1 context.Context
-		S        string
-		Vs       []any
+		Context1     context.Context
+		S            string
+		AnyMoqParams []any
 	}{
-		Context1: context1,
-		S:        s,
-		Vs:       vs,
+		Context1:     context1,
+		S:            s,
+		AnyMoqParams: anyMoqParams,
 	}
 	mock.lockExecContext.Lock()
 	mock.calls.ExecContext = append(mock.calls.ExecContext, callInfo)
 	mock.lockExecContext.Unlock()
-	return mock.ExecContextFunc(context1, s, vs...)
+	return mock.ExecContextFunc(context1, s, anyMoqParams...)
 }
 
 func (mock *mockexecutor) ExecContextCalls() []struct {
-	Context1 context.Context
-	S        string
-	Vs       []any
+	Context1     context.Context
+	S            string
+	AnyMoqParams []any
 } {
 	var calls []struct {
-		Context1 context.Context
-		S        string
-		Vs       []any
+		Context1     context.Context
+		S            string
+		AnyMoqParams []any
 	}
 	mock.lockExecContext.RLock()
 	calls = mock.calls.ExecContext
@@ -134,34 +134,34 @@ func (mock *mockexecutor) ExecContextCalls() []struct {
 	return calls
 }
 
-func (mock *mockexecutor) QueryContext(context1 context.Context, s string, vs ...any) (*sql.Rows, error) {
+func (mock *mockexecutor) QueryContext(context1 context.Context, s string, anyMoqParams ...any) (*sql.Rows, error) {
 	if mock.QueryContextFunc == nil {
 		panic("mockexecutor.QueryContextFunc: method is nil but executor.QueryContext was just called")
 	}
 	callInfo := struct {
-		Context1 context.Context
-		S        string
-		Vs       []any
+		Context1     context.Context
+		S            string
+		AnyMoqParams []any
 	}{
-		Context1: context1,
-		S:        s,
-		Vs:       vs,
+		Context1:     context1,
+		S:            s,
+		AnyMoqParams: anyMoqParams,
 	}
 	mock.lockQueryContext.Lock()
 	mock.calls.QueryContext = append(mock.calls.QueryContext, callInfo)
 	mock.lockQueryContext.Unlock()
-	return mock.QueryContextFunc(context1, s, vs...)
+	return mock.QueryContextFunc(context1, s, anyMoqParams...)
 }
 
 func (mock *mockexecutor) QueryContextCalls() []struct {
-	Context1 context.Context
-	S        string
-	Vs       []any
+	Context1     context.Context
+	S            string
+	AnyMoqParams []any
 } {
 	var calls []struct {
-		Context1 context.Context
-		S        string
-		Vs       []any
+		Context1     context.Context
+		S            string
+		AnyMoqParams []any
 	}
 	mock.lockQueryContext.RLock()
 	calls = mock.calls.QueryContext

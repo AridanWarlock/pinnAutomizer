@@ -73,7 +73,7 @@ docker inspect --format '{{.Id}} {{.Name}} {{json .State}} {{json .Config.Labels
 PINN_TEST_DOCKER=1 make test TEST_ARGS='-race -count=1 -run TestRecoverySurvivesProcessKillWithoutRestartingContainerIntegration ./services/solver/cmd'
 ```
 
-Нужен доступный Docker и CPU-образ golang:1.26.1-alpine
+Нужен доступный Docker и CPU-образ golang:1.27.3-alpine
 (либо PINN_TEST_DOCKER_IMAGE с sh/sleep). Проверка убивает дочерний recovery-процесс
 через Process.Kill, проверяет продолжение контейнера и освобождение ownership lock,
 запускает второй процесс, затем завершает тестовую CPU-команду. Проверяются прежний
