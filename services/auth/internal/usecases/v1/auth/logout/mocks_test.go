@@ -53,21 +53,68 @@ func (mock *MockUsecase) LogoutCalls() []struct {
 var _ Postgres = &MockPostgres{}
 
 type MockPostgres struct {
-	LogoutFunc func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error
+	ConfirmSessionRevocationFunc func(ctx context.Context, jti core.Jti) error
+
+	GetSessionRevocationJtisFunc func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) ([]core.Jti, error)
+
+	RevokeSessionsFunc func(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint, requestJti core.Jti) error
 
 	calls struct {
-		Logout []struct {
+		ConfirmSessionRevocation []struct {
+			Ctx context.Context
+			Jti core.Jti
+		}
+		GetSessionRevocationJtis []struct {
 			Ctx         context.Context
 			UserID      uuid.UUID
 			Fingerprint core.Fingerprint
 		}
+		RevokeSessions []struct {
+			Ctx         context.Context
+			UserID      uuid.UUID
+			Fingerprint core.Fingerprint
+			RequestJti  core.Jti
+		}
 	}
-	lockLogout sync.RWMutex
+	lockConfirmSessionRevocation sync.RWMutex
+	lockGetSessionRevocationJtis sync.RWMutex
+	lockRevokeSessions           sync.RWMutex
 }
 
-func (mock *MockPostgres) Logout(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error {
-	if mock.LogoutFunc == nil {
-		panic("MockPostgres.LogoutFunc: method is nil but Postgres.Logout was just called")
+func (mock *MockPostgres) ConfirmSessionRevocation(ctx context.Context, jti core.Jti) error {
+	if mock.ConfirmSessionRevocationFunc == nil {
+		panic("MockPostgres.ConfirmSessionRevocationFunc: method is nil but Postgres.ConfirmSessionRevocation was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Jti core.Jti
+	}{
+		Ctx: ctx,
+		Jti: jti,
+	}
+	mock.lockConfirmSessionRevocation.Lock()
+	mock.calls.ConfirmSessionRevocation = append(mock.calls.ConfirmSessionRevocation, callInfo)
+	mock.lockConfirmSessionRevocation.Unlock()
+	return mock.ConfirmSessionRevocationFunc(ctx, jti)
+}
+
+func (mock *MockPostgres) ConfirmSessionRevocationCalls() []struct {
+	Ctx context.Context
+	Jti core.Jti
+} {
+	var calls []struct {
+		Ctx context.Context
+		Jti core.Jti
+	}
+	mock.lockConfirmSessionRevocation.RLock()
+	calls = mock.calls.ConfirmSessionRevocation
+	mock.lockConfirmSessionRevocation.RUnlock()
+	return calls
+}
+
+func (mock *MockPostgres) GetSessionRevocationJtis(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) ([]core.Jti, error) {
+	if mock.GetSessionRevocationJtisFunc == nil {
+		panic("MockPostgres.GetSessionRevocationJtisFunc: method is nil but Postgres.GetSessionRevocationJtis was just called")
 	}
 	callInfo := struct {
 		Ctx         context.Context
@@ -78,13 +125,13 @@ func (mock *MockPostgres) Logout(ctx context.Context, userID uuid.UUID, fingerpr
 		UserID:      userID,
 		Fingerprint: fingerprint,
 	}
-	mock.lockLogout.Lock()
-	mock.calls.Logout = append(mock.calls.Logout, callInfo)
-	mock.lockLogout.Unlock()
-	return mock.LogoutFunc(ctx, userID, fingerprint)
+	mock.lockGetSessionRevocationJtis.Lock()
+	mock.calls.GetSessionRevocationJtis = append(mock.calls.GetSessionRevocationJtis, callInfo)
+	mock.lockGetSessionRevocationJtis.Unlock()
+	return mock.GetSessionRevocationJtisFunc(ctx, userID, fingerprint)
 }
 
-func (mock *MockPostgres) LogoutCalls() []struct {
+func (mock *MockPostgres) GetSessionRevocationJtisCalls() []struct {
 	Ctx         context.Context
 	UserID      uuid.UUID
 	Fingerprint core.Fingerprint
@@ -94,9 +141,48 @@ func (mock *MockPostgres) LogoutCalls() []struct {
 		UserID      uuid.UUID
 		Fingerprint core.Fingerprint
 	}
-	mock.lockLogout.RLock()
-	calls = mock.calls.Logout
-	mock.lockLogout.RUnlock()
+	mock.lockGetSessionRevocationJtis.RLock()
+	calls = mock.calls.GetSessionRevocationJtis
+	mock.lockGetSessionRevocationJtis.RUnlock()
+	return calls
+}
+
+func (mock *MockPostgres) RevokeSessions(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint, requestJti core.Jti) error {
+	if mock.RevokeSessionsFunc == nil {
+		panic("MockPostgres.RevokeSessionsFunc: method is nil but Postgres.RevokeSessions was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		UserID      uuid.UUID
+		Fingerprint core.Fingerprint
+		RequestJti  core.Jti
+	}{
+		Ctx:         ctx,
+		UserID:      userID,
+		Fingerprint: fingerprint,
+		RequestJti:  requestJti,
+	}
+	mock.lockRevokeSessions.Lock()
+	mock.calls.RevokeSessions = append(mock.calls.RevokeSessions, callInfo)
+	mock.lockRevokeSessions.Unlock()
+	return mock.RevokeSessionsFunc(ctx, userID, fingerprint, requestJti)
+}
+
+func (mock *MockPostgres) RevokeSessionsCalls() []struct {
+	Ctx         context.Context
+	UserID      uuid.UUID
+	Fingerprint core.Fingerprint
+	RequestJti  core.Jti
+} {
+	var calls []struct {
+		Ctx         context.Context
+		UserID      uuid.UUID
+		Fingerprint core.Fingerprint
+		RequestJti  core.Jti
+	}
+	mock.lockRevokeSessions.RLock()
+	calls = mock.calls.RevokeSessions
+	mock.lockRevokeSessions.RUnlock()
 	return calls
 }
 

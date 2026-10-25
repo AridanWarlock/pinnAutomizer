@@ -57,3 +57,16 @@ var UsersRolesColumns = []string{
 	UsersRolesUserID,
 	UsersRolesRoleID,
 }
+
+const SessionRevocationsTable = "session_revocations"
+const (
+	SessionRevocationsJti         = "jti"
+	SessionRevocationsUserID      = "user_id"
+	SessionRevocationsFingerprint = "fingerprint"
+)
+
+var SessionRevocationsColumns = []string{
+	SessionRevocationsJti,
+	SessionRevocationsUserID,
+	SessionRevocationsFingerprint,
+}

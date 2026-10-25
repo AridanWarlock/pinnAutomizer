@@ -44,6 +44,26 @@ func (r *Repository) GetJtiByFingerprint(
 	return jti, nil
 }
 
+func (r *Repository) GetJtiByFingerprintForUpdate(
+	ctx context.Context,
+	userID uuid.UUID,
+	fingerprint core.Fingerprint,
+) (core.Jti, error) {
+	q := r.sb.Select(RefreshTokensJti).
+		From(RefreshTokensTable).
+		Where(sq.Eq{
+			RefreshTokensUserID:      userID,
+			RefreshTokensFingerprint: fingerprint,
+		}).
+		Suffix("FOR UPDATE")
+
+	var raw uuid.UUID
+	if err := r.pool.Getx(ctx, &raw, q); err != nil {
+		return core.Jti{}, err
+	}
+	return toJtiModel(raw), nil
+}
+
 func (r *Repository) Login(ctx context.Context, token domain.RefreshToken) (domain.RefreshToken, error) {
 	raw := fromRefreshTokenModel(token)
 

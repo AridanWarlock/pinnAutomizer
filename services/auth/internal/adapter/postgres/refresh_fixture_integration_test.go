@@ -63,6 +63,7 @@ func refreshIntegrationPostgres(t *testing.T, dsn string) *Repository {
 		"20251208094652_create_table_roles.sql",
 		"20251208094904_create_table_users_roles.sql",
 		"20260412101853_create_table_refresh_tokens.sql",
+		"20261025120000_create_table_session_revocations.sql",
 	} {
 		sql, err := os.ReadFile("../../../migrations/" + migration)
 		require.NoError(t, err)

@@ -12,7 +12,18 @@ import (
 )
 
 type Postgres interface {
-	Logout(ctx context.Context, userID uuid.UUID, fingerprint core.Fingerprint) error
+	RevokeSessions(
+		ctx context.Context,
+		userID uuid.UUID,
+		fingerprint core.Fingerprint,
+		requestJti core.Jti,
+	) error
+	GetSessionRevocationJtis(
+		ctx context.Context,
+		userID uuid.UUID,
+		fingerprint core.Fingerprint,
+	) ([]core.Jti, error)
+	ConfirmSessionRevocation(ctx context.Context, jti core.Jti) error
 }
 
 type Redis interface {
@@ -35,23 +46,38 @@ func New(
 }
 
 func (u *usecase) Logout(ctx context.Context) error {
-	audit := core.MustAuditInfoFromContext(ctx)
 	auth := core.MustAuthInfoFromContext(ctx)
+	audit := core.MustAuditInfoFromContext(ctx)
+	if err := u.postgres.RevokeSessions(ctx, auth.UserID, audit.Fingerprint, auth.Jti); err != nil {
+		return fmt.Errorf("commit session revocation: %w", err)
+	}
+	return u.cleanupSessions(ctx, auth.UserID, audit.Fingerprint)
+}
 
-	err := u.redis.Delete(ctx, auth.Jti.ToRedisKey())
-
+func (u *usecase) cleanupSessions(
+	ctx context.Context,
+	userID uuid.UUID,
+	fingerprint core.Fingerprint,
+) error {
+	pending, err := u.postgres.GetSessionRevocationJtis(ctx, userID, fingerprint)
 	if err != nil {
-		if !errors.Is(err, errs.ErrKeyNotFound) {
-			return fmt.Errorf("delete session from redis: %w", err)
+		return fmt.Errorf("get session revocations: %w", err)
+	}
+	for _, jti := range pending {
+		if err := u.deleteSession(ctx, jti); err != nil {
+			return err
 		}
 	}
+	return nil
+}
 
-	err = u.postgres.Logout(ctx, auth.UserID, audit.Fingerprint)
-
-	if err != nil {
-		if !errors.Is(err, errs.ErrNotFound) {
-			return fmt.Errorf("delete session from postgres: %w", err)
-		}
+func (u *usecase) deleteSession(ctx context.Context, jti core.Jti) error {
+	err := u.redis.Delete(ctx, jti.ToRedisKey())
+	if err != nil && !errors.Is(err, errs.ErrKeyNotFound) {
+		return fmt.Errorf("delete session from redis: %w", err)
+	}
+	if err := u.postgres.ConfirmSessionRevocation(ctx, jti); err != nil {
+		return fmt.Errorf("confirm session revocation: %w", err)
 	}
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/caarlos0/env/v11"
 
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/adapter/postgres"
+	"github.com/AridanWarlock/pinnAutomizer/auth/internal/sessionRevocation"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/kafka"
@@ -19,12 +20,13 @@ type App struct {
 
 type Config struct {
 	App                  App
-	HTTP                 httpsrv.Config       `envPrefix:"HTTP_"`
-	Log                  logger.Config        `envPrefix:"LOGGER_"`
-	Postgres             postgres.Config      `envPrefix:"POSTGRES_"`
-	Redis                goRedis.Config       `envPrefix:"REDIS_"`
-	AccessTokenGenerator jwt.Config           `envPrefix:"JWT_"`
-	KafkaConsumer        kafka.ConsumerConfig `envPrefix:"KAFKA_CONSUMER_"`
+	HTTP                 httpsrv.Config           `envPrefix:"HTTP_"`
+	Log                  logger.Config            `envPrefix:"LOGGER_"`
+	Postgres             postgres.Config          `envPrefix:"POSTGRES_"`
+	Redis                goRedis.Config           `envPrefix:"REDIS_"`
+	AccessTokenGenerator jwt.Config               `envPrefix:"JWT_"`
+	KafkaConsumer        kafka.ConsumerConfig     `envPrefix:"KAFKA_CONSUMER_"`
+	SessionRevocation    sessionRevocation.Config `envPrefix:"SESSION_REVOCATION_"`
 }
 
 func InitConfig() (Config, error) {
