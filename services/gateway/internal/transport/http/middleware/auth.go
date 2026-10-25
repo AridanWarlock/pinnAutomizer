@@ -95,16 +95,16 @@ func (a *auth) middleware() httpmv.Middleware {
 
 			r, err := a.authenticate(r, log)
 
-			if err != nil {
-				rh := httpout.NewHandler(w, log)
-				if !errors.Is(err, errs.ErrServiceUnavailable) {
-					err = fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, err)
-				}
-				rh.ErrorResponse(err, "failed to authenticate")
+			if err == nil {
+				next.ServeHTTP(w, r)
 				return
 			}
 
-			next.ServeHTTP(w, r)
+			if !errors.Is(err, errs.ErrServiceUnavailable) {
+				err = fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, err)
+			}
+			rh := httpout.NewHandler(w, log)
+			rh.ErrorResponse(err, "failed to authenticate")
 		})
 	}
 }
@@ -170,12 +170,10 @@ func (a *auth) authenticate(r *http.Request, log zerolog.Logger) (*http.Request,
 
 func (a *auth) extractAccessToken(headers http.Header) (core.AccessToken, error) {
 	authHeader := headers.Get("Authorization")
-	if authHeader == "" {
+	token := strings.TrimPrefix(authHeader, "Bearer ")
+	if token == "" {
 		return "", ErrBearerTokenIsNotSet
 	}
-
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-
 	return core.NewAccessToken(token)
 }
 
