@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	authRefresh "github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/refresh"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
 	sharedRedis "github.com/AridanWarlock/pinnAutomizer/pkg/redis"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/redis/goRedis"
@@ -96,12 +98,15 @@ func (r *trackedRefreshRedis) Set(ctx context.Context, key string, value any, tt
 	r.keys[key] = struct{}{}
 	r.mu.Unlock()
 	if r.setFailure != nil && !r.applySet {
-		return r.setFailure
+		return fmt.Errorf("%w: %w", errs.ErrServiceUnavailable, r.setFailure)
 	}
 	if err := r.Redis.Set(ctx, key, value, ttl); err != nil {
 		return err
 	}
-	return r.setFailure
+	if r.setFailure != nil {
+		return fmt.Errorf("%w: %w", errs.ErrServiceUnavailable, r.setFailure)
+	}
+	return nil
 }
 
 func (r *trackedRefreshRedis) Delete(ctx context.Context, key string) error {

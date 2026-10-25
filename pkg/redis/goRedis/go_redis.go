@@ -121,14 +121,14 @@ func (c *Client) handleCommonErr(err error) error {
 	case errors.Is(err, redis.Nil):
 		return ErrKeyNotFound
 	case errs.OneOf(err, context.DeadlineExceeded, context.Canceled):
-		return err
+		return fmt.Errorf("%w: %w", errs.ErrServiceUnavailable, err)
 	case errors.Is(err, redis.ErrPoolTimeout):
 		return ErrPoolExhausted
 	case errors.Is(err, redis.ErrClosed):
 		return ErrClosed
 
 	default:
-		return fmt.Errorf("unexpected redis failure: %w", err)
+		return fmt.Errorf("%w: unexpected redis failure: %w", errs.ErrServiceUnavailable, err)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -79,6 +80,16 @@ func TestHttpHandler_Refresh(t *testing.T) {
 				f.usecase.RefreshFunc = func(context.Context, Input) (Output, error) { return Output{}, errs.ErrAuthorizationFailed }
 			},
 			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:   "error - concurrent loser cleanup unavailable",
+			cookie: &http.Cookie{Name: "refresh_token", Value: fixedOldRefreshTokenStr},
+			prepare: func(f *fields) {
+				f.usecase.RefreshFunc = func(context.Context, Input) (Output, error) {
+					return Output{}, errors.Join(errs.ErrAuthorizationFailed, errs.ErrServiceUnavailable)
+				}
+			},
+			expectedStatus: http.StatusServiceUnavailable,
 		},
 		{
 			name:   "error - Redis unavailable preserves client cookie",

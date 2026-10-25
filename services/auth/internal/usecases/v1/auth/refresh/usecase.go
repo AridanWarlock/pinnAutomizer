@@ -131,7 +131,7 @@ func (u *usecase) deleteOldSession(ctx context.Context, jti core.Jti) error {
 			return nil
 		}
 
-		return fmt.Errorf("%w: redis delete: %w", errs.ErrServiceUnavailable, err)
+		return fmt.Errorf("redis delete: %w", err)
 	}
 	return nil
 }
@@ -182,7 +182,7 @@ func (u *usecase) setNewRedisSession(
 
 	err = u.redis.Set(ctx, jti.ToRedisKey(), session, auth.AccessTokenTTL)
 	if err != nil {
-		return fmt.Errorf("%w: redis set: %w", errs.ErrServiceUnavailable, err)
+		return fmt.Errorf("redis set: %w", err)
 	}
 	return nil
 }

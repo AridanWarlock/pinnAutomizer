@@ -3,6 +3,7 @@ package authRefresh
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -74,7 +75,7 @@ func TestRedisPreparationFailureKeepsRefreshTokenUsable(t *testing.T) {
 			return nil
 		},
 		SetFunc: func(context.Context, string, any, time.Duration) error {
-			return failure
+			return fmt.Errorf("%w: %w", errs.ErrServiceUnavailable, failure)
 		},
 	}
 	uc := New(postgres, redis, fixture.generator)
@@ -113,9 +114,9 @@ func TestOldSessionDeletionFailureDoesNotRotateRefreshToken(t *testing.T) {
 			redis.DeleteFunc = func(ctx context.Context, key string) error {
 				require.Equal(t, fixture.token.Jti.ToRedisKey(), key)
 				if cancelled {
-					return ctx.Err()
+					return fmt.Errorf("%w: %w", errs.ErrServiceUnavailable, ctx.Err())
 				}
-				return failure
+				return fmt.Errorf("%w: %w", errs.ErrServiceUnavailable, failure)
 			}
 			out, err := New(postgres, redis, fixture.generator).Refresh(ctx, fixture.input)
 			require.ErrorIs(t, err, failure)
@@ -138,7 +139,7 @@ func TestConcurrentLoserPreservesAuthorizationFailureWhenCleanupFails(t *testing
 		if key == fixture.token.Jti.ToRedisKey() {
 			return nil
 		}
-		return failure
+		return fmt.Errorf("%w: %w", errs.ErrServiceUnavailable, failure)
 	}
 	out, err := New(postgres, redis, fixture.generator).Refresh(fixture.token.Audit.WithContext(t.Context()), fixture.input)
 	require.Empty(t, out)
