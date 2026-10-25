@@ -37,7 +37,7 @@ func testConfig(t *testing.T) (config.Config, *sql.DB) {
 		OutboxInterval: 10 * time.Millisecond,
 		PinnRunner: mlrunner.Config{
 			ContainerNamePrefix: "pinn-runtime-test",
-			Image:               "golang:1.26.1-alpine",
+			Image:               "golang:1.27.3-alpine",
 			Timeout:             time.Minute,
 		},
 	}

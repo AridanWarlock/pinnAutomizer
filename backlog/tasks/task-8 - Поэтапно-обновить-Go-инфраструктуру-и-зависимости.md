@@ -1,9 +1,10 @@
 ---
 id: TASK-8
 title: 'Поэтапно обновить Go, инфраструктуру и зависимости'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-14 09:57'
+updated_date: '2026-10-25 10:24'
 labels: []
 dependencies: []
 references:
@@ -26,3 +27,9 @@ ordinal: 8000
 - [ ] #3 go.mod, Dockerfiles, compose, CI и инструкции согласованы; моки перегенерированы закреплённым генератором
 - [ ] #4 Пройдены make check, необходимые race и интеграционные проверки; описаны изменения поведения и процедура rollout без автоматического изменения рабочей БД
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Go 1.27.3 выполняется отдельно в TASK-8.2; стандартный UUID остаётся TASK-8.1. Остальные обновления инфраструктуры не входят в текущий PR; после review вернуться к задачам auth.
+<!-- SECTION:NOTES:END -->

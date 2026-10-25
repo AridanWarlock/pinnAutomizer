@@ -1,7 +1,7 @@
 # Компактные моки
 
-`matryer.templ` и его schema взяты из Mockery **v3.7.0**:
-https://github.com/vektra/mockery/tree/v3.7.0/internal
+`matryer.templ` и его schema взяты из Mockery **v3.8.1**:
+https://github.com/vektra/mockery/tree/v3.8.1/internal
 Лицензия исходного шаблона сохранена в `LICENSE`.
 
 Из шаблона удалены комментарии-примеры и описания полей/методов.
@@ -10,7 +10,8 @@ https://github.com/vektra/mockery/tree/v3.7.0/internal
 Это локальный шаблон генератора, а не ручная обработка generated Go-файлов.
 
 Генерация — штатная `make mockery`, общая рекурсивная `.mockery.yml`.
-Существующий Docker-образ v3.7.0 закреплён digest в Compose; версия не обновлялась.
+Docker-образ v3.8.1 закреплён digest в Compose. Эта версия нужна для чтения
+формата типов Go 1.27; команды Go внутри контейнера используют toolchain 1.27.3.
 Компактный шаблон включён общими настройками для всех пяти Go-модулей.
 Индивидуальные интерфейсы в конфигурации не перечисляются.
 

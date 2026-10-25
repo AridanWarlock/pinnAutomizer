@@ -1,11 +1,11 @@
 ---
 id: TASK-19
 title: Проверять сессию в Redis на каждом защищённом запросе
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-24 21:19'
-updated_date: '2026-10-24 21:28'
+updated_date: '2026-10-25 10:24'
 labels: []
 dependencies: []
 priority: high
@@ -42,3 +42,9 @@ Gateway кеширует RedisSession на 30 секунд независимо 
 
 PR на review: https://github.com/AridanWarlock/pinnAutomizer/pull/30 → codex/task-progress.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+PR #30 принят пользователем. Gateway читает Redis на каждом защищённом запросе: отсутствие сессии 401, backend failure 503. Проверены make check и Redis HTTP-интеграции с -race: два gateway, DEL/TTL и обрыв TCP.
+<!-- SECTION:FINAL_SUMMARY:END -->

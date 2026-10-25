@@ -72,7 +72,7 @@ func TestRecoveryReopensIntentWithoutRestartingDockerIntegration(t *testing.T) {
 			}()
 			image := os.Getenv("PINN_TEST_DOCKER_IMAGE")
 			if image == "" {
-				image = "golang:1.26.1-alpine"
+				image = "golang:1.27.3-alpine"
 			}
 			id, err := cli.Create(ctx, docker.Config{
 				Name:    containerName,

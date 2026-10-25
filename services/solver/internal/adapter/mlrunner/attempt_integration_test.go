@@ -28,7 +28,7 @@ func TestAttemptDockerCreateReplayAndExitedContainerIntegration(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(output, a.TaskID.String()), 0700))
 	image := os.Getenv("PINN_TEST_DOCKER_IMAGE")
 	if image == "" {
-		image = "golang:1.26.1-alpine"
+		image = "golang:1.27.3-alpine"
 	}
 	runner, err := NewPinnRunner(Config{
 		Image:              image,
