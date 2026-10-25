@@ -12,6 +12,7 @@
 | [task-file-cleanup.md](task-file-cleanup.md) | Устойчивая отложенная очистка файлов удалённых задач |
 | [postgres-pool.md](postgres-pool.md) | Владение PostgreSQL pool и transaction context |
 | [session-auth.md](session-auth.md) | Отзыв сессии, Redis TTL и HTTP 401/503 |
+| [refresh-rotation.md](refresh-rotation.md) | Конкурентная ротация refresh, порядок Redis/SQL и неизвестный исход |
 | [go-toolchain.md](go-toolchain.md) | Единая версия Go, совместимость генераторов и локальный workspace |
 | [next-steps.md](next-steps.md) | Результаты аудита, оставшиеся риски и порядок следующих небольших PR |
 

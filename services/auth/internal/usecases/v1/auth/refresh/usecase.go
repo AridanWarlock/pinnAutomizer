@@ -18,7 +18,12 @@ import (
 type Postgres interface {
 	GetRefreshTokenByHash(ctx context.Context, hash string) (domain.RefreshToken, error)
 	GetRolesByUserID(ctx context.Context, userID uuid.UUID) ([]core.Role, error)
-	RotateRefreshToken(ctx context.Context, oldHash string, newHash string, newJti core.Jti) error
+	RotateRefreshToken(
+		ctx context.Context,
+		oldHash string,
+		newHash string,
+		newJti core.Jti,
+	) (core.Changed, error)
 }
 
 type Redis interface {
@@ -66,24 +71,22 @@ func (u *usecase) Refresh(ctx context.Context, in Input) (Output, error) {
 		return Output{}, fmt.Errorf("get roles by user from postgres: %w", err)
 	}
 
-	if err := u.deleteOldSession(ctx, oldRefresh.Jti); err != nil {
-		return Output{}, fmt.Errorf("delete old session: %w", err)
-	}
-
 	accessToken, claims, err := u.tokenGenerator.GenerateAndGetClaims(userID)
 	if err != nil {
 		return Output{}, fmt.Errorf("generate access token: %w", err)
 	}
 	jti := claims.Jti
 
+	// Prepare the undisclosed candidate session before consuming the refresh token.
+	if err := u.setNewRedisSession(ctx, jti, userID, roles, audit.Fingerprint, claims.IssuedAt); err != nil {
+		return Output{}, fmt.Errorf("prepare session in redis: %w", err)
+	}
+	if err := u.deleteOldSession(ctx, oldRefresh.Jti); err != nil {
+		return Output{}, fmt.Errorf("delete old session: %w", err)
+	}
 	rotatedToken, err := u.rotateRefreshToken(ctx, oldRefresh.Hash, jti)
 	if err != nil {
 		return Output{}, fmt.Errorf("rotate token: %w", err)
-	}
-
-	err = u.setNewRedisSession(ctx, jti, userID, roles, audit.Fingerprint, claims.IssuedAt)
-	if err != nil {
-		return Output{}, fmt.Errorf("set session in redis: %w", err)
 	}
 
 	return Output{
@@ -128,7 +131,7 @@ func (u *usecase) deleteOldSession(ctx context.Context, jti core.Jti) error {
 			return nil
 		}
 
-		return fmt.Errorf("redis delete: %w", err)
+		return fmt.Errorf("%w: redis delete: %w", errs.ErrServiceUnavailable, err)
 	}
 	return nil
 }
@@ -141,8 +144,19 @@ func (u *usecase) rotateRefreshToken(
 	token := crypt.GenerateSecureToken()
 	hash := crypt.Sha256(token)
 
-	if err := u.postgres.RotateRefreshToken(ctx, oldHash, hash, newJti); err != nil {
+	changed, err := u.postgres.RotateRefreshToken(ctx, oldHash, hash, newJti)
+	if err != nil {
+		// The SQL outcome can be unknown: do not undo a possibly committed session.
 		return "", fmt.Errorf("rotate in postgres: %w", err)
+	}
+	if !changed {
+		err := fmt.Errorf("%w: refresh token is no longer valid", errs.ErrAuthorizationFailed)
+		// Only a confirmed loser can discard its own candidate. TTL bounds cleanup failure.
+		cleanupErr := u.redis.Delete(ctx, newJti.ToRedisKey())
+		if cleanupErr != nil && !errors.Is(cleanupErr, errs.ErrKeyNotFound) {
+			return "", errors.Join(err, fmt.Errorf("discard candidate session: %w", cleanupErr))
+		}
+		return "", err
 	}
 
 	return token, nil
@@ -168,7 +182,7 @@ func (u *usecase) setNewRedisSession(
 
 	err = u.redis.Set(ctx, jti.ToRedisKey(), session, auth.AccessTokenTTL)
 	if err != nil {
-		return fmt.Errorf("redis set: %w", err)
+		return fmt.Errorf("%w: redis set: %w", errs.ErrServiceUnavailable, err)
 	}
 	return nil
 }

@@ -21,6 +21,17 @@ type RefreshToken struct {
 	CreatedAt time.Time `json:"created_at" validate:"required,lte"`
 }
 
+// RefreshTokenSnapshot is untrusted persistence/fixture input.
+type RefreshTokenSnapshot RefreshToken
+
+func RestoreRefreshToken(snapshot RefreshTokenSnapshot) (RefreshToken, error) {
+	token := RefreshToken(snapshot)
+	if err := token.Validate(); err != nil {
+		return RefreshToken{}, err
+	}
+	return token, nil
+}
+
 func NewRefreshToken(
 	hash string,
 	userID uuid.UUID,

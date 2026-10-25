@@ -14,6 +14,7 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 )
 
@@ -70,6 +71,25 @@ func TestHttpHandler_Refresh(t *testing.T) {
 			cookie:         nil,
 			prepare:        func(f *fields) {},
 			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:   "error - consumed token",
+			cookie: &http.Cookie{Name: "refresh_token", Value: fixedOldRefreshTokenStr},
+			prepare: func(f *fields) {
+				f.usecase.RefreshFunc = func(context.Context, Input) (Output, error) { return Output{}, errs.ErrAuthorizationFailed }
+			},
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:   "error - Redis unavailable preserves client cookie",
+			cookie: &http.Cookie{Name: "refresh_token", Value: fixedOldRefreshTokenStr},
+			prepare: func(f *fields) {
+				f.usecase.RefreshFunc = func(context.Context, Input) (Output, error) { return Output{}, errs.ErrServiceUnavailable }
+			},
+			expectedStatus: http.StatusServiceUnavailable,
+			checkResponse: func(t *testing.T, response *httptest.ResponseRecorder) {
+				require.Empty(t, response.Result().Cookies())
+			},
 		},
 		{
 			name:   "error - usecase fail",
