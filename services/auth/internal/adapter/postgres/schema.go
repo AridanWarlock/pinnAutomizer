@@ -64,3 +64,9 @@ const (
 	SessionRevocationsUserID      = "user_id"
 	SessionRevocationsFingerprint = "fingerprint"
 )
+
+var SessionRevocationsColumns = []string{
+	SessionRevocationsJti,
+	SessionRevocationsUserID,
+	SessionRevocationsFingerprint,
+}

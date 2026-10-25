@@ -25,12 +25,12 @@ func TestCleanupContinuesPastFailureAndAdvancesCursor(t *testing.T) {
 	first, second := cleanupJti(t), cleanupJti(t)
 	failure := errors.New("Redis unavailable")
 	postgres := &MockPostgres{
-		GetPendingSessionRevocationsFunc: func(
+		GetPendingSessionRevocationJtisFunc: func(
 			_ context.Context,
-			after uuid.UUID,
+			after *core.Jti,
 			batch limit.Limit,
 		) ([]core.Jti, error) {
-			require.Equal(t, uuid.Nil, after)
+			require.Nil(t, after)
 			require.Equal(t, 100, batch.Int())
 			return []core.Jti{first, second}, nil
 		},
@@ -50,11 +50,11 @@ func TestCleanupContinuesPastFailureAndAdvancesCursor(t *testing.T) {
 	uc := New(postgres, redis)
 	out, err := uc.Cleanup(t.Context(), Input{})
 	require.ErrorIs(t, err, failure)
-	require.Equal(t, uuid.UUID(second), out.NextJti)
+	require.Equal(t, &second, out.NextJti)
 	require.Len(t, postgres.ConfirmSessionRevocationCalls(), 1)
-	postgres.GetPendingSessionRevocationsFunc = func(
+	postgres.GetPendingSessionRevocationJtisFunc = func(
 		_ context.Context,
-		after uuid.UUID,
+		after *core.Jti,
 		_ limit.Limit,
 	) ([]core.Jti, error) {
 		require.Equal(t, out.NextJti, after)
@@ -62,7 +62,7 @@ func TestCleanupContinuesPastFailureAndAdvancesCursor(t *testing.T) {
 	}
 	next, err := uc.Cleanup(t.Context(), Input{AfterJti: out.NextJti})
 	require.NoError(t, err)
-	require.Equal(t, uuid.Nil, next.NextJti, "empty page restarts sweep, including failed earlier keys")
+	require.Nil(t, next.NextJti, "empty page restarts sweep, including failed earlier keys")
 }
 
 func TestCleanupRetriesAfterAcknowledgmentFailure(t *testing.T) {
@@ -70,7 +70,7 @@ func TestCleanupRetriesAfterAcknowledgmentFailure(t *testing.T) {
 	jti := cleanupJti(t)
 	failure := errors.New("postgres acknowledgement failed")
 	postgres := &MockPostgres{
-		GetPendingSessionRevocationsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]core.Jti, error) {
+		GetPendingSessionRevocationJtisFunc: func(context.Context, *core.Jti, limit.Limit) ([]core.Jti, error) {
 			return []core.Jti{jti}, nil
 		},
 		ConfirmSessionRevocationFunc: func(context.Context, core.Jti) error {
@@ -100,7 +100,7 @@ func TestCleanupCancellationDoesNotAcknowledgePendingKeys(t *testing.T) {
 	jti := cleanupJti(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	postgres := &MockPostgres{
-		GetPendingSessionRevocationsFunc: func(context.Context, uuid.UUID, limit.Limit) ([]core.Jti, error) {
+		GetPendingSessionRevocationJtisFunc: func(context.Context, *core.Jti, limit.Limit) ([]core.Jti, error) {
 			cancel()
 			return []core.Jti{jti}, nil
 		},

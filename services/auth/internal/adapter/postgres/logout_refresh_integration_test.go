@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
@@ -161,7 +160,7 @@ func TestFailedRedisCleanupCannotRestoreRefreshIntegration(t *testing.T) {
 			out, err := authRefresh.New(fixture.postgres, fixture.redis, fixture.generator).Refresh(retryCtx, fixture.input)
 			require.ErrorIs(t, err, errs.ErrAuthorizationFailed)
 			require.Empty(t, out)
-			pending, err := fixture.postgres.GetSessionRevocations(retryCtx, fixture.token.UserID, fixture.token.Audit.Fingerprint)
+			pending, err := fixture.postgres.GetSessionRevocationJtis(retryCtx, fixture.token.UserID, fixture.token.Audit.Fingerprint)
 			require.NoError(t, err)
 			require.Contains(t, pending, fixture.token.Jti)
 			// A fresh cleanup instance has no request state; the retry is driven by PostgreSQL.
@@ -169,7 +168,7 @@ func TestFailedRedisCleanupCannotRestoreRefreshIntegration(t *testing.T) {
 			require.NoError(t, err)
 			var session core.RedisSession
 			require.ErrorIs(t, fixture.redis.Get(retryCtx, fixture.token.Jti.ToRedisKey(), &session), errs.ErrKeyNotFound)
-			pending, err = fixture.postgres.GetSessionRevocations(retryCtx, fixture.token.UserID, fixture.token.Audit.Fingerprint)
+			pending, err = fixture.postgres.GetSessionRevocationJtis(retryCtx, fixture.token.UserID, fixture.token.Audit.Fingerprint)
 			require.NoError(t, err)
 			require.Empty(t, pending)
 
@@ -192,22 +191,24 @@ type pausedLogoutPostgres struct {
 	release <-chan struct{}
 }
 
-func (p *pausedLogoutPostgres) GetJtiByFingerprintForUpdate(
+func (p *pausedLogoutPostgres) RevokeSessions(
 	ctx context.Context,
 	userID uuid.UUID,
 	fingerprint core.Fingerprint,
-) (core.Jti, error) {
-	jti, err := p.Repository.GetJtiByFingerprintForUpdate(ctx, userID, fingerprint)
-	if err != nil {
-		return core.Jti{}, err
-	}
-	p.locked <- struct{}{}
-	select {
-	case <-p.release:
-		return jti, nil
-	case <-ctx.Done():
-		return core.Jti{}, ctx.Err()
-	}
+	requestJti core.Jti,
+) error {
+	return p.Repository.InTransaction(ctx, func(ctx context.Context) error {
+		if _, err := p.Repository.GetJtiByFingerprintForUpdate(ctx, userID, fingerprint); err != nil {
+			return err
+		}
+		p.locked <- struct{}{}
+		select {
+		case <-p.release:
+			return p.Repository.revokeSessions(ctx, userID, fingerprint, requestJti)
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	})
 }
 
 type interruptedLogoutPostgres struct {
@@ -216,25 +217,24 @@ type interruptedLogoutPostgres struct {
 	afterCommit bool
 }
 
-func (p *interruptedLogoutPostgres) Logout(
+func (p *interruptedLogoutPostgres) RevokeSessions(
 	ctx context.Context,
 	userID uuid.UUID,
 	fingerprint core.Fingerprint,
+	requestJti core.Jti,
 ) error {
-	if !p.afterCommit {
+	if p.afterCommit {
+		if err := p.Repository.RevokeSessions(ctx, userID, fingerprint, requestJti); err != nil {
+			return err
+		}
 		return p.failure
 	}
-	return p.Repository.Logout(ctx, userID, fingerprint)
-}
-
-func (p *interruptedLogoutPostgres) InTransaction(
-	ctx context.Context,
-	fn func(context.Context) error,
-) error {
-	if err := p.Repository.InTransaction(ctx, fn); err != nil {
-		return err
-	}
-	return p.failure
+	return p.Repository.InTransaction(ctx, func(ctx context.Context) error {
+		if err := p.Repository.revokeSessions(ctx, userID, fingerprint, requestJti); err != nil {
+			return err
+		}
+		return p.failure
+	})
 }
 
 func TestLogoutTransactionFailureBeforeAndAfterCommitIntegration(t *testing.T) {
@@ -252,7 +252,7 @@ func TestLogoutTransactionFailureBeforeAndAfterCommitIntegration(t *testing.T) {
 			// No Redis effect before confirmed commit. A committed but unknown outcome is recoverable.
 			var session core.RedisSession
 			require.NoError(t, fixture.redis.Get(ctx, fixture.token.Jti.ToRedisKey(), &session))
-			pending, err := fixture.postgres.GetSessionRevocations(ctx, fixture.token.UserID, fixture.token.Audit.Fingerprint)
+			pending, err := fixture.postgres.GetSessionRevocationJtis(ctx, fixture.token.UserID, fixture.token.Audit.Fingerprint)
 			require.NoError(t, err)
 			_, err = fixture.postgres.GetRefreshTokenByHash(ctx, fixture.token.Hash)
 			if !committed {
@@ -286,14 +286,14 @@ func TestRepeatedLogoutFinishesPreviouslyQueuedRotatedJtiIntegration(t *testing.
 		},
 	}
 	require.ErrorIs(t, authLogout.New(fixture.postgres, failing).Logout(ctx), errs.ErrServiceUnavailable)
-	pending, err := fixture.postgres.GetSessionRevocations(ctx, fixture.token.UserID, fixture.token.Audit.Fingerprint)
+	pending, err := fixture.postgres.GetSessionRevocationJtis(ctx, fixture.token.UserID, fixture.token.Audit.Fingerprint)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []core.Jti{fixture.token.Jti, claims.Jti}, pending)
 	require.NoError(t, authLogout.New(fixture.postgres, fixture.redis).Logout(ctx))
 	var session core.RedisSession
 	require.ErrorIs(t, fixture.redis.Get(ctx, claims.Jti.ToRedisKey(), &session), errs.ErrKeyNotFound,
 		"repeat must revoke previous candidate even though refresh row is already absent")
-	pending, err = fixture.postgres.GetSessionRevocations(ctx, fixture.token.UserID, fixture.token.Audit.Fingerprint)
+	pending, err = fixture.postgres.GetSessionRevocationJtis(ctx, fixture.token.UserID, fixture.token.Audit.Fingerprint)
 	require.NoError(t, err)
 	require.Empty(t, pending)
 }
@@ -318,19 +318,19 @@ func TestRevocationQueueScopeAndKeysetIntegration(t *testing.T) {
 	require.NoError(t, fixture.postgres.QueueSessionRevocation(ctx, uuid.New(), fixture.token.Audit.Fingerprint, jtis[2]))
 	// Repeating a reservation does not add a second task for the same immutable JTI.
 	require.NoError(t, fixture.postgres.QueueSessionRevocation(ctx, fixture.token.UserID, fixture.token.Audit.Fingerprint, jtis[0]))
-	scoped, err := fixture.postgres.GetSessionRevocations(ctx, fixture.token.UserID, fixture.token.Audit.Fingerprint)
+	scoped, err := fixture.postgres.GetSessionRevocationJtis(ctx, fixture.token.UserID, fixture.token.Audit.Fingerprint)
 	require.NoError(t, err)
 	require.Equal(t, []core.Jti{jtis[0]}, scoped)
-	cursor := uuid.Nil
+	var cursor *core.Jti
 	for _, jti := range jtis {
-		page, err := fixture.postgres.GetPendingSessionRevocations(ctx, cursor, limit.MustNew(1))
+		page, err := fixture.postgres.GetPendingSessionRevocationJtis(ctx, cursor, limit.MustNew(1))
 		require.NoError(t, err)
 		require.Equal(t, []core.Jti{jti}, page)
-		cursor = uuid.UUID(jti)
+		cursor = &jti
 		require.NoError(t, fixture.postgres.ConfirmSessionRevocation(ctx, jti))
 		require.NoError(t, fixture.postgres.ConfirmSessionRevocation(ctx, jti))
 	}
-	page, err := fixture.postgres.GetPendingSessionRevocations(ctx, cursor, limit.MustNew(1))
+	page, err := fixture.postgres.GetPendingSessionRevocationJtis(ctx, cursor, limit.MustNew(1))
 	require.NoError(t, err)
 	require.Empty(t, page)
 }
@@ -341,12 +341,12 @@ type concurrentRevocationPostgres struct {
 	release <-chan struct{}
 }
 
-func (p *concurrentRevocationPostgres) GetPendingSessionRevocations(
+func (p *concurrentRevocationPostgres) GetPendingSessionRevocationJtis(
 	ctx context.Context,
-	after uuid.UUID,
+	after *core.Jti,
 	batchSize limit.Limit,
 ) ([]core.Jti, error) {
-	pending, err := p.Repository.GetPendingSessionRevocations(ctx, after, batchSize)
+	pending, err := p.Repository.GetPendingSessionRevocationJtis(ctx, after, batchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -394,17 +394,9 @@ func TestConcurrentSessionCleanupIsIdempotentIntegration(t *testing.T) {
 	require.NoError(t, <-done)
 	require.NoError(t, <-done)
 	workers.Wait()
-	pending, err := fixture.postgres.GetPendingSessionRevocations(ctx, uuid.Nil, limit.MustNew(100))
+	pending, err := fixture.postgres.GetPendingSessionRevocationJtis(ctx, nil, limit.MustNew(100))
 	require.NoError(t, err)
 	require.Empty(t, pending)
 	var session core.RedisSession
 	require.ErrorIs(t, fixture.redis.Get(ctx, fixture.token.Jti.ToRedisKey(), &session), errs.ErrKeyNotFound)
-}
-
-func TestRevocationSchemaReadinessRejectsMissingTableIntegration(t *testing.T) {
-	fixture := newRefreshIntegration(t)
-	require.NoError(t, fixture.postgres.checkSessionRevocationsSchema(t.Context()))
-	_, err := fixture.postgres.pool.Execx(t.Context(), sq.Expr("DROP TABLE session_revocations"))
-	require.NoError(t, err)
-	require.Error(t, fixture.postgres.checkSessionRevocationsSchema(t.Context()))
 }

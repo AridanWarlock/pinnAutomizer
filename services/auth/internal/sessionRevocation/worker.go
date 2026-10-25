@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/usecases/v1/auth/cleanupSessions"
+	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/validate"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/worker"
@@ -23,10 +23,14 @@ type Usecase interface {
 	Cleanup(ctx context.Context, in cleanupSessions.Input) (cleanupSessions.Output, error)
 }
 
+type BackgroundWorker interface {
+	worker.Worker
+}
+
 type Worker struct {
 	usecase Usecase
-	worker  *worker.Worker
-	cursor  uuid.UUID
+	worker  BackgroundWorker
+	cursor  *core.Jti
 	timeout time.Duration
 }
 

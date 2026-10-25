@@ -11,7 +11,11 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
 
-type Worker struct {
+type Worker interface {
+	Run(ctx context.Context) error
+}
+
+type worker struct {
 	interval time.Duration
 	log      zerolog.Logger
 	process  func(context.Context) error
@@ -21,11 +25,11 @@ func New(
 	interval time.Duration,
 	log zerolog.Logger,
 	process func(context.Context) error,
-) (*Worker, error) {
+) (Worker, error) {
 	if interval <= 0 || process == nil {
 		return nil, fmt.Errorf("%w: positive interval and worker operation required", errs.ErrInvalidArgument)
 	}
-	return &Worker{
+	return &worker{
 		interval: interval,
 		log:      log,
 		process:  process,
@@ -34,7 +38,7 @@ func New(
 
 // Run executes immediately, then waits after each call, including failures.
 // The owner cancels and awaits Run before closing the operation's dependencies.
-func (w *Worker) Run(ctx context.Context) error {
+func (w *worker) Run(ctx context.Context) error {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 	for {

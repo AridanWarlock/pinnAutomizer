@@ -19,14 +19,14 @@ type App struct {
 }
 
 type Config struct {
-	SessionRevocation    sessionRevocation.Config `envPrefix:"SESSION_REVOCATION_"`
 	App                  App
-	HTTP                 httpsrv.Config       `envPrefix:"HTTP_"`
-	Log                  logger.Config        `envPrefix:"LOGGER_"`
-	Postgres             postgres.Config      `envPrefix:"POSTGRES_"`
-	Redis                goRedis.Config       `envPrefix:"REDIS_"`
-	AccessTokenGenerator jwt.Config           `envPrefix:"JWT_"`
-	KafkaConsumer        kafka.ConsumerConfig `envPrefix:"KAFKA_CONSUMER_"`
+	HTTP                 httpsrv.Config           `envPrefix:"HTTP_"`
+	Log                  logger.Config            `envPrefix:"LOGGER_"`
+	Postgres             postgres.Config          `envPrefix:"POSTGRES_"`
+	Redis                goRedis.Config           `envPrefix:"REDIS_"`
+	AccessTokenGenerator jwt.Config               `envPrefix:"JWT_"`
+	KafkaConsumer        kafka.ConsumerConfig     `envPrefix:"KAFKA_CONSUMER_"`
+	SessionRevocation    sessionRevocation.Config `envPrefix:"SESSION_REVOCATION_"`
 }
 
 func InitConfig() (Config, error) {

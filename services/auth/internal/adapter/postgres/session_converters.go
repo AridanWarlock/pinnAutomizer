@@ -23,3 +23,29 @@ func toJtiModels(raw []uuid.UUID) []core.Jti {
 	}
 	return jtis
 }
+
+type SessionRevocationRaw struct {
+	Jti         core.Jti         `db:"jti"`
+	UserID      uuid.UUID        `db:"user_id"`
+	Fingerprint core.Fingerprint `db:"fingerprint"`
+}
+
+func newSessionRevocationRaw(
+	userID uuid.UUID,
+	fingerprint core.Fingerprint,
+	jti core.Jti,
+) SessionRevocationRaw {
+	return SessionRevocationRaw{
+		Jti:         jti,
+		UserID:      userID,
+		Fingerprint: fingerprint,
+	}
+}
+
+func (r SessionRevocationRaw) Values() []any {
+	return []any{
+		r.Jti,
+		r.UserID,
+		r.Fingerprint,
+	}
+}

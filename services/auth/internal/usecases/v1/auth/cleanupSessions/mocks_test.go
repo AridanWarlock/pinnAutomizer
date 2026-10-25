@@ -8,7 +8,6 @@ import (
 
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
-	"github.com/google/uuid"
 )
 
 var _ Usecase = &MockUsecase{}
@@ -61,21 +60,21 @@ var _ Postgres = &MockPostgres{}
 type MockPostgres struct {
 	ConfirmSessionRevocationFunc func(ctx context.Context, jti core.Jti) error
 
-	GetPendingSessionRevocationsFunc func(ctx context.Context, after uuid.UUID, batchSize limit.Limit) ([]core.Jti, error)
+	GetPendingSessionRevocationJtisFunc func(ctx context.Context, after *core.Jti, batchSize limit.Limit) ([]core.Jti, error)
 
 	calls struct {
 		ConfirmSessionRevocation []struct {
 			Ctx context.Context
 			Jti core.Jti
 		}
-		GetPendingSessionRevocations []struct {
+		GetPendingSessionRevocationJtis []struct {
 			Ctx       context.Context
-			After     uuid.UUID
+			After     *core.Jti
 			BatchSize limit.Limit
 		}
 	}
-	lockConfirmSessionRevocation     sync.RWMutex
-	lockGetPendingSessionRevocations sync.RWMutex
+	lockConfirmSessionRevocation        sync.RWMutex
+	lockGetPendingSessionRevocationJtis sync.RWMutex
 }
 
 func (mock *MockPostgres) ConfirmSessionRevocation(ctx context.Context, jti core.Jti) error {
@@ -109,38 +108,38 @@ func (mock *MockPostgres) ConfirmSessionRevocationCalls() []struct {
 	return calls
 }
 
-func (mock *MockPostgres) GetPendingSessionRevocations(ctx context.Context, after uuid.UUID, batchSize limit.Limit) ([]core.Jti, error) {
-	if mock.GetPendingSessionRevocationsFunc == nil {
-		panic("MockPostgres.GetPendingSessionRevocationsFunc: method is nil but Postgres.GetPendingSessionRevocations was just called")
+func (mock *MockPostgres) GetPendingSessionRevocationJtis(ctx context.Context, after *core.Jti, batchSize limit.Limit) ([]core.Jti, error) {
+	if mock.GetPendingSessionRevocationJtisFunc == nil {
+		panic("MockPostgres.GetPendingSessionRevocationJtisFunc: method is nil but Postgres.GetPendingSessionRevocationJtis was just called")
 	}
 	callInfo := struct {
 		Ctx       context.Context
-		After     uuid.UUID
+		After     *core.Jti
 		BatchSize limit.Limit
 	}{
 		Ctx:       ctx,
 		After:     after,
 		BatchSize: batchSize,
 	}
-	mock.lockGetPendingSessionRevocations.Lock()
-	mock.calls.GetPendingSessionRevocations = append(mock.calls.GetPendingSessionRevocations, callInfo)
-	mock.lockGetPendingSessionRevocations.Unlock()
-	return mock.GetPendingSessionRevocationsFunc(ctx, after, batchSize)
+	mock.lockGetPendingSessionRevocationJtis.Lock()
+	mock.calls.GetPendingSessionRevocationJtis = append(mock.calls.GetPendingSessionRevocationJtis, callInfo)
+	mock.lockGetPendingSessionRevocationJtis.Unlock()
+	return mock.GetPendingSessionRevocationJtisFunc(ctx, after, batchSize)
 }
 
-func (mock *MockPostgres) GetPendingSessionRevocationsCalls() []struct {
+func (mock *MockPostgres) GetPendingSessionRevocationJtisCalls() []struct {
 	Ctx       context.Context
-	After     uuid.UUID
+	After     *core.Jti
 	BatchSize limit.Limit
 } {
 	var calls []struct {
 		Ctx       context.Context
-		After     uuid.UUID
+		After     *core.Jti
 		BatchSize limit.Limit
 	}
-	mock.lockGetPendingSessionRevocations.RLock()
-	calls = mock.calls.GetPendingSessionRevocations
-	mock.lockGetPendingSessionRevocations.RUnlock()
+	mock.lockGetPendingSessionRevocationJtis.RLock()
+	calls = mock.calls.GetPendingSessionRevocationJtis
+	mock.lockGetPendingSessionRevocationJtis.RUnlock()
 	return calls
 }
 

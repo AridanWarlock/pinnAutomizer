@@ -5,29 +5,15 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core/limit"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
 )
 
-type Input struct {
-	AfterJti uuid.UUID
-}
-
-type Output struct {
-	NextJti uuid.UUID
-}
-
-type Usecase interface {
-	Cleanup(ctx context.Context, in Input) (Output, error)
-}
-
 type Postgres interface {
-	GetPendingSessionRevocations(
+	GetPendingSessionRevocationJtis(
 		ctx context.Context,
-		after uuid.UUID,
+		after *core.Jti,
 		batchSize limit.Limit,
 	) ([]core.Jti, error)
 	ConfirmSessionRevocation(ctx context.Context, jti core.Jti) error
@@ -50,7 +36,7 @@ func New(postgres Postgres, redis Redis) Usecase {
 }
 
 func (u *usecase) Cleanup(ctx context.Context, in Input) (Output, error) {
-	pending, err := u.postgres.GetPendingSessionRevocations(ctx, in.AfterJti, limit.MustNew(100))
+	pending, err := u.postgres.GetPendingSessionRevocationJtis(ctx, in.AfterJti, limit.MustNew(100))
 	if err != nil {
 		return Output{}, fmt.Errorf("list pending session revocations: %w", err)
 	}
@@ -60,7 +46,7 @@ func (u *usecase) Cleanup(ctx context.Context, in Input) (Output, error) {
 		if err := ctx.Err(); err != nil {
 			return out, errors.Join(failures, err)
 		}
-		out.NextJti = uuid.UUID(jti)
+		out.NextJti = &jti
 		if err := u.revoke(ctx, jti); err != nil {
 			failures = errors.Join(failures, err)
 		}

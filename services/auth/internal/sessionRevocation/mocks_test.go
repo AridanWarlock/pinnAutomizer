@@ -53,3 +53,43 @@ func (mock *MockUsecase) CleanupCalls() []struct {
 	mock.lockCleanup.RUnlock()
 	return calls
 }
+
+var _ BackgroundWorker = &MockBackgroundWorker{}
+
+type MockBackgroundWorker struct {
+	RunFunc func(ctx context.Context) error
+
+	calls struct {
+		Run []struct {
+			Ctx context.Context
+		}
+	}
+	lockRun sync.RWMutex
+}
+
+func (mock *MockBackgroundWorker) Run(ctx context.Context) error {
+	if mock.RunFunc == nil {
+		panic("MockBackgroundWorker.RunFunc: method is nil but BackgroundWorker.Run was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockRun.Lock()
+	mock.calls.Run = append(mock.calls.Run, callInfo)
+	mock.lockRun.Unlock()
+	return mock.RunFunc(ctx)
+}
+
+func (mock *MockBackgroundWorker) RunCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockRun.RLock()
+	calls = mock.calls.Run
+	mock.lockRun.RUnlock()
+	return calls
+}
