@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-25 10:42'
-updated_date: '2026-10-25 10:55'
+updated_date: '2026-10-25 10:56'
 labels: []
 dependencies: []
 priority: high
@@ -35,4 +35,6 @@ Refresh сначала потребляет PostgreSQL-токен, затем п
 
 <!-- SECTION:NOTES:BEGIN -->
 Проверено: make fmt/check с одноразовыми PostgreSQL/Redis; адресный race refresh + PostgreSQL adapter. SET failure до/после эффекта, повтор, конкурентный CAS, отмена после SET, ошибка очистки и потерянный SQL-ответ после commit. Input/Output сохранены. Неизвестный commit/потеря успешного HTTP-ответа требует повторного входа; идемпотентное восстановление и гонки logout отложены. Границы описаны в docs/refresh-rotation.md.
+
+PR на review: https://github.com/AridanWarlock/pinnAutomizer/pull/32 → codex/task-progress.
 <!-- SECTION:NOTES:END -->
