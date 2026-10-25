@@ -82,7 +82,7 @@ func (r *Repository) Logout(
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() != 1 {
+	if !tag.ExactlyOneRowAffected() {
 		return errs.ErrNotFound
 	}
 	return nil
@@ -103,7 +103,7 @@ func (r *Repository) RotateRefreshToken(
 	if err != nil {
 		return false, err
 	}
-	return core.Changed(tag.RowsAffected() == 1), nil
+	return core.Changed(tag.ExactlyOneRowAffected()), nil
 }
 
 func (r *Repository) DeleteSessionByJti(ctx context.Context, jti core.Jti) error {
@@ -116,7 +116,7 @@ func (r *Repository) DeleteSessionByJti(ctx context.Context, jti core.Jti) error
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() != 1 {
+	if !tag.ExactlyOneRowAffected() {
 		return errs.ErrNotFound
 	}
 	return nil
