@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-25 10:09'
-updated_date: '2026-10-25 10:24'
+updated_date: '2026-10-25 10:26'
 labels: []
 dependencies: []
 parent_task_id: TASK-8
@@ -38,4 +38,6 @@ ordinal: 25000
 
 <!-- SECTION:NOTES:BEGIN -->
 Проверено Go 1.27.3: make fmt/check с PostgreSQL/Redis; race-тесты пяти модулей и CPU Docker-пакеты; четыре сервисных Docker build; Swagger CLI build metadata go1.27.3; повторная генерация 38 моков побайтово идентична. Пять standalone module graphs tidy. Обязательное сопутствующее обновление: Mockery v3.8.1 для export data Go 1.27. Корневой go.work остаётся ignored и обновлён локально.
+
+PR на review: https://github.com/AridanWarlock/pinnAutomizer/pull/31 → codex/task-progress.
 <!-- SECTION:NOTES:END -->
