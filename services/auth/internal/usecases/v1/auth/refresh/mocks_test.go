@@ -64,7 +64,7 @@ type MockPostgres struct {
 
 	GetRolesByUserIDFunc func(ctx context.Context, userID uuid.UUID) ([]core.Role, error)
 
-	RotateRefreshTokenFunc func(ctx context.Context, oldHash string, newHash string, newJti core.Jti) error
+	RotateRefreshTokenFunc func(ctx context.Context, oldHash string, newHash string, newJti core.Jti) (core.Changed, error)
 
 	calls struct {
 		GetRefreshTokenByHash []struct {
@@ -149,7 +149,7 @@ func (mock *MockPostgres) GetRolesByUserIDCalls() []struct {
 	return calls
 }
 
-func (mock *MockPostgres) RotateRefreshToken(ctx context.Context, oldHash string, newHash string, newJti core.Jti) error {
+func (mock *MockPostgres) RotateRefreshToken(ctx context.Context, oldHash string, newHash string, newJti core.Jti) (core.Changed, error) {
 	if mock.RotateRefreshTokenFunc == nil {
 		panic("MockPostgres.RotateRefreshTokenFunc: method is nil but Postgres.RotateRefreshToken was just called")
 	}

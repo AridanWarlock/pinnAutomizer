@@ -10,6 +10,7 @@ type Sqlizer interface {
 
 type Tag interface {
 	RowsAffected() int
+	ExactlyOneRowAffected() bool
 }
 
 type Pool interface {

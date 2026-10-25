@@ -82,7 +82,7 @@ func (r *Repository) Logout(
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() != 1 {
+	if !tag.ExactlyOneRowAffected() {
 		return errs.ErrNotFound
 	}
 	return nil
@@ -93,7 +93,7 @@ func (r *Repository) RotateRefreshToken(
 	oldHash string,
 	newHash string,
 	newJti core.Jti,
-) error {
+) (core.Changed, error) {
 	q := r.sb.Update(RefreshTokensTable).
 		Set(RefreshTokensHash, newHash).
 		Set(RefreshTokensJti, newJti).
@@ -101,12 +101,9 @@ func (r *Repository) RotateRefreshToken(
 
 	tag, err := r.pool.Execx(ctx, q)
 	if err != nil {
-		return err
+		return false, err
 	}
-	if tag.RowsAffected() != 1 {
-		return errs.ErrNotFound
-	}
-	return nil
+	return core.Changed(tag.ExactlyOneRowAffected()), nil
 }
 
 func (r *Repository) DeleteSessionByJti(ctx context.Context, jti core.Jti) error {
@@ -119,7 +116,7 @@ func (r *Repository) DeleteSessionByJti(ctx context.Context, jti core.Jti) error
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() != 1 {
+	if !tag.ExactlyOneRowAffected() {
 		return errs.ErrNotFound
 	}
 	return nil

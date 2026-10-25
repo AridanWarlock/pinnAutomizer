@@ -71,9 +71,9 @@ func (r *Redis) handleCommonErr(err error) error {
 	case errors.Is(err, goRedis.ErrKeyNotFound):
 		return errs.ErrKeyNotFound
 	case errors.Is(err, goRedis.ErrClosed):
-		return errs.ErrClosed
+		return fmt.Errorf("%w: %w", errs.ErrServiceUnavailable, errs.ErrClosed)
 	case errors.Is(err, goRedis.ErrPoolExhausted):
-		return errs.ErrPoolExhausted
+		return fmt.Errorf("%w: %w", errs.ErrServiceUnavailable, errs.ErrPoolExhausted)
 	default:
 		return fmt.Errorf("unexpected error: %w", err)
 	}

@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"fmt"
 	"net/netip"
 	"time"
 
@@ -54,7 +55,7 @@ func fromRefreshTokenModel(model domain.RefreshToken) RefreshTokenRaw {
 }
 
 func toRefreshTokenModel(raw RefreshTokenRaw) domain.RefreshToken {
-	return domain.RefreshToken{
+	token, err := domain.RestoreRefreshToken(domain.RefreshTokenSnapshot{
 		Hash:   raw.Hash,
 		UserID: raw.UserID,
 		Jti:    raw.Jti,
@@ -65,5 +66,9 @@ func toRefreshTokenModel(raw RefreshTokenRaw) domain.RefreshToken {
 		),
 		ExpiresAt: raw.ExpiresAt,
 		CreatedAt: raw.CreatedAt,
+	})
+	if err != nil {
+		panic(fmt.Errorf("postgres: invalid refresh token row: %w", err))
 	}
+	return token
 }

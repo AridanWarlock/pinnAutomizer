@@ -2,197 +2,122 @@ package authRefresh
 
 import (
 	"context"
-	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain"
-	"github.com/AridanWarlock/pinnAutomizer/auth/internal/domain/domainfixtures"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/core"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/core/corefixtures"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/crypt"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/errs"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/test"
 )
 
-func TestUsecase_Refresh(t *testing.T) {
-	type fields struct {
-		postgres       *MockPostgres
-		redis          *MockRedis
-		tokenGenerator *MockTokenGenerator
-	}
-
-	var (
-		validTokenStr = crypt.GenerateSecureToken()
-
-		fixedUserID      = uuid.New()
-		fixedRoles       = []core.Role{corefixtures.NewRole()}
-		fixedAccessToken = corefixtures.NewAccessToken()
-		fixedAuditInfo   = corefixtures.NewAuditInfo()
-		fixedRefresh     = domainfixtures.NewRefreshToken(func(refresh *domain.RefreshToken) {
-			refresh.UserID = fixedUserID
-
-			refresh.Audit = fixedAuditInfo
-		})
-		fixedClaims = corefixtures.NewJwtClaims(func(claims *core.JwtClaims) {
-			claims.UserID = fixedUserID
-		})
-
-		fixedNow = time.Now().Truncate(time.Second)
-	)
-
-	tests := []struct {
-		name    string
-		input   Input
-		prepare func(f *fields)
-		check   func(t *testing.T, out Output, err error, f *fields)
-	}{
-		{
-			name: "success path with existing redis session",
-			input: Input{
-				RefreshTokenString: validTokenStr,
-			},
-			prepare: func(f *fields) {
-				f.postgres.GetRefreshTokenByHashFunc = func(ctx context.Context, hash string) (domain.RefreshToken, error) {
-					return fixedRefresh, nil
-				}
-				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, userID uuid.UUID) ([]core.Role, error) {
-					return fixedRoles, nil
-				}
-				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
-					return nil
-				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error) {
-					return fixedAccessToken, fixedClaims, nil
-				}
-				f.postgres.RotateRefreshTokenFunc = func(ctx context.Context, oldHash string, newHash string, newJti core.Jti) error {
-					return nil
-				}
-				f.redis.SetFunc = func(ctx context.Context, key string, value any, ttl time.Duration) error {
-					return nil
-				}
-			},
-			check: func(t *testing.T, out Output, err error, f *fields) {
-				assert.NoError(t, err)
-				assert.Equal(t, fixedAccessToken, out.AccessToken)
-				assert.Equal(t, fixedRefresh.ExpiresAt, out.RefreshTokenExpiresAt)
-			},
+func refreshDependencies(fixture refreshFixture) (*MockPostgres, *MockRedis) {
+	postgres := &MockPostgres{
+		GetRefreshTokenByHashFunc: func(context.Context, string) (domain.RefreshToken, error) {
+			return fixture.token, nil
 		},
-		{
-			name: "success path without redis session",
-			input: Input{
-				RefreshTokenString: validTokenStr,
-			},
-			prepare: func(f *fields) {
-				f.postgres.GetRefreshTokenByHashFunc = func(ctx context.Context, hash string) (domain.RefreshToken, error) {
-					return fixedRefresh, nil
-				}
-				f.postgres.GetRolesByUserIDFunc = func(ctx context.Context, userID uuid.UUID) ([]core.Role, error) {
-					return fixedRoles, nil
-				}
-				f.redis.DeleteFunc = func(ctx context.Context, key string) error {
+		GetRolesByUserIDFunc: func(context.Context, uuid.UUID) ([]core.Role, error) {
+			return fixture.roles, nil
+		},
+		RotateRefreshTokenFunc: func(context.Context, string, string, core.Jti) (core.Changed, error) {
+			return true, nil
+		},
+	}
+	redis := &MockRedis{
+		SetFunc: func(context.Context, string, any, time.Duration) error {
+			return nil
+		},
+		DeleteFunc: func(context.Context, string) error {
+			return nil
+		},
+	}
+	return postgres, redis
+}
+
+func TestRefreshSucceedsWithPresentOrMissingOldSession(t *testing.T) {
+	t.Parallel()
+	for _, missing := range []bool{false, true} {
+		t.Run(map[bool]string{false: "existing session", true: "missing session"}[missing], func(t *testing.T) {
+			t.Parallel()
+			fixture := newRefreshFixture(t)
+			postgres, redis := refreshDependencies(fixture)
+			if missing {
+				redis.DeleteFunc = func(context.Context, string) error {
 					return errs.ErrKeyNotFound
 				}
-				f.tokenGenerator.GenerateAndGetClaimsFunc = func(userID uuid.UUID) (core.AccessToken, core.JwtClaims, error) {
-					return fixedAccessToken, fixedClaims, nil
-				}
-				f.postgres.RotateRefreshTokenFunc = func(ctx context.Context, oldHash string, newHash string, newJti core.Jti) error {
-					return nil
-				}
-				f.redis.SetFunc = func(ctx context.Context, key string, value any, ttl time.Duration) error {
-					return nil
-				}
-			},
-			check: func(t *testing.T, out Output, err error, f *fields) {
-				assert.NoError(t, err)
-				assert.Equal(t, fixedAccessToken, out.AccessToken)
-				assert.Equal(t, fixedRefresh.ExpiresAt, out.RefreshTokenExpiresAt)
-			},
-		},
-		{
-			name: "error - invalid format token",
-			input: Input{
-				RefreshTokenString: "invalid token 123",
-			},
-			prepare: func(f *fields) {},
-			check: func(t *testing.T, out Output, err error, f *fields) {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, errs.ErrInvalidArgument))
-			},
-		},
-		{
-			name: "error - refresh token not found",
-			input: Input{
-				RefreshTokenString: validTokenStr,
-			},
-			prepare: func(f *fields) {
-				f.postgres.GetRefreshTokenByHashFunc = func(ctx context.Context, hash string) (domain.RefreshToken, error) {
-					return domain.RefreshToken{}, errs.ErrNotFound
-				}
-			},
-			check: func(t *testing.T, out Output, err error, f *fields) {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, errs.ErrAuthorizationFailed))
-				assert.Contains(t, err.Error(), "token is expired")
-			},
-		},
-		{
-			name: "error - refresh token is expired",
-			input: Input{
-				RefreshTokenString: validTokenStr,
-			},
-			prepare: func(f *fields) {
-				f.postgres.GetRefreshTokenByHashFunc = func(ctx context.Context, hash string) (domain.RefreshToken, error) {
-					return domainfixtures.NewRefreshToken(func(refresh *domain.RefreshToken) {
-						refresh.ExpiresAt = fixedNow.Add(-time.Minute)
-						refresh.Audit = fixedAuditInfo
-					}), nil
-				}
-			},
-			check: func(t *testing.T, out Output, err error, f *fields) {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, errs.ErrAuthorizationFailed))
-				assert.Contains(t, err.Error(), "token is expired")
-			},
-		},
-		{
-			name: "error - session is compromised",
-			input: Input{
-				RefreshTokenString: validTokenStr,
-			},
-			prepare: func(f *fields) {
-				f.postgres.GetRefreshTokenByHashFunc = func(ctx context.Context, hash string) (domain.RefreshToken, error) {
-					return domainfixtures.NewRefreshToken(func(refresh *domain.RefreshToken) {
-						refresh.ExpiresAt = fixedNow.Add(-time.Minute)
-						refresh.Audit.Fingerprint = "other fingerprint"
-					}), nil
-				}
-			},
-			check: func(t *testing.T, out Output, err error, f *fields) {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, errs.ErrSessionIsCompromised))
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f := &fields{
-				postgres:       &MockPostgres{},
-				redis:          &MockRedis{},
-				tokenGenerator: &MockTokenGenerator{},
 			}
-			tt.prepare(f)
+			out, err := New(postgres, redis, fixture.generator).Refresh(fixture.token.Audit.WithContext(t.Context()), fixture.input)
+			require.NoError(t, err)
+			claims, err := fixture.generator.GetClaims(out.AccessToken)
+			require.NoError(t, err)
+			require.Equal(t, fixture.token.UserID, claims.UserID)
+			require.Equal(t, fixture.token.ExpiresAt, out.RefreshTokenExpiresAt)
+			require.NotEqual(t, fixture.input.RefreshTokenString, out.RefreshTokenString)
+			require.NoError(t, (Input{RefreshTokenString: out.RefreshTokenString}).Validate())
+		})
+	}
+}
 
-			ctx := fixedAuditInfo.WithContext(test.ContextWithZeroLogger())
+func TestRefreshRejectsInvalidOrUnknownToken(t *testing.T) {
+	t.Parallel()
+	for _, invalid := range []bool{false, true} {
+		t.Run(map[bool]string{false: "not found", true: "invalid input"}[invalid], func(t *testing.T) {
+			t.Parallel()
+			fixture := newRefreshFixture(t)
+			postgres, redis := refreshDependencies(fixture)
+			postgres.GetRefreshTokenByHashFunc = func(context.Context, string) (domain.RefreshToken, error) {
+				return domain.RefreshToken{}, errs.ErrNotFound
+			}
+			want := errs.ErrAuthorizationFailed
+			if invalid {
+				fixture.input.RefreshTokenString = "invalid token 123"
+				want = errs.ErrInvalidArgument
+			}
+			out, err := New(postgres, redis, fixture.generator).Refresh(fixture.token.Audit.WithContext(t.Context()), fixture.input)
+			require.ErrorIs(t, err, want)
+			require.Empty(t, out)
+			require.Empty(t, redis.SetCalls())
+			require.Empty(t, redis.DeleteCalls())
+			if invalid {
+				require.Empty(t, postgres.GetRefreshTokenByHashCalls())
+			}
+		})
+	}
+}
 
-			uc := New(f.postgres, f.redis, f.tokenGenerator)
-			out, err := uc.Refresh(ctx, tt.input)
-
-			tt.check(t, out, err, f)
+func TestRefreshRejectsExpiredTokenOrWrongFingerprint(t *testing.T) {
+	t.Parallel()
+	for _, expired := range []bool{false, true} {
+		t.Run(map[bool]string{false: "compromised even when expired", true: "expired"}[expired], func(t *testing.T) {
+			t.Parallel()
+			fixture := newRefreshFixture(t)
+			audit := fixture.token.Audit
+			snapshot := domain.RefreshTokenSnapshot(fixture.token)
+			want := errs.ErrSessionIsCompromised
+			snapshot.CreatedAt = time.Now().Add(-2 * time.Hour)
+			snapshot.ExpiresAt = time.Now().Add(-time.Hour)
+			if expired {
+				want = errs.ErrAuthorizationFailed
+			} else {
+				fingerprint, err := core.NewFingerprint(strings.Repeat("b", 64))
+				require.NoError(t, err)
+				snapshot.Audit = core.NewAuditInfo(fingerprint, audit.IP, audit.Agent)
+			}
+			var err error
+			fixture.token, err = domain.RestoreRefreshToken(snapshot)
+			require.NoError(t, err)
+			postgres, redis := refreshDependencies(fixture)
+			out, err := New(postgres, redis, fixture.generator).Refresh(audit.WithContext(t.Context()), fixture.input)
+			require.ErrorIs(t, err, want)
+			require.Empty(t, out)
+			require.Empty(t, redis.SetCalls())
+			require.Empty(t, redis.DeleteCalls())
+			if expired {
+				require.ErrorContains(t, err, "token is expired")
+			}
 		})
 	}
 }
