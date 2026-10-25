@@ -95,16 +95,16 @@ func (a *auth) middleware() httpmv.Middleware {
 
 			r, err := a.authenticate(r, log)
 
-			if err != nil {
-				rh := httpout.NewHandler(w, log)
-				rh.ErrorResponse(
-					fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, err),
-					"failed to authenticate",
-				)
+			if err == nil {
+				next.ServeHTTP(w, r)
 				return
 			}
 
-			next.ServeHTTP(w, r)
+			if !errors.Is(err, errs.ErrServiceUnavailable) {
+				err = fmt.Errorf("%w: %v", errs.ErrAuthorizationFailed, err)
+			}
+			rh := httpout.NewHandler(w, log)
+			rh.ErrorResponse(err, "failed to authenticate")
 		})
 	}
 }
@@ -170,12 +170,10 @@ func (a *auth) authenticate(r *http.Request, log zerolog.Logger) (*http.Request,
 
 func (a *auth) extractAccessToken(headers http.Header) (core.AccessToken, error) {
 	authHeader := headers.Get("Authorization")
-	if authHeader == "" {
+	token := strings.TrimPrefix(authHeader, "Bearer ")
+	if token == "" {
 		return "", ErrBearerTokenIsNotSet
 	}
-
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-
 	return core.NewAccessToken(token)
 }
 
@@ -187,7 +185,7 @@ func (a *auth) getSessionFromRedis(ctx context.Context, jti core.Jti) (core.Redi
 		if errors.Is(err, errs.ErrKeyNotFound) {
 			return core.RedisSession{}, fmt.Errorf("%w: %v", errs.ErrInvalidArgument, ErrTokenIsExpired)
 		}
-		return core.RedisSession{}, fmt.Errorf("redis error: %w", err)
+		return core.RedisSession{}, fmt.Errorf("%w: redis error: %w", errs.ErrServiceUnavailable, err)
 	}
 	return session, nil
 }

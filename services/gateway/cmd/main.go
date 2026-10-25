@@ -11,8 +11,6 @@ import (
 	"github.com/AridanWarlock/pinnAutomizer/gateway/internal/config"
 	"github.com/AridanWarlock/pinnAutomizer/gateway/internal/transport/http/middleware"
 	"github.com/AridanWarlock/pinnAutomizer/gateway/internal/transport/http/proxy"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/cache"
-	"github.com/AridanWarlock/pinnAutomizer/pkg/cacheaside"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpmv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/httpsrv"
 	"github.com/AridanWarlock/pinnAutomizer/pkg/jwt"
@@ -75,10 +73,6 @@ func AppRun(
 		log.Info().Msg("redis shutdown gracefully")
 	}()
 	redisAdapter := redis.NewRedis(redisClient)
-	// cache aside
-	l1InMemory := cache.NewCache()
-	defer l1InMemory.Close()
-	cacheAside := cacheaside.NewCacheAside(l1InMemory, redisAdapter)
 	// access token generator
 	accessTokenGenerator := jwt.NewGenerator(cfg.AccessTokenGenerator)
 	// http server
@@ -93,7 +87,7 @@ func AppRun(
 		httpmv.Recover(),
 		middleware.AuditInfo(),
 		middleware.Auth(
-			cacheAside,
+			redisAdapter,
 			accessTokenGenerator,
 			producer,
 			"auth.session.compromised",

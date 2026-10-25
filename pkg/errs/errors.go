@@ -3,6 +3,7 @@ package errs
 import "errors"
 
 var (
+	ErrServiceUnavailable   = errors.New("service unavailable")
 	ErrNotFound             = errors.New("not found")
 	ErrNotExists            = errors.New("not exists")
 	ErrInvalidArgument      = errors.New("invalid argument")
