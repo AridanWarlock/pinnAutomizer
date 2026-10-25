@@ -47,13 +47,40 @@ func (mock *MockSqlizer) ToSqlCalls() []struct {
 var _ Tag = &MockTag{}
 
 type MockTag struct {
+	ExactlyOneRowAffectedFunc func() bool
+
 	RowsAffectedFunc func() int
 
 	calls struct {
+		ExactlyOneRowAffected []struct {
+		}
 		RowsAffected []struct {
 		}
 	}
-	lockRowsAffected sync.RWMutex
+	lockExactlyOneRowAffected sync.RWMutex
+	lockRowsAffected          sync.RWMutex
+}
+
+func (mock *MockTag) ExactlyOneRowAffected() bool {
+	if mock.ExactlyOneRowAffectedFunc == nil {
+		panic("MockTag.ExactlyOneRowAffectedFunc: method is nil but Tag.ExactlyOneRowAffected was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockExactlyOneRowAffected.Lock()
+	mock.calls.ExactlyOneRowAffected = append(mock.calls.ExactlyOneRowAffected, callInfo)
+	mock.lockExactlyOneRowAffected.Unlock()
+	return mock.ExactlyOneRowAffectedFunc()
+}
+
+func (mock *MockTag) ExactlyOneRowAffectedCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockExactlyOneRowAffected.RLock()
+	calls = mock.calls.ExactlyOneRowAffected
+	mock.lockExactlyOneRowAffected.RUnlock()
+	return calls
 }
 
 func (mock *MockTag) RowsAffected() int {
