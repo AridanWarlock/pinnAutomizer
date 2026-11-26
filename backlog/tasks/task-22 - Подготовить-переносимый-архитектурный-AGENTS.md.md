@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-11-26 09:59'
-updated_date: '2026-11-26 10:00'
+updated_date: '2026-11-26 10:01'
 labels: []
 dependencies: []
 ordinal: 28000
@@ -27,4 +27,6 @@ ordinal: 28000
 
 <!-- SECTION:NOTES:BEGIN -->
 Готов docs/templates/backend/AGENTS.md; ссылка добавлена в docs/README.md. Проверены Markdown и make check. Интеграционные системы отдельно не запускались: изменение только документации.
+
+PR: https://github.com/AridanWarlock/pinnAutomizer/pull/34 → codex/task-progress.
 <!-- SECTION:NOTES:END -->
